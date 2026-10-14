@@ -6,7 +6,16 @@ const API = `http://localhost:${process.env.PORT || 3001}`;
 
 export default defineConfig({
   root: 'web',
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      // big uploads go through this proxy: lift Node's default 5-minute request timeout
+      name: 'no-request-timeout',
+      configureServer(server) {
+        if (server.httpServer && 'requestTimeout' in server.httpServer) (server.httpServer as import('node:http').Server).requestTimeout = 0;
+      },
+    },
+  ],
   resolve: { alias: { '@custom': path.resolve(__dirname, 'workspace/custom') } },
   server: {
     host: true,
@@ -15,7 +24,7 @@ export default defineConfig({
     fs: { allow: [path.resolve(__dirname)] },
     watch: { ignored: ['**/library/**', '**/models/**', '**/.venv-tts/**', '**/workspace/media/**', '**/workspace/exports/**', '**/workspace/.cache/**', '**/workspace/project.json', '**/workspace/projects/**'] },
     proxy: {
-      '/api': { target: API, xfwd: true },
+      '/api': { target: API, xfwd: true, timeout: 0, proxyTimeout: 0 },
       '/media': { target: API, xfwd: true },
       '/exports': { target: API, xfwd: true },
       '/cache': { target: API, xfwd: true },

@@ -34,6 +34,7 @@ type State = {
   user: { username: string; role: string; mustChange?: boolean } | null;
   authChecked: boolean;
   projects: ProjectInfo[];
+  uploads: Record<string, Upload>;
   activeProject: string | null;
   setProject: (p: Project, opts?: { record?: boolean; save?: boolean; from?: Project }) => void;
   update: (fn: (p: Project) => void, opts?: { record?: boolean; save?: boolean }) => void;
@@ -52,6 +53,11 @@ function scheduleSave(p: Project) {
       .catch(() => useStore.getState().toast('Không lưu được project', 'error'));
   }, 250);
 }
+
+export type Upload = {
+  id: string; name: string; files: number; loaded: number; total: number; speed: number;
+  state: 'uploading' | 'processing' | 'error' | 'cancelled'; error?: string; startedAt: number; abort?: () => void;
+};
 
 export type ProjectInfo = {
   id: string; name: string; width: number; height: number; fps: number; duration: number;
@@ -79,6 +85,7 @@ export const useStore = create<State>((set, get) => ({
   user: null,
   authChecked: false,
   projects: [],
+  uploads: {},
   activeProject: null,
 
   setProject: (p, opts: { record?: boolean; save?: boolean; from?: Project } = {}) => {

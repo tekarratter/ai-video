@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { componentDefaults } from '@custom';
 import { assetById, clipDuration, findClip, layoutTrack, LOGO_DEFAULTS, LOGO_POSITIONS, projectDuration, TEXT_ANIMATIONS, TRANSITIONS } from '../../../shared/timeline.js';
 import { useStore } from '../store';
-import { addComponentClip, addSolidClip, addTextClip, uploadFiles } from './LeftPanel';
+import { addComponentClip, addSolidClip, addTextClip, uploadFiles, UploadProgress } from './LeftPanel';
 import { askClaude } from './ChatPanel';
 import { Icon } from './Icon';
 import { openYouTube } from './YouTubeDialog';
@@ -332,14 +332,18 @@ const ProjectInspector: React.FC = () => {
 const Jobs: React.FC = () => {
   const jobMap = useStore((s) => s.jobs);
   const jobs = Object.values(jobMap).sort((a, b) => b.startedAt - a.startedAt);
+  const hasUploads = useStore((s) => Object.keys(s.uploads).length > 0);
   const [exports, setExports] = useState<any[]>([]);
   useEffect(() => { fetch('/api/exports').then((r) => r.json()).then(setExports); }, [jobs.length, jobs[0]?.stage]);
   return (
     <div className="inspector-body">
-      {!jobs.length && <div className="empty">Chưa có tác vụ nào.</div>}
+      {hasUploads && <div className="section-title">Đang tải lên</div>}
+      <UploadProgress />
+      {hasUploads && !!jobs.length && <div className="section-title">Tác vụ</div>}
+      {!jobs.length && !hasUploads && <div className="empty">Chưa có tác vụ nào.</div>}
       {jobs.map((j) => (
         <div key={j.id} className={`job ${j.stage}`}>
-          <div className="row"><b>{j.label}</b><span className="spacer" /><span className="small muted">{j.stage}</span></div>
+          <div className="row"><b>{j.label}</b><span className="spacer" /><span className="small muted">{j.stage}{!['done', 'error', 'queued'].includes(j.stage) && j.progress ? ` · ${Math.round(j.progress * 100)}%` : ''}</span></div>
           {!['done', 'error'].includes(j.stage) && <div className="bar"><div style={{ width: `${(j.progress || 0) * 100}%` }} /></div>}
           {j.error && <div className="error small">{j.error}</div>}
           {j.url && <a href={j.url} target="_blank" rel="noreferrer">{j.type === 'youtube' ? `Xem trên YouTube: ${j.url}` : 'Mở video'}</a>}
@@ -360,8 +364,13 @@ const Jobs: React.FC = () => {
 export const Inspector: React.FC = () => {
   const selection = useStore((s) => s.selection);
   const project = useStore((s) => s.project);
-  const running = useStore((s) => Object.values(s.jobs).some((j) => !['done', 'error'].includes(j.stage)));
+  const running = useStore((s) => Object.values(s.jobs).some((j) => !['done', 'error'].includes(j.stage)) || Object.values(s.uploads).some((u) => u.state === 'uploading' || u.state === 'processing'));
   const [tab, setTab] = useState<'insp' | 'jobs'>('insp');
+  useEffect(() => {
+    const show = () => setTab('jobs');
+    window.addEventListener('show-jobs', show);
+    return () => window.removeEventListener('show-jobs', show);
+  }, []);
   const asset = selection ? assetById(project, selection) : null;
   const clip = selection && findClip(project, selection);
   return (

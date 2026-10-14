@@ -343,3 +343,14 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 .project-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .new-project { border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 8px 0; }
+
+/* upload progress */
+.uploads { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+.uploads.compact { margin: 0; width: 220px; }
+.upload { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.upload.error { border-color: var(--red); }
+.uploads.compact .upload { padding: 3px 6px; }
+.upload .bar { height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.upload .bar > div { height: 100%; background: var(--accent); transition: width .3s; }
+.upload.processing .bar > div { background: var(--green); }
+.upload .grow { flex: 1; min-width: 0; }

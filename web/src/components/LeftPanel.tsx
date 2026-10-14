@@ -1,27 +1,94 @@
 import React, { useRef, useState } from 'react';
 import { components, componentDefaults } from '@custom';
 import { newId, layoutTrack, projectDuration } from '../../../shared/timeline.js';
-import { useStore, type Project } from '../store';
+import { useStore, type Project, type Upload } from '../store';
 import { currentTime } from '../player';
 import { Icon } from './Icon';
 import { MusicPanel, VoicePanel } from './AudioLibrary';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export async function uploadFiles(files: FileList | File[], opts: { logo?: boolean } = {}) {
+/** Upload with real progress (XHR — fetch can't report upload progress). Shown in <UploadProgress>. */
+export function uploadFiles(files: FileList | File[], opts: { logo?: boolean } = {}) {
+  const list = Array.from(files);
+  if (!list.length) return;
   const fd = new FormData();
-  for (const f of Array.from(files)) fd.append('files', f);
-  const toast = useStore.getState().toast;
-  toast(`Đang tải lên ${fd.getAll('files').length} file…`);
-  try {
-    const r = await fetch(`/api/upload${opts.logo ? '?logo=1' : ''}`, { method: 'POST', body: fd });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) toast(`Upload lỗi (${r.status}): ${j.error || r.statusText || 'không rõ'}`, 'error');
-    else toast('Đã tải lên, đang xử lý… (xem tab Jobs)');
-  } catch (e: any) {
-    toast(`Upload lỗi: ${e.message}`, 'error');
-  }
+  for (const f of list) fd.append('files', f);
+  const id = `up_${Date.now()}`;
+  const total = list.reduce((n, f) => n + f.size, 0);
+  const name = list.length === 1 ? list[0].name : `${list.length} file`;
+  const xhr = new XMLHttpRequest();
+  const set = (patch: Partial<Upload>) => useStore.setState((s) => ({ uploads: { ...s.uploads, [id]: { ...s.uploads[id], ...patch } } }));
+  const done = (ms = 0) => setTimeout(() => useStore.setState((s) => { const u = { ...s.uploads }; delete u[id]; return { uploads: u }; }), ms);
+  set({ id, name, files: list.length, loaded: 0, total, speed: 0, state: 'uploading', startedAt: Date.now(), abort: () => xhr.abort() });
+  let lastT = Date.now(), lastLoaded = 0;
+  xhr.upload.onprogress = (e) => {
+    const now = Date.now();
+    const dt = (now - lastT) / 1000;
+    if (dt < 0.5 && e.loaded < e.total) return;
+    const speed = dt > 0 ? (e.loaded - lastLoaded) / dt : 0;
+    lastT = now; lastLoaded = e.loaded;
+    const prev = useStore.getState().uploads[id]?.speed || speed;
+    set({ loaded: e.loaded, total: e.total || total, speed: prev ? prev * 0.6 + speed * 0.4 : speed });
+  };
+  xhr.upload.onload = () => set({ loaded: total, state: 'processing' });
+  xhr.onload = () => {
+    let j: any = {};
+    try { j = JSON.parse(xhr.responseText); } catch { /* not json */ }
+    if (xhr.status >= 200 && xhr.status < 300) {
+      useStore.getState().toast(`Đã tải lên ${name} — đang xử lý (tab Jobs)`);
+      done(1500);
+    } else {
+      const error = `Lỗi ${xhr.status}: ${j.error || xhr.statusText || 'không rõ'}`;
+      set({ state: 'error', error });
+      useStore.getState().toast(`Upload lỗi — ${error}`, 'error');
+    }
+  };
+  xhr.onerror = () => set({ state: 'error', error: 'Mất kết nối tới server khi đang tải lên (mạng chập chờn hoặc server khởi động lại) — hãy thử lại' });
+  xhr.onabort = () => { set({ state: 'cancelled' }); done(2500); };
+  xhr.open('POST', `/api/upload${opts.logo ? '?logo=1' : ''}`);
+  xhr.send(fd);
+  window.dispatchEvent(new Event('show-jobs')); // follow progress in the Jobs tab
 }
+
+const mb = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(2)} GB` : `${(b / 1e6).toFixed(1)} MB`);
+const eta = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)} giờ ${Math.round((s % 3600) / 60)} phút` : s >= 60 ? `${Math.floor(s / 60)} phút ${Math.round(s % 60)} giây` : `${Math.round(s)} giây`);
+
+/** Progress of browser → server uploads. */
+export const UploadProgress: React.FC<{ compact?: boolean }> = ({ compact }) => {
+  const uploads = Object.values(useStore((s) => s.uploads));
+  if (!uploads.length) return null;
+  return (
+    <div className={`uploads ${compact ? 'compact' : ''}`}>
+      {uploads.map((u) => {
+        const pct = u.total ? Math.min(100, (u.loaded / u.total) * 100) : 0;
+        const left = u.speed > 0 ? (u.total - u.loaded) / u.speed : 0;
+        return (
+          <div key={u.id} className={`upload ${u.state}`}>
+            <div className="row gap">
+              <Icon name="upload" size={12} />
+              <span className="ellipsis grow" title={u.name}>{u.name}</span>
+              <b className="num">{u.state === 'processing' ? 'Đang xử lý…' : u.state === 'cancelled' ? 'Đã huỷ' : u.state === 'error' ? 'Lỗi' : `${pct.toFixed(0)}%`}</b>
+              {u.state === 'uploading' && <button className="icon-btn" title="Huỷ tải lên" onClick={() => u.abort?.()}><Icon name="x" size={12} /></button>}
+              {(u.state === 'error') && <button className="icon-btn" title="Đóng" onClick={() => useStore.setState((s) => { const x = { ...s.uploads }; delete x[u.id]; return { uploads: x }; })}><Icon name="x" size={12} /></button>}
+            </div>
+            <div className="bar"><div style={{ width: `${u.state === 'processing' ? 100 : pct}%` }} /></div>
+            {!compact && u.state === 'uploading' && (
+              <div className="muted small">{mb(u.loaded)} / {mb(u.total)}{u.speed > 0 ? ` · ${mb(u.speed)}/s · còn ~${eta(left)}` : ''}</div>
+            )}
+            {!compact && u.state === 'processing' && <div className="muted small">{mb(u.total)} đã lên server — đang giải nén / chuyển đổi, xem tab Jobs</div>}
+            {u.error && <div className="error small">{u.error}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// leaving/reloading the page would cancel a running upload
+window.addEventListener('beforeunload', (e) => {
+  if (Object.values(useStore.getState().uploads).some((u) => u.state === 'uploading')) { e.preventDefault(); e.returnValue = ''; }
+});
 
 export async function importUrl(url: string, audioOnly = false) {
   const r = await fetch('/api/import-url', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url, audioOnly }) });
@@ -158,6 +225,7 @@ export const LeftPanel: React.FC = () => {
           onDrop={(e) => { e.preventDefault(); setDrag(false); if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files); }}
         >
           <input className="search" placeholder="Tìm…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <UploadProgress />
           <div className="row gap">
             <button className="btn small" onClick={() => fileRef.current?.click()}><Icon name="upload" /> Tải file</button>
             <input ref={fileRef} type="file" multiple hidden accept="video/*,image/*,audio/*,.heic,.heif,.zip" onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ''; }} />

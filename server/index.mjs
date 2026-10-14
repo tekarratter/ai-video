@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import express from 'express';
 import multer from 'multer';
 import chokidar from 'chokidar';
@@ -24,6 +24,9 @@ const PORT = Number(process.env.PORT || 3001);
 const MEDIA_BASE = `http://localhost:${PORT}`;
 const app = express();
 const server = http.createServer(app);
+// large uploads over slow links take longer than Node's default 5-minute request timeout
+server.requestTimeout = 0;
+server.headersTimeout = 120_000;
 // WebSocket needs a login too (same cookie as the HTTP API)
 const wss = new WebSocketServer({ server, path: '/ws', verifyClient: ({ req }) => !!auth.userOf(req) });
 
@@ -123,27 +126,28 @@ const upload = multer({ dest: path.join(CACHE_DIR, 'uploads'), limits: { fileSiz
 app.post('/api/upload', upload.array('files'), (req, res) => {
   const raw = (req.files || []).map((f) => ({ path: f.path, name: Buffer.from(f.originalname, 'latin1').toString('utf8') }));
   if (!raw.length) return res.status(400).json({ error: 'Không có file' });
-  // .zip (e.g. a Google Drive / Takeout download): unpack and import the media inside
-  const files = [];
-  for (const f of raw) {
-    if (!/\.zip$/i.test(f.name)) { files.push(f); continue; }
-    const dir = `${f.path}-unzip`;
-    try {
-      fs.mkdirSync(dir, { recursive: true });
-      execFileSync('unzip', ['-qq', '-o', '-j', f.path, '-d', dir], { stdio: 'ignore' });
-    } catch { /* unzip exits 1 on warnings; whatever was extracted is used */ }
-    fs.rmSync(f.path, { force: true });
-    let n = 0;
-    for (const name of fs.existsSync(dir) ? fs.readdirSync(dir).sort() : []) {
-      if (name.startsWith('.') || !/\.(jpe?g|png|webp|gif|heic|heif|avif|tiff?|bmp|mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|aac|ogg|flac)$/i.test(name)) continue;
-      files.push({ path: path.join(dir, name), name, tmpDir: dir });
-      n++;
-    }
-    if (!n) return res.status(400).json({ error: `${f.name}: không có ảnh/video/nhạc bên trong` });
-  }
   const asLogo = req.query.logo === '1';
   // Conversion (HEIC → JPG, HEVC → H.264…) can take minutes: run as a job, report progress over WS.
-  const job = startJob('import', `Nhập ${files.length} file`, async (update) => {
+  const MEDIA_RE = /\.(jpe?g|png|webp|gif|heic|heif|avif|tiff?|bmp|mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|aac|ogg|flac)$/i;
+  const job = startJob('import', `Nhập ${raw.length === 1 ? raw[0].name : `${raw.length} file`}`, async (update) => {
+    // .zip (e.g. a Google Drive / Takeout download): unpack and import the media inside
+    const files = [];
+    for (const f of raw) {
+      if (!/\.zip$/i.test(f.name)) { files.push(f); continue; }
+      update({ stage: `giải nén ${f.name}` });
+      const dir = `${f.path}-unzip`;
+      fs.mkdirSync(dir, { recursive: true });
+      await new Promise((resolve) => execFile('unzip', ['-qq', '-o', '-j', f.path, '-d', dir], () => resolve())); // exit 1 = warnings only
+      fs.rmSync(f.path, { force: true });
+      const names = fs.readdirSync(dir).filter((n) => !n.startsWith('.') && MEDIA_RE.test(n)).sort();
+      if (!names.length) {
+        fs.rmSync(dir, { recursive: true, force: true });
+        broadcast({ type: 'toast', level: 'error', text: `${f.name}: không có ảnh/video/nhạc bên trong` });
+      }
+      for (const name of names) files.push({ path: path.join(dir, name), name, tmpDir: dir });
+    }
+    if (!files.length) throw new Error('Không có file media nào để nhập');
+    update({ label: `Nhập ${files.length} file` });
     const ok = [], failed = [];
     for (const [i, f] of files.entries()) {
       const base = i / files.length;
