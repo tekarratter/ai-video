@@ -6,6 +6,7 @@ import { Preview } from './components/Preview';
 import { Inspector } from './components/Inspector';
 import { Timeline } from './components/Timeline';
 import { TopBar } from './components/TopBar';
+import { YouTubeDialog } from './components/YouTubeDialog';
 import { deleteSelection, duplicateSelection, fps, seek, currentTime, splitAtPlayhead, togglePlay } from './player';
 
 function useShortcuts() {
@@ -71,6 +72,7 @@ export const App: React.FC = () => {
         <div className="splitter-y" onPointerDown={drag('y')} />
         {project && <Timeline />}
       </div>
+      <YouTubeDialog />
       <div className="toasts">
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.level || ''}`}>{t.text}</div>

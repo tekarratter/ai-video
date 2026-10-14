@@ -37,6 +37,9 @@ Run `node ../tools/vedit.mjs help` for all options. Most used:
 - `scenes <assetId>` — scene-change timestamps (good for finding shots / highlights).
 - `render [--draft] [--range 0-10]` — export MP4 with Remotion (slow; only when the user asks).
 - `validate` — check project.json after hand edits.
+- `youtube <exports/x.mp4> --title "…" [--description "…"] [--tags a,b] [--privacy private|unlisted|public] [--shorts]` —
+  publish to the user's YouTube channel. **Only when the user explicitly asks to upload**, confirm title/privacy first,
+  default to `private`. Setup (OAuth) is done by the user in the editor (Jobs → ▶ YouTube).
 
 ## project.json schema (all times in SECONDS)
 

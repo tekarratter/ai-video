@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { Icon } from './Icon';
+import { openYouTube } from './YouTubeDialog';
 
 export async function startRender(quality: 'final' | 'draft') {
   const r = await fetch('/api/render', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ quality }) });
@@ -49,7 +50,10 @@ export const TopBar: React.FC = () => {
         <span className="render-error" title={renderJob.error}>⚠ Render lỗi — xem tab Jobs</span>
       )}
       {renderJob?.stage === 'done' && renderJob.url && (
-        <a className="btn ghost" href={renderJob.url} target="_blank" rel="noreferrer"><Icon name="download" /> Video đã xuất</a>
+        <>
+          <a className="btn ghost" href={renderJob.url} target="_blank" rel="noreferrer" download><Icon name="download" /> Tải video</a>
+          <button className="btn yt" onClick={() => openYouTube(renderJob.file)}>▶ Đăng YouTube</button>
+        </>
       )}
       <div className="split-btn">
         <button className="btn primary" disabled={rendering} onClick={() => startRender('final')}><Icon name="rocket" /> Render</button>

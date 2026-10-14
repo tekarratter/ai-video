@@ -55,6 +55,9 @@ Biến môi trường: `PORT` (3001), `WEB_PORT` (5180), `TMUX_SESSION` (ai-vide
   Mỗi tin nhắn tự kèm ngữ cảnh UI (playhead, clip đang chọn). Có thể đính kèm ảnh/video vào chat.
 - **Công cụ cho AI** (`tools/vedit.mjs`): `info`, `import <file|url>`, `frames`/`frame`/`still` (để Claude "nhìn" video),
   `transcribe` (faster-whisper), `silence`/`cut-silence`, `subtitles`, `scenes`, `render`, `validate`.
+- **Đăng YouTube:** Jobs → Exports → ▶ YouTube (hoặc nút "Đăng YouTube" sau khi render). Lần đầu cần tạo OAuth client
+  loại *Desktop app* trên Google Cloud (bật YouTube Data API v3) — hướng dẫn hiện ngay trong hộp thoại. Token lưu ở
+  `~/.config/ai-video/youtube.json`. Project Google chưa qua audit của YouTube thì video đăng qua API bị khoá ở chế độ riêng tư.
 - **Render:** Remotion (`@remotion/renderer`) ra MP4 trong `workspace/exports/`. Có chế độ nháp (½ độ phân giải).
 
 ## Cấu trúc

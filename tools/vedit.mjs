@@ -258,6 +258,21 @@ const commands = {
     console.log(path.join(WORKSPACE, j.file));
   },
 
+  async youtube() {
+    const st = await api('GET', '/api/youtube/status');
+    if (!st.connected) die('YouTube chưa kết nối — mở editor: Jobs → Exports → ▶ YouTube để thiết lập');
+    if (!pos[0]) die('usage: youtube <exports/file.mp4> --title "…" [--description "…"] [--tags a,b] [--privacy private|unlisted|public] [--shorts]');
+    let description = opt.description && opt.description !== true ? String(opt.description) : '';
+    if (opt.shorts && !/#shorts/i.test(description)) description = `${description}\n\n#Shorts`.trim();
+    const r = await api('POST', '/api/youtube/upload', {
+      file: pos[0], title: opt.title === true ? undefined : opt.title, description,
+      tags: opt.tags && opt.tags !== true ? String(opt.tags).split(',').map((s) => s.trim()) : [],
+      privacy: opt.privacy && opt.privacy !== true ? opt.privacy : 'private',
+    });
+    const j = await waitJob(r.job.id, 'youtube');
+    console.log(j.url);
+  },
+
   async validate() {
     const p = readProject();
     const problems = [];
@@ -295,6 +310,7 @@ const commands = {
   subtitles [assetId...] [--lang vi] [--max-chars 42]          build subtitle cues from speech
   scenes <assetId> [--threshold 0.3]     scene-change timestamps
   render [--draft] [--range 0-10]        export MP4 via Remotion (needs server)
+  youtube <exports/x.mp4> --title t [--description d] [--tags a,b] [--privacy private] [--shorts]   upload to YouTube
   validate                               sanity-check project.json`);
   },
 };

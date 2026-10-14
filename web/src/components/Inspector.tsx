@@ -5,6 +5,7 @@ import { useStore } from '../store';
 import { addComponentClip, addSolidClip, addTextClip } from './LeftPanel';
 import { askClaude } from './ChatPanel';
 import { Icon } from './Icon';
+import { openYouTube } from './YouTubeDialog';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Field = { key: string; label: string; type: 'number' | 'text' | 'textarea' | 'color' | 'select' | 'checkbox' | 'range'; step?: number; min?: number; max?: number; options?: string[] };
@@ -279,12 +280,16 @@ const Jobs: React.FC = () => {
           <div className="row"><b>{j.label}</b><span className="spacer" /><span className="small muted">{j.stage}</span></div>
           {!['done', 'error'].includes(j.stage) && <div className="bar"><div style={{ width: `${(j.progress || 0) * 100}%` }} /></div>}
           {j.error && <div className="error small">{j.error}</div>}
-          {j.url && <a href={j.url} target="_blank" rel="noreferrer">Mở video</a>}
+          {j.url && <a href={j.url} target="_blank" rel="noreferrer">{j.type === 'youtube' ? `Xem trên YouTube: ${j.url}` : 'Mở video'}</a>}
+          {(j as any).studio && <a href={(j as any).studio} target="_blank" rel="noreferrer">Mở YouTube Studio</a>}
         </div>
       ))}
       <div className="section-title">Exports</div>
       {exports.map((e) => (
-        <a key={e.name} className="export-item" href={e.url} target="_blank" rel="noreferrer"><Icon name="film" /> {e.name} <span className="muted small">{(e.size / 1e6).toFixed(1)}MB</span></a>
+        <div key={e.name} className="export-row">
+          <a className="export-item" href={e.url} target="_blank" rel="noreferrer" download><Icon name="download" /> {e.name} <span className="muted small">{(e.size / 1e6).toFixed(1)}MB</span></a>
+          <button className="btn small yt" title="Đăng lên YouTube" onClick={() => openYouTube(`exports/${e.name}`)}>▶ YouTube</button>
+        </div>
       ))}
     </div>
   );

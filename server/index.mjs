@@ -13,6 +13,7 @@ import { downloadUrl } from '../shared/download.mjs';
 import { newId } from '../shared/timeline.js';
 import { ClaudeBridge } from './claude.mjs';
 import { renderProject, renderTimelineStill } from './render.mjs';
+import * as youtube from './youtube.mjs';
 
 const PORT = Number(process.env.PORT || 3001);
 const MEDIA_BASE = `http://localhost:${PORT}`;
@@ -189,6 +190,40 @@ app.post('/api/render', (req, res) => {
   });
   res.json({ job: rendering });
 });
+/* ---------------- youtube ---------------- */
+// Desktop-app OAuth clients may redirect to any loopback port without registering it.
+const YT_REDIRECT = `http://localhost:${PORT}/api/youtube/callback`;
+const yt = (fn) => async (req, res) => {
+  try { res.json(await fn(req)); } catch (e) { res.status(400).json({ error: e.message }); }
+};
+app.get('/api/youtube/status', yt(() => youtube.status()));
+app.post('/api/youtube/client', yt((req) => { youtube.setClient(req.body || {}); return youtube.status(); }));
+app.post('/api/youtube/auth-url', yt(() => ({ url: youtube.authUrl(YT_REDIRECT), redirectUri: YT_REDIRECT })));
+app.post('/api/youtube/code', yt(async (req) => { const s = await youtube.exchangeCode(req.body?.input); broadcast({ type: 'youtube', status: s }); return s; }));
+app.post('/api/youtube/disconnect', yt(() => { youtube.disconnect(); return youtube.status(); }));
+app.get('/api/youtube/callback', async (req, res) => {
+  try {
+    const s = await youtube.exchangeCode(`${YT_REDIRECT}?${new URLSearchParams(req.query)}`);
+    broadcast({ type: 'youtube', status: s });
+    res.send(`<meta charset="utf-8"><body style="font:16px system-ui;background:#111;color:#eee;padding:40px">✅ Đã kết nối YouTube${s.channel ? ` (${s.channel.title})` : ''}. Bạn có thể đóng tab này.</body>`);
+  } catch (e) {
+    res.status(400).send(`<meta charset="utf-8"><body style="font:16px system-ui;padding:40px">❌ ${e.message}</body>`);
+  }
+});
+app.post('/api/youtube/upload', (req, res) => {
+  const { file, ...meta } = req.body || {};
+  const abs = path.resolve(WORKSPACE, String(file || ''));
+  if (!abs.startsWith(EXPORT_DIR + path.sep) && !abs.startsWith(MEDIA_DIR + path.sep)) return res.status(400).json({ error: 'File phải nằm trong exports/ hoặc media/' });
+  if (!fs.existsSync(abs)) return res.status(404).json({ error: 'Không tìm thấy file' });
+  if (!youtube.status().connected) return res.status(400).json({ error: 'Chưa kết nối YouTube' });
+  const job = startJob('youtube', `YouTube: ${meta.title || path.basename(abs)}`, async (update) => {
+    update({ stage: 'upload' });
+    const r = await youtube.upload(abs, meta, (p) => update({ progress: p }));
+    return { url: r.url, studio: r.studio, videoId: r.id, label: `Đã đăng YouTube (${r.privacy})` };
+  });
+  res.json({ job });
+});
+
 app.post('/api/still', async (req, res) => {
   try {
     const out = path.resolve(req.body.out || path.join(CACHE_DIR, 'frames', `timeline_${Date.now()}.png`));
