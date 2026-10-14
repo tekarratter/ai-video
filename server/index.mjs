@@ -226,6 +226,14 @@ app.get('/api/exports', (req, res) => {
 });
 
 let rendering = null;
+/* ---- front-end errors → server log ---- */
+app.post('/api/client-error', express.text({ type: '*/*', limit: '64kb' }), (req, res) => {
+  let e = {};
+  try { e = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch { /* ignore */ }
+  console.warn(`[client-error] ${req.user?.username || '?'} ${e.kind}: ${e.message}\n${String(e.stack || '').split('\n').slice(0, 12).join('\n')}`);
+  res.status(204).end();
+});
+
 /* ---- projects ---- */
 const busyJobs = () => [...jobs.values()].filter((j) => !['done', 'error'].includes(j.stage));
 const projectsPayload = () => ({ active: projects.activeId(), projects: projects.list() });

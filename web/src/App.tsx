@@ -10,6 +10,7 @@ import { YouTubeDialog } from './components/YouTubeDialog';
 import { ClaudeAuthDialog, LoginScreen } from './components/Account';
 import { ProjectsDialog } from './components/Projects';
 import { DubDialog } from './components/DubDialog';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { deleteSelection, duplicateSelection, fps, seek, currentTime, splitAtPlayhead, togglePlay } from './player';
 
 function useShortcuts() {
@@ -67,21 +68,21 @@ const Editor: React.FC = () => {
 
   return (
     <div className="app" style={{ gridTemplateColumns: `${chatW}px 4px 1fr` }}>
-      <ChatPanel />
+      <ErrorBoundary label="chat"><ChatPanel /></ErrorBoundary>
       <div className="splitter-x" onPointerDown={drag('x')} />
       <div className="editor" style={{ gridTemplateRows: `auto 1fr 4px ${tlH}px` }}>
         <TopBar />
         {project ? (
           <div className="editor-main">
-            <LeftPanel />
-            <Preview />
-            <Inspector />
+            <ErrorBoundary label="panel trái"><LeftPanel /></ErrorBoundary>
+            <ErrorBoundary label="preview"><Preview /></ErrorBoundary>
+            <ErrorBoundary label="inspector"><Inspector /></ErrorBoundary>
           </div>
         ) : (
           <div className="loading">Đang kết nối server…</div>
         )}
         <div className="splitter-y" onPointerDown={drag('y')} />
-        {project && <Timeline />}
+        {project && <ErrorBoundary label="timeline"><Timeline /></ErrorBoundary>}
       </div>
       <YouTubeDialog />
       <ProjectsDialog />
