@@ -300,6 +300,23 @@ const Subtitles: React.FC = () => {
   );
 };
 
+const Logo: React.FC = () => {
+  const { project } = React.useContext(Ctx);
+  const { width, height } = useVideoConfig();
+  const lg = project.logo;
+  const m = useSrc(lg?.assetId);
+  if (!lg?.enabled || !m || m.asset.type !== 'image') return null;
+  const side = Math.min(width, height);
+  const w = side * lg.size;
+  const pad = side * lg.margin;
+  const [v, hz] = String(lg.position).split('-');
+  const style: React.CSSProperties = { position: 'absolute', width: w, height: 'auto', opacity: lg.opacity, [v === 'bottom' ? 'bottom' : 'top']: pad };
+  if (hz === 'left') style.left = pad;
+  else if (hz === 'right') style.right = pad;
+  else { style.left = '50%'; style.transform = 'translateX(-50%)'; }
+  return <AbsoluteFill style={{ pointerEvents: 'none' }}><Img src={m.src} style={style} /></AbsoluteFill>;
+};
+
 export const Main: React.FC<MainProps> = ({ project: raw, mediaBase = '', hiddenTracks = [] }) => {
   const project = React.useMemo(() => normalizeProject(structuredClone(raw)), [raw]);
   return (
@@ -312,6 +329,7 @@ export const Main: React.FC<MainProps> = ({ project: raw, mediaBase = '', hidden
           return <OverlayTrack key={track.id} track={track} />;
         })}
         <Subtitles />
+        <Logo />
       </AbsoluteFill>
     </Ctx.Provider>
   );

@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { componentDefaults } from '@custom';
-import { assetById, clipDuration, findClip, layoutTrack, projectDuration, TEXT_ANIMATIONS, TRANSITIONS } from '../../../shared/timeline.js';
+import { assetById, clipDuration, findClip, layoutTrack, LOGO_DEFAULTS, LOGO_POSITIONS, projectDuration, TEXT_ANIMATIONS, TRANSITIONS } from '../../../shared/timeline.js';
 import { useStore } from '../store';
-import { addComponentClip, addSolidClip, addTextClip } from './LeftPanel';
+import { addComponentClip, addSolidClip, addTextClip, uploadFiles } from './LeftPanel';
 import { askClaude } from './ChatPanel';
 import { Icon } from './Icon';
 import { openYouTube } from './YouTubeDialog';
@@ -205,6 +205,7 @@ const AssetInspector: React.FC<{ asset: any }> = ({ asset }) => (
     </div>
     <div className="actions">
       {asset.type === 'video' && <button onClick={() => askClaude(`Xem video ${asset.id} và tìm các đoạn hay nhất để dựng highlight.`, true)}><Icon name="sparkle" /> Tìm highlight</button>}
+      {asset.type === 'image' && <button onClick={() => { setLogo({ assetId: asset.id, enabled: true }); useStore.getState().toast('Đã đặt làm logo — chỉnh vị trí ở Inspector của project'); }}><Icon name="image" /> Dùng làm logo</button>}
       {asset.hasAudio && <button onClick={() => askClaude(`Transcribe ${asset.id} rồi tạo phụ đề cho timeline.`, true)}><Icon name="text" /> Tạo phụ đề</button>}
       <button onClick={async () => {
         const r = await fetch(`/api/assets/${asset.id}`, { method: 'DELETE' });
@@ -214,6 +215,66 @@ const AssetInspector: React.FC<{ asset: any }> = ({ asset }) => (
     </div>
   </div>
 );
+
+const POS_LABEL: Record<string, string> = {
+  'top-left': 'Trên trái', 'top-center': 'Trên giữa', 'top-right': 'Trên phải',
+  'bottom-left': 'Dưới trái', 'bottom-center': 'Dưới giữa', 'bottom-right': 'Dưới phải',
+};
+
+export function setLogo(patch: Record<string, any> | null) {
+  useStore.getState().update((p) => {
+    if (patch === null) delete p.logo;
+    else p.logo = { ...LOGO_DEFAULTS, ...(p.logo || {}), ...patch };
+  });
+}
+
+const LogoSection: React.FC = () => {
+  const project = useStore((s) => s.project);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const lg = project.logo ? { ...LOGO_DEFAULTS, ...project.logo } : null;
+  const images = project.assets.filter((a: any) => a.type === 'image');
+  const asset = lg?.assetId ? assetById(project, lg.assetId) : null;
+  return (
+    <>
+      <div className="section-title">Logo</div>
+      <div className="form">
+        <div className="row gap">
+          <button className="btn small" onClick={() => fileRef.current?.click()}><Icon name="upload" /> Tải logo</button>
+          <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => { if (e.target.files?.length) uploadFiles(e.target.files, { logo: true }); e.target.value = ''; }} />
+          {lg && <button className="btn small" onClick={() => setLogo(null)}><Icon name="trash" /> Bỏ logo</button>}
+        </div>
+        <label className="field"><span>Ảnh</span>
+          <select value={lg?.assetId || ''} onChange={(e) => (e.target.value ? setLogo({ assetId: e.target.value, enabled: true }) : setLogo(null))}>
+            <option value="">— Không dùng —</option>
+            {images.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </label>
+        {lg && asset && (
+          <>
+            <label className="field checkbox"><span>Hiển thị</span><input type="checkbox" checked={lg.enabled} onChange={(e) => setLogo({ enabled: e.target.checked })} /></label>
+            <div className="field"><span>Vị trí</span>
+              <div className="logo-pos" style={{ aspectRatio: `${project.settings.width} / ${project.settings.height}` }}>
+                {LOGO_POSITIONS.map((pos: string) => (
+                  <button key={pos} className={`logo-pos-btn ${pos} ${lg.position === pos ? 'active' : ''}`} title={POS_LABEL[pos]} onClick={() => setLogo({ position: pos })} />
+                ))}
+              </div>
+            </div>
+            <label className="field"><span>Kích thước</span>
+              <div className="row gap"><input type="range" min={0.04} max={0.5} step={0.01} value={lg.size} onChange={(e) => setLogo({ size: Number(e.target.value) })} /><span className="num small">{Math.round(lg.size * 100)}%</span></div>
+            </label>
+            <label className="field"><span>Lề</span>
+              <div className="row gap"><input type="range" min={0} max={0.15} step={0.005} value={lg.margin} onChange={(e) => setLogo({ margin: Number(e.target.value) })} /><span className="num small">{Math.round(lg.margin * 100)}%</span></div>
+            </label>
+            <label className="field"><span>Độ mờ</span>
+              <div className="row gap"><input type="range" min={0.1} max={1} step={0.05} value={lg.opacity} onChange={(e) => setLogo({ opacity: Number(e.target.value) })} /><span className="num small">{Math.round(lg.opacity * 100)}%</span></div>
+            </label>
+          </>
+        )}
+        <div className="muted small">Logo hiện trên toàn bộ video. Nên dùng PNG nền trong suốt.</div>
+      </div>
+    </>
+  );
+};
 
 const ProjectInspector: React.FC = () => {
   const project = useStore((s) => s.project);
@@ -248,6 +309,7 @@ const ProjectInspector: React.FC = () => {
         <label className="field"><span>Duration</span><b className="num">{projectDuration(project).toFixed(2)}s</b></label>
         <label className="field color"><span>Nền</span><FieldInput f={{ key: 'bg', label: '', type: 'color' }} value={project.settings.background} onChange={(v) => set('settings.background', v)} /></label>
       </div>
+      <LogoSection />
       <div className="section-title">Phụ đề ({st.cues.length})</div>
       <div className="form">
         <label className="field checkbox"><span>Hiển thị</span><input type="checkbox" checked={st.enabled} onChange={(e) => set('subtitles.enabled', e.target.checked)} /></label>

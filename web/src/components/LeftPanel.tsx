@@ -7,13 +7,13 @@ import { Icon } from './Icon';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export async function uploadFiles(files: FileList | File[]) {
+export async function uploadFiles(files: FileList | File[], opts: { logo?: boolean } = {}) {
   const fd = new FormData();
   for (const f of Array.from(files)) fd.append('files', f);
   const toast = useStore.getState().toast;
   toast(`Đang tải lên ${fd.getAll('files').length} file…`);
   try {
-    const r = await fetch('/api/upload', { method: 'POST', body: fd });
+    const r = await fetch(`/api/upload${opts.logo ? '?logo=1' : ''}`, { method: 'POST', body: fd });
     const j = await r.json();
     if (!r.ok) toast(j.error || 'Upload lỗi', 'error');
     else toast('Đã tải lên, đang xử lý… (xem tab Jobs)');

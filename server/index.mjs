@@ -10,7 +10,7 @@ import {
   hash, importMedia, readProject, writeProject,
 } from '../shared/store.mjs';
 import { downloadUrl } from '../shared/download.mjs';
-import { newId } from '../shared/timeline.js';
+import { LOGO_DEFAULTS, newId } from '../shared/timeline.js';
 import { ClaudeBridge } from './claude.mjs';
 import { renderProject, renderTimelineStill } from './render.mjs';
 import * as youtube from './youtube.mjs';
@@ -105,6 +105,7 @@ const upload = multer({ dest: path.join(CACHE_DIR, 'uploads'), limits: { fileSiz
 app.post('/api/upload', upload.array('files'), (req, res) => {
   const files = (req.files || []).map((f) => ({ path: f.path, name: Buffer.from(f.originalname, 'latin1').toString('utf8') }));
   if (!files.length) return res.status(400).json({ error: 'Không có file' });
+  const asLogo = req.query.logo === '1';
   // Conversion (HEIC → JPG, HEVC → H.264…) can take minutes: run as a job, report progress over WS.
   const job = startJob('import', `Nhập ${files.length} file`, async (update) => {
     const ok = [], failed = [];
@@ -121,6 +122,7 @@ app.post('/api/upload', upload.array('files'), (req, res) => {
         // merge into the latest project (Claude may have edited it meanwhile)
         const latest = readProject();
         latest.assets.push(asset);
+        if (asLogo && asset.type === 'image') latest.logo = { ...LOGO_DEFAULTS, ...(latest.logo || {}), assetId: asset.id, enabled: true };
         saveProject(latest, 'ui');
         ok.push(asset.name);
       } catch (e) {

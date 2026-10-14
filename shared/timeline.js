@@ -43,8 +43,13 @@ export function normalizeProject(p) {
     fontFamily: 'Inter, Arial, sans-serif', fontWeight: 700, maxWidth: 0.8,
     ...(p.subtitles.style || {}),
   };
+  if (p.logo) p.logo = { ...LOGO_DEFAULTS, ...p.logo };
   return p;
 }
+
+/** Watermark/logo shown over the whole video. `size` = logo width as a fraction of the shorter frame side. */
+export const LOGO_POSITIONS = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+export const LOGO_DEFAULTS = { enabled: true, assetId: null, position: 'top-right', size: 0.18, margin: 0.04, opacity: 0.9 };
 
 export function assetById(project, id) {
   return project.assets.find((a) => a.id === id);

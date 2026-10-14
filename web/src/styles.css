@@ -281,3 +281,14 @@ input[type='range'] { accent-color: var(--accent); flex: 1; }
 .yt-setup textarea { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
 .export-row { display: flex; align-items: center; gap: 4px; }
 .export-row .export-item { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* logo position picker: a mini frame with one dot per allowed spot */
+.logo-pos { position: relative; height: 96px; width: auto; background: var(--bg); border: 1px solid var(--line2); border-radius: 4px; justify-self: start; }
+.logo-pos-btn { position: absolute; width: 18px; height: 12px; padding: 0; border-radius: 2px; border: 1px solid var(--muted, #888); background: transparent; cursor: pointer; }
+.logo-pos-btn:hover { border-color: var(--accent, #4f8cff); }
+.logo-pos-btn.active { background: var(--accent, #4f8cff); border-color: var(--accent, #4f8cff); }
+.logo-pos-btn.top-left, .logo-pos-btn.top-center, .logo-pos-btn.top-right { top: 5px; }
+.logo-pos-btn.bottom-left, .logo-pos-btn.bottom-center, .logo-pos-btn.bottom-right { bottom: 5px; }
+.logo-pos-btn.top-left, .logo-pos-btn.bottom-left { left: 5px; }
+.logo-pos-btn.top-right, .logo-pos-btn.bottom-right { right: 5px; }
+.logo-pos-btn.top-center, .logo-pos-btn.bottom-center { left: 50%; transform: translateX(-50%); }

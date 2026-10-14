@@ -9,7 +9,7 @@ import {
 } from '../shared/store.mjs';
 import { downloadUrl } from '../shared/download.mjs';
 import {
-  assetById, clipDuration, fmtTime, layoutTrack, newId, projectDuration, sourceToTimeline,
+  assetById, clipDuration, fmtTime, layoutTrack, LOGO_DEFAULTS, LOGO_POSITIONS, newId, projectDuration, sourceToTimeline,
 } from '../shared/timeline.js';
 
 const exec = promisify(execFile);
@@ -273,6 +273,32 @@ const commands = {
     console.log(j.url);
   },
 
+  async logo() {
+    const p = readProject();
+    if (opt.remove) { delete p.logo; writeProject(p); return console.log('logo removed'); }
+    const patch = {};
+    if (pos[0]) {
+      let asset = assetById(p, pos[0]);
+      if (!asset) asset = await importMedia(p, path.resolve(pos[0]));
+      if (asset.type !== 'image') die(`${asset.id} is not an image`);
+      patch.assetId = asset.id;
+    }
+    if (opt.position) {
+      if (!LOGO_POSITIONS.includes(opt.position)) die(`--position must be one of ${LOGO_POSITIONS.join(', ')}`);
+      patch.position = opt.position;
+    }
+    for (const k of ['size', 'margin', 'opacity']) if (opt[k] != null && opt[k] !== true) patch[k] = Number(opt[k]);
+    if (opt.off) patch.enabled = false;
+    if (opt.on) patch.enabled = true;
+    if (!p.logo && !patch.assetId) {
+      if (Object.keys(patch).length) die('no logo yet: logo <assetId|file> first');
+      return console.log('no logo');
+    }
+    p.logo = { ...LOGO_DEFAULTS, ...(p.logo || {}), ...patch };
+    if (Object.keys(patch).length) writeProject(p);
+    console.log(JSON.stringify(p.logo));
+  },
+
   async validate() {
     const p = readProject();
     const problems = [];
@@ -291,6 +317,7 @@ const commands = {
         if (!new RegExp(`\\b${c.component}\\b`).test(idx)) problems.push(`${c.id}: component ${c.component} not registered in custom/index.tsx`);
       }
     }
+    if (p.logo?.assetId && assetById(p, p.logo.assetId)?.type !== 'image') problems.push(`logo: ${p.logo.assetId} is not an image asset`);
     console.log(problems.length ? problems.join('\n') : 'OK');
     if (problems.length) process.exit(2);
   },
@@ -311,6 +338,8 @@ const commands = {
   scenes <assetId> [--threshold 0.3]     scene-change timestamps
   render [--draft] [--range 0-10]        export MP4 via Remotion (needs server)
   youtube <exports/x.mp4> --title t [--description d] [--tags a,b] [--privacy private] [--shorts]   upload to YouTube
+  logo [assetId|file] [--position top-right] [--size 0.18] [--margin 0.04] [--opacity 0.9] [--off|--on|--remove]
+                                         logo/watermark over the whole video (no args: show current)
   validate                               sanity-check project.json`);
   },
 };

@@ -36,6 +36,8 @@ Run `node ../tools/vedit.mjs help` for all options. Most used:
   Re-run after re-cutting.
 - `scenes <assetId>` — scene-change timestamps (good for finding shots / highlights).
 - `render [--draft] [--range 0-10]` — export MP4 with Remotion (slow; only when the user asks).
+- `logo <assetId|file> [--position top-left|top-center|top-right|bottom-left|bottom-center|bottom-right] [--size 0.18] [--margin 0.04] [--opacity 0.9]`
+  — logo/watermark shown over the **whole** video. `--off` hides, `--remove` deletes, no args prints the current setting.
 - `validate` — check project.json after hand edits.
 - `youtube <exports/x.mp4> --title "…" [--description "…"] [--tags a,b] [--privacy private|unlisted|public] [--shorts]` —
   publish to the user's YouTube channel. **Only when the user explicitly asks to upload**, confirm title/privacy first,
@@ -54,6 +56,8 @@ Run `node ../tools/vedit.mjs help` for all options. Most used:
     { "id": "overlay", "name": "Text & Overlay", "type": "overlay", "clips": [ /* absolute "start" */ ] },
     { "id": "music", "name": "Music", "type": "audio", "clips": [ /* absolute "start" */ ] }
   ],
+  "logo": { "enabled": true, "assetId": "img_x1", "position": "top-right", "size": 0.18, "margin": 0.04, "opacity": 0.9 },
+                // optional; size/margin are fractions of the shorter frame side
   "subtitles": { "enabled": true, "style": { "fontSize": 48, "color": "#fff", "background": "rgba(0,0,0,.55)", "position": 0.88 },
                  "cues": [ { "start": 0.5, "end": 2.1, "text": "Xin chào" } ] }
 }
