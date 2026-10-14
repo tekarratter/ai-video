@@ -1,0 +1,7 @@
+node_modules/
+dist/
+workspace/media/
+workspace/exports/
+workspace/.cache/
+workspace/project.json
+logs/

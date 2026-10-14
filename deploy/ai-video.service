@@ -1,0 +1,16 @@
+[Unit]
+Description=AI Video Studio (server + web + Claude Code in tmux)
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/data/application/ai-video
+Environment=PATH=%h/.nvm/versions/node/v24.21.0/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/data/application/ai-video/scripts/start.sh
+ExecStop=/usr/bin/tmux kill-session -t =ai-video-server
+# tmux keeps running after ExecStart returns; don't kill it when the unit "finishes"
+KillMode=none
+
+[Install]
+WantedBy=default.target
