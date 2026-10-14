@@ -1,11 +1,76 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Player, type PlayerRef } from '@remotion/player';
 import { components } from '@custom';
 import { Main } from '../../../remotion/Main';
-import { projectDuration } from '../../../shared/timeline.js';
+import { layoutTrack, projectDuration } from '../../../shared/timeline.js';
 import { useStore } from '../store';
-import { player } from '../player';
+import { player, seek, togglePlay } from '../player';
 import { Icon } from './Icon';
+
+const fmt = (t: number) => {
+  const m = Math.floor(t / 60), s = t - m * 60;
+  return `${m}:${s.toFixed(1).padStart(4, '0')}`;
+};
+
+/** Fixed-size seek bar under the player: the whole video always fits, independent of the timeline zoom. */
+const SeekBar: React.FC<{ durationFrames: number }> = ({ durationFrames }) => {
+  const project = useStore((s) => s.project);
+  const frame = useStore((s) => s.frame);
+  const playing = useStore((s) => s.playing);
+  const barRef = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<number | null>(null);
+  const { fps } = project.settings;
+  const total = durationFrames / fps;
+  const now = Math.min(frame / fps, total);
+  // scene markers: where each clip of the first sequence track starts
+  const scenes = useMemo(() => {
+    const main = project.tracks.find((t: any) => t.type === 'sequence' && !t.hidden); // eslint-disable-line @typescript-eslint/no-explicit-any
+    return main ? layoutTrack(main, project).map((l: any) => ({ id: l.clip.id, start: l.start, end: l.end, kind: l.clip.kind, name: l.clip.name || l.clip.component || l.clip.kind })) : []; // eslint-disable-line @typescript-eslint/no-explicit-any
+  }, [project]);
+
+  const timeAt = (clientX: number) => {
+    const r = barRef.current!.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * total;
+  };
+  const onDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const wasPlaying = useStore.getState().playing;
+    if (wasPlaying) player.ref?.pause();
+    seek(Math.min(timeAt(e.clientX), total - 1 / fps));
+    const move = (ev: PointerEvent) => seek(Math.min(timeAt(ev.clientX), total - 1 / fps));
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (wasPlaying) player.ref?.play();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  const pct = (t: number) => `${(t / total) * 100}%`;
+  return (
+    <div className="seekbar">
+      <button className="icon-btn" title="Phát / dừng (Space)" onClick={togglePlay}><Icon name={playing ? 'pause' : 'play'} /></button>
+      <span className="num small seek-time">{fmt(now)}</span>
+      <div
+        className="seek-track"
+        ref={barRef}
+        onPointerDown={onDown}
+        onPointerMove={(e) => setHover(timeAt(e.clientX))}
+        onPointerLeave={() => setHover(null)}
+      >
+        <div className="seek-rail">
+          {scenes.map((c: any) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
+            <div key={c.id} className={`seek-scene ${c.kind}`} style={{ left: pct(c.start), width: pct(c.end - c.start) }} title={c.name} />
+          ))}
+          <div className="seek-fill" style={{ width: pct(now) }} />
+        </div>
+        <div className="seek-knob" style={{ left: pct(now) }} />
+        {hover != null && <div className="seek-hover" style={{ left: pct(hover) }}>{fmt(hover)}</div>}
+      </div>
+      <span className="num small muted seek-time">{fmt(total)}</span>
+    </div>
+  );
+};
 
 export const Preview: React.FC = () => {
   const project = useStore((s) => s.project);
@@ -72,6 +137,7 @@ export const Preview: React.FC = () => {
           <div className="player-error">Không tìm thấy component “{openComp}”</div>
         )}
       </div>
+      {(isMain || !!Custom) && <SeekBar durationFrames={duration} />}
     </div>
   );
 };

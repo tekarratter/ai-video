@@ -358,3 +358,17 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 .break { word-break: break-all; }
 .job-actions { margin-top: 4px; }
 .job-actions a.btn { text-decoration: none; }
+
+/* fixed seek bar under the preview */
+.seekbar { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-top: 1px solid var(--line); background: var(--bg2); user-select: none; }
+.seek-time { min-width: 44px; text-align: center; }
+.seek-track { position: relative; flex: 1; height: 22px; cursor: pointer; touch-action: none; }
+.seek-rail { position: absolute; left: 0; right: 0; top: 7px; height: 8px; border-radius: 4px; background: var(--panel2); overflow: hidden; }
+.seek-scene { position: absolute; top: 0; bottom: 0; border-right: 1px solid var(--bg2); opacity: .35; background: var(--c-video); }
+.seek-scene.image { background: var(--c-image); }
+.seek-scene.component { background: var(--c-component); }
+.seek-scene.solid { background: var(--c-solid); }
+.seek-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); opacity: .85; pointer-events: none; }
+.seek-knob { position: absolute; top: 4px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px var(--accent); pointer-events: none; }
+.seek-track:hover .seek-rail { height: 10px; top: 6px; }
+.seek-hover { position: absolute; bottom: 24px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line2); border-radius: 4px; padding: 1px 6px; font-size: 11px; pointer-events: none; white-space: nowrap; }
