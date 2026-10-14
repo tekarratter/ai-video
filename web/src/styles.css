@@ -356,3 +356,5 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 .upload .grow { flex: 1; min-width: 0; }
 .steps { margin: 0; padding-left: 18px; line-height: 1.6; }
 .break { word-break: break-all; }
+.job-actions { margin-top: 4px; }
+.job-actions a.btn { text-decoration: none; }

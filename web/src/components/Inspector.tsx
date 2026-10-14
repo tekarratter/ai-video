@@ -346,7 +346,13 @@ const Jobs: React.FC = () => {
           <div className="row"><b>{j.label}</b><span className="spacer" /><span className="small muted">{j.stage}{!['done', 'error', 'queued'].includes(j.stage) && j.progress ? ` · ${Math.round(j.progress * 100)}%` : ''}</span></div>
           {!['done', 'error'].includes(j.stage) && <div className="bar"><div style={{ width: `${(j.progress || 0) * 100}%` }} /></div>}
           {j.error && <div className="error small">{j.error}</div>}
-          {j.url && <a href={j.url} target="_blank" rel="noreferrer">{j.type === 'youtube' ? `Xem trên YouTube: ${j.url}` : 'Mở video'}</a>}
+          {j.url && j.type === 'youtube' && <a href={j.url} target="_blank" rel="noreferrer">Xem trên YouTube: {j.url}</a>}
+          {j.url && j.type !== 'youtube' && (
+            <div className="row gap job-actions">
+              <a className="btn small" href={j.url} target="_blank" rel="noreferrer"><Icon name="play" /> Mở video</a>
+              <a className="btn small primary" href={j.url} download={decodeURIComponent(j.url.split('/').pop() || 'video.mp4')}><Icon name="download" /> Tải về</a>
+            </div>
+          )}
           {(j as any).studio && <a href={(j as any).studio} target="_blank" rel="noreferrer">Mở YouTube Studio</a>}
         </div>
       ))}
