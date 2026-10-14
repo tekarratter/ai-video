@@ -4,6 +4,7 @@ import { newId, layoutTrack, projectDuration } from '../../../shared/timeline.js
 import { useStore, type Project } from '../store';
 import { currentTime } from '../player';
 import { Icon } from './Icon';
+import { MusicPanel, VoicePanel } from './AudioLibrary';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -112,7 +113,7 @@ const AssetCard: React.FC<{ asset: any }> = ({ asset }) => {
 export const LeftPanel: React.FC = () => {
   const project = useStore((s) => s.project);
   const openComp = useStore((s) => s.openComp);
-  const [tab, setTab] = useState<'comp' | 'assets' | 'motion'>('assets');
+  const [tab, setTab] = useState<'comp' | 'assets' | 'motion' | 'music' | 'voice'>('assets');
   const [q, setQ] = useState('');
   const [url, setUrl] = useState('');
   const [drag, setDrag] = useState(false);
@@ -122,10 +123,15 @@ export const LeftPanel: React.FC = () => {
   return (
     <div className="left-panel panel">
       <div className="panel-tabs">
-        <button className={tab === 'comp' ? 'active' : ''} onClick={() => setTab('comp')}>Compositions</button>
+        <button className={tab === 'comp' ? 'active' : ''} onClick={() => setTab('comp')}>Comps</button>
         <button className={tab === 'assets' ? 'active' : ''} onClick={() => setTab('assets')}>Assets</button>
         <button className={tab === 'motion' ? 'active' : ''} onClick={() => setTab('motion')}>Motion</button>
+        <button className={tab === 'music' ? 'active' : ''} onClick={() => setTab('music')} title="Thư viện nhạc nền"><Icon name="music" size={12} /> Nhạc</button>
+        <button className={tab === 'voice' ? 'active' : ''} onClick={() => setTab('voice')} title="Giọng đọc AI (TTS)"><Icon name="mic" size={12} /> Giọng</button>
       </div>
+
+      {tab === 'music' && <MusicPanel />}
+      {tab === 'voice' && <VoicePanel />}
 
       {tab === 'comp' && (
         <div className="panel-body">

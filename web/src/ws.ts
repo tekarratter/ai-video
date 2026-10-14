@@ -1,4 +1,4 @@
-import { CLIENT_ID, applyRemoteProject, useStore, type ChatItem } from './store';
+import { CLIENT_ID, applyRemoteProject, switchProject, useStore, type ChatItem } from './store';
 
 type Listener = (m: any) => void; // eslint-disable-line @typescript-eslint/no-explicit-any
 const listeners = new Set<Listener>();
@@ -28,8 +28,9 @@ export function connect() {
     const st = useStore.getState();
     switch (m.type) {
       case 'hello':
-        if (!st.project) useStore.getState().setProject(m.project, { record: false, save: false });
+        if (!st.project || (m.activeProject && st.activeProject && m.activeProject !== st.activeProject)) switchProject(m.project, m.activeProject);
         else applyRemoteProject(m.project, 'server');
+        useStore.setState({ activeProject: m.activeProject });
         useStore.setState({
           chat: m.chat.items, chatStatus: m.chat.status, tmux: m.chat.tmux,
           jobs: Object.fromEntries(m.jobs.map((j: any) => [j.id, j])), // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -37,6 +38,14 @@ export function connect() {
         break;
       case 'project':
         applyRemoteProject(m.project, m.origin);
+        break;
+      case 'project-switched':
+        switchProject(m.project, m.active);
+        useStore.setState({ projects: m.projects });
+        st.toast(`Đã mở project "${m.project.name}"`);
+        break;
+      case 'projects':
+        useStore.setState({ projects: m.projects, activeProject: m.active });
         break;
       case 'chat-reset':
         useStore.setState({ chat: m.items, chatStatus: { ...st.chatStatus, sessionId: m.sessionId } });
@@ -67,7 +76,18 @@ export function connect() {
     for (const l of listeners) l({ type: 'open' });
   };
   ws.onclose = () => {
+    if (socket !== ws) return; // replaced by disconnect()/connect()
     socket = null;
-    setTimeout(connect, 1500);
+    // the server refuses the socket when the session expired → back to the login screen
+    fetch('/api/auth/me').then((r) => {
+      if (r.status === 401) useStore.setState({ user: null });
+      else setTimeout(connect, 1500);
+    }).catch(() => setTimeout(connect, 3000));
   };
+}
+
+export function disconnect() {
+  const ws = socket;
+  socket = null;
+  ws?.close();
 }

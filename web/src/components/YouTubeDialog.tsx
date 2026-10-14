@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { onMessage } from '../ws';
 import { Icon } from './Icon';
+import { creditsFor } from '../../../shared/timeline.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Status = { configured: boolean; connected: boolean; channel: { id: string; title: string } | null };
@@ -91,6 +92,8 @@ export const YouTubeDialog: React.FC = () => {
       });
       const p = useStore.getState().project;
       setTitle(p?.name || '');
+      const credits = p ? creditsFor(p) : [];
+      setDesc(credits.length ? `\n\nMusic:\n${credits.join('\n\n')}` : '');
       const { width, height } = p?.settings || {};
       setShorts(height > width);
     };

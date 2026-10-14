@@ -8,8 +8,10 @@ import {
   CACHE_DIR, ROOT, WORKSPACE, importMedia, probe, readProject, writeProject,
 } from '../shared/store.mjs';
 import { downloadUrl } from '../shared/download.mjs';
+import { importTrack, musicFacets, searchMusic } from '../shared/library.mjs';
+import { listVoices, synthesize, ttsFileName } from '../shared/tts.mjs';
 import {
-  assetById, clipDuration, fmtTime, layoutTrack, LOGO_DEFAULTS, LOGO_POSITIONS, newId, projectDuration, sourceToTimeline,
+  addAudioClip, assetById, clipDuration, creditsFor, fmtTime, layoutTrack, LOGO_DEFAULTS, LOGO_POSITIONS, newId, projectDuration, sourceToTimeline,
 } from '../shared/timeline.js';
 
 const exec = promisify(execFile);
@@ -263,6 +265,8 @@ const commands = {
     if (!st.connected) die('YouTube chưa kết nối — mở editor: Jobs → Exports → ▶ YouTube để thiết lập');
     if (!pos[0]) die('usage: youtube <exports/file.mp4> --title "…" [--description "…"] [--tags a,b] [--privacy private|unlisted|public] [--shorts]');
     let description = opt.description && opt.description !== true ? String(opt.description) : '';
+    const credits = creditsFor(readProject()).filter((c) => !description.includes(c));
+    if (credits.length) description = `${description}\n\nMusic:\n${credits.join('\n\n')}`.trim();
     if (opt.shorts && !/#shorts/i.test(description)) description = `${description}\n\n#Shorts`.trim();
     const r = await api('POST', '/api/youtube/upload', {
       file: pos[0], title: opt.title === true ? undefined : opt.title, description,
@@ -271,6 +275,65 @@ const commands = {
     });
     const j = await waitJob(r.job.id, 'youtube');
     console.log(j.url);
+  },
+
+  async music() {
+    const sub = pos.shift();
+    if (sub === 'search' || sub === 'find') {
+      const res = await searchMusic({ q: pos.join(' '), genre: opt.genre, feel: opt.feel, maxDuration: opt.max, minDuration: opt.min, limit: opt.limit || 20 });
+      for (const t of res) console.log(`${t.id}\t${fmtTime(t.duration)}\t${t.genre || ''}\t${t.feel.join(',')}\t${t.bpm || ''}bpm\t${t.description.slice(0, 90)}`);
+      if (!res.length) console.log('no match — try fewer words, or: music genres');
+    } else if (sub === 'genres') {
+      const f = await musicFacets();
+      console.log(`genres: ${f.genres.join(', ')}\nfeels: ${f.feels.join(', ')}\n(${f.total} tracks)`);
+    } else if (sub === 'add') {
+      if (!pos[0]) die('usage: music add <trackId> [--start s] [--volume 0.35] [--no-add]');
+      const p = readProject();
+      const asset = await importTrack(p, pos[0]);
+      if (!p.assets.includes(asset) && !p.assets.some((a) => a.id === asset.id)) p.assets.push(asset);
+      if (!opt['no-add']) {
+        const c = addAudioClip(p, asset, { trackId: opt.track || 'music', trackName: 'Music', start: Number(opt.start || 0), volume: Number(opt.volume ?? 0.35), fadeIn: 1, fadeOut: 2, fitToVideo: true });
+        console.log(`added clip ${c.id} on track ${opt.track || 'music'}`);
+      }
+      writeProject(p);
+      console.log(`${asset.id}  ${asset.duration?.toFixed(1)}s  ${asset.path}${asset.attribution ? '  (CC BY — credit is added to YouTube description automatically)' : ''}`);
+    } else die('usage: music search <words> [--genre G] [--feel F] [--max 60] | music genres | music add <trackId>');
+  },
+
+  async voices() {
+    const v = await listVoices();
+    for (const x of v.filter((x) => !opt.lang || x.lang === opt.lang)) console.log(`${x.id.padEnd(22)} ${x.featured ? '*' : ' '} ${x.description}`);
+  },
+
+  async tts() {
+    const text = opt.file ? fs.readFileSync(opt.file, 'utf8') : pos.join(' ');
+    if (!text.trim()) die('usage: tts "text" [--voice "vi:Trúc Ly"|en:af_heart] [--speed 1] [--start s] [--no-add]  (or --file script.txt)');
+    const voice = opt.voice && opt.voice !== true ? String(opt.voice) : 'vi:Trúc Ly';
+    console.error(`synthesizing with ${voice} …`);
+    const wav = await synthesize({ text, voice, speed: Number(opt.speed || 1) });
+    const p = readProject();
+    const asset = await importMedia(p, wav, { name: ttsFileName(text, voice) });
+    asset.tts = { text, voice, speed: Number(opt.speed || 1) };
+    let clip = null;
+    if (!opt['no-add']) clip = addAudioClip(p, asset, { trackId: opt.track || 'voice', trackName: 'Giọng đọc', start: Number(opt.start || 0), volume: Number(opt.volume || 1) });
+    writeProject(p);
+    console.log(`${asset.id}  ${asset.duration.toFixed(2)}s${clip ? `  clip ${clip.id} at ${clip.start}s on track ${opt.track || 'voice'}` : ''}`);
+  },
+
+  async projects() {
+    const sub = pos.shift();
+    if (!sub || sub === 'list') {
+      const r = await api('GET', '/api/projects');
+      for (const p of r.projects) console.log(`${p.active ? '*' : ' '} ${p.id.padEnd(32)} ${`${p.width}x${p.height}`.padEnd(10)} ${p.duration.toFixed(1).padStart(6)}s  ${p.assets} assets  "${p.name}"`);
+    } else if (sub === 'new') {
+      if (!pos[0]) die('usage: projects new "Name" [--size 1080x1920] [--no-open]');
+      const [w, h] = String(opt.size || '1920x1080').split('x').map(Number);
+      const r = await api('POST', '/api/projects', { name: pos.join(' '), width: w, height: h, open: !opt['no-open'] });
+      console.log(`active: ${r.active}`);
+    } else if (sub === 'open') {
+      const r = await api('POST', `/api/projects/${encodeURIComponent(pos[0] || '')}/open`);
+      console.log(`active: ${r.active}`);
+    } else die('usage: projects [list] | projects new "Name" [--size WxH] | projects open <id>');
   },
 
   async logo() {
@@ -338,6 +401,12 @@ const commands = {
   scenes <assetId> [--threshold 0.3]     scene-change timestamps
   render [--draft] [--range 0-10]        export MP4 via Remotion (needs server)
   youtube <exports/x.mp4> --title t [--description d] [--tags a,b] [--privacy private] [--shorts]   upload to YouTube
+  music search <words> [--genre G] [--feel F] [--max 60]   search the background-music library (Incompetech CC BY + library/music)
+  music genres                           list genres / feels
+  music add <trackId> [--start s] [--volume 0.35] [--no-add]   import a track, put it on the music track (trimmed + faded)
+  voices [--lang vi|en]                  list TTS voices
+  tts "text" [--voice "vi:Trúc Ly"] [--speed 1] [--start s] [--file f.txt] [--no-add]   voice-over → track "voice"
+  projects [list] | projects new "Name" [--size 1080x1920] | projects open <id>   manage projects (needs server)
   logo [assetId|file] [--position top-right] [--size 0.18] [--margin 0.04] [--opacity 0.9] [--off|--on|--remove]
                                          logo/watermark over the whole video (no args: show current)
   validate                               sanity-check project.json`);

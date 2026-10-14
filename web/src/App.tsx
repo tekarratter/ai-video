@@ -7,6 +7,8 @@ import { Inspector } from './components/Inspector';
 import { Timeline } from './components/Timeline';
 import { TopBar } from './components/TopBar';
 import { YouTubeDialog } from './components/YouTubeDialog';
+import { LoginScreen } from './components/Account';
+import { ProjectsDialog } from './components/Projects';
 import { deleteSelection, duplicateSelection, fps, seek, currentTime, splitAtPlayhead, togglePlay } from './player';
 
 function useShortcuts() {
@@ -36,6 +38,14 @@ function useShortcuts() {
 }
 
 export const App: React.FC = () => {
+  const user = useStore((s) => s.user);
+  const authChecked = useStore((s) => s.authChecked);
+  if (!authChecked) return <div className="loading">Đang tải…</div>;
+  if (!user) return <LoginScreen />;
+  return <Editor />;
+};
+
+const Editor: React.FC = () => {
   const project = useStore((s) => s.project);
   const toasts = useStore((s) => s.toasts);
   const [chatW, setChatW] = useState(400);
@@ -73,6 +83,7 @@ export const App: React.FC = () => {
         {project && <Timeline />}
       </div>
       <YouTubeDialog />
+      <ProjectsDialog />
       <div className="toasts">
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.level || ''}`}>{t.text}</div>

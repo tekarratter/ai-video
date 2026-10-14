@@ -163,3 +163,31 @@ export function fmtTime(sec, fps = 30) {
   const f = Math.floor((sec % 1) * fps);
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(f).padStart(2, '0')}`;
 }
+
+/**
+ * Put an audio asset on an audio track (created when missing) at `start`.
+ * Music is trimmed to the end of the video and faded out; voice-over is kept whole.
+ */
+export function addAudioClip(project, asset, { trackId, trackName, start = 0, volume = 1, fadeIn = 0, fadeOut = 0, fitToVideo = false } = {}) {
+  let track = project.tracks.find((t) => t.id === trackId);
+  if (!track) {
+    track = { id: trackId || newId('t'), name: trackName || 'Audio', type: 'audio', clips: [] };
+    project.tracks.push(track);
+  }
+  let out = asset.duration;
+  if (fitToVideo) {
+    const videoEnd = projectDuration(project);
+    if (videoEnd > start + 1) out = Math.min(out, videoEnd - start);
+  }
+  const clip = { id: newId(), name: asset.name, assetId: asset.id, start: Math.max(0, start), in: 0, out, volume };
+  if (fadeIn) clip.fadeIn = fadeIn;
+  if (fadeOut) clip.fadeOut = fadeOut;
+  track.clips.push(clip);
+  return clip;
+}
+
+/** Attribution lines for every licensed asset (e.g. CC BY music) used on the timeline — for video descriptions. */
+export function creditsFor(project) {
+  const used = new Set(project.tracks.flatMap((tr) => tr.clips.map((c) => c.assetId)).filter(Boolean));
+  return [...new Set(project.assets.filter((a) => a.attribution && used.has(a.id)).map((a) => a.attribution))];
+}

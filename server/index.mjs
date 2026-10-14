@@ -10,16 +10,23 @@ import {
   hash, importMedia, readProject, writeProject,
 } from '../shared/store.mjs';
 import { downloadUrl } from '../shared/download.mjs';
-import { LOGO_DEFAULTS, newId } from '../shared/timeline.js';
+import { LOGO_DEFAULTS, addAudioClip, newId } from '../shared/timeline.js';
+import { LOCAL_MUSIC_DIR, importTrack, musicFacets, searchMusic } from '../shared/library.mjs';
+import { listVoices, synthesize, ttsFileName } from '../shared/tts.mjs';
 import { ClaudeBridge } from './claude.mjs';
 import { renderProject, renderTimelineStill } from './render.mjs';
 import * as youtube from './youtube.mjs';
+import * as auth from './auth.mjs';
+import * as projects from './projects.mjs';
 
 const PORT = Number(process.env.PORT || 3001);
 const MEDIA_BASE = `http://localhost:${PORT}`;
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server, path: '/ws' });
+// WebSocket needs a login too (same cookie as the HTTP API)
+const wss = new WebSocketServer({ server, path: '/ws', verifyClient: ({ req }) => !!auth.userOf(req) });
+
+projects.init();
 
 if (!fs.existsSync(PROJECT_FILE)) writeProject(readProject());
 let lastHash = hash(fs.readFileSync(PROJECT_FILE, 'utf8'));
@@ -34,7 +41,13 @@ function broadcast(msg, except) {
 function saveProject(project, origin, except) {
   const text = writeProject(project);
   lastHash = hash(text);
+  mirrorSoon();
   broadcast({ type: 'project', project: JSON.parse(text), origin }, except);
+}
+let mirrorTimer;
+function mirrorSoon() {
+  clearTimeout(mirrorTimer);
+  mirrorTimer = setTimeout(() => { try { projects.mirror(); } catch (e) { console.warn('[projects] mirror', e.message); } }, 400);
 }
 
 chokidar.watch(PROJECT_FILE, { ignoreInitial: true, awaitWriteFinish: { stabilityThreshold: 120, pollInterval: 40 } })
@@ -46,6 +59,7 @@ chokidar.watch(PROJECT_FILE, { ignoreInitial: true, awaitWriteFinish: { stabilit
     try {
       const project = JSON.parse(text);
       lastHash = h;
+      mirrorSoon();
       broadcast({ type: 'project', project, origin: 'external' });
     } catch (e) {
       broadcast({ type: 'toast', level: 'error', text: `project.json lỗi JSON: ${e.message}` });
@@ -89,9 +103,12 @@ function startJob(type, label, fn) {
 
 /* ---------------- http ---------------- */
 app.use(express.json({ limit: '50mb' }));
+app.use(auth.requireAuth);
+auth.registerRoutes(app);
 app.use('/media', express.static(MEDIA_DIR, { fallthrough: false }));
 app.use('/exports', express.static(EXPORT_DIR));
 app.use('/cache', express.static(CACHE_DIR));
+app.use('/library/music', express.static(LOCAL_MUSIC_DIR));
 
 app.get('/api/project', (req, res) => res.json(readProject()));
 app.put('/api/project', (req, res) => {
@@ -183,6 +200,84 @@ app.get('/api/exports', (req, res) => {
 });
 
 let rendering = null;
+/* ---- projects ---- */
+const busyJobs = () => [...jobs.values()].filter((j) => !['done', 'error'].includes(j.stage));
+const projectsPayload = () => ({ active: projects.activeId(), projects: projects.list() });
+app.get('/api/projects', (req, res) => res.json(projectsPayload()));
+function openProject(id) {
+  const busy = busyJobs();
+  if (busy.length) throw Object.assign(new Error(`Đang có tác vụ chạy (${busy.map((j) => j.label).join(', ')}) — đợi xong rồi chuyển project`), { status: 409 });
+  projects.open(id);
+  const text = fs.readFileSync(PROJECT_FILE, 'utf8');
+  lastHash = hash(text);
+  broadcast({ type: 'project-switched', project: readProject(), ...projectsPayload() });
+}
+const handle = (fn) => (req, res) => {
+  try { res.json(fn(req) ?? projectsPayload()); } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
+};
+app.post('/api/projects', handle((req) => {
+  const id = projects.create(req.body || {});
+  if (req.body?.open !== false) openProject(id);
+  else broadcast({ type: 'projects', ...projectsPayload() });
+}));
+app.post('/api/projects/:id/open', handle((req) => { openProject(req.params.id); }));
+app.post('/api/projects/:id/duplicate', handle((req) => { projects.duplicate(req.params.id); broadcast({ type: 'projects', ...projectsPayload() }); }));
+app.patch('/api/projects/:id', handle((req) => {
+  projects.rename(req.params.id, req.body?.name);
+  if (req.params.id === projects.activeId()) { const text = fs.readFileSync(PROJECT_FILE, 'utf8'); lastHash = hash(text); broadcast({ type: 'project', project: JSON.parse(text), origin: 'ui' }); }
+  broadcast({ type: 'projects', ...projectsPayload() });
+}));
+app.delete('/api/projects/:id', handle((req) => { projects.remove(req.params.id); broadcast({ type: 'projects', ...projectsPayload() }); }));
+
+/* ---- voice-over (TTS) ---- */
+app.get('/api/tts/voices', async (req, res) => {
+  try { res.json(await listVoices()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/tts', (req, res) => {
+  const { text, voice = 'vi:Trúc Ly', speed = 1, start, add = true } = req.body || {};
+  if (!String(text || '').trim()) return res.status(400).json({ error: 'Thiếu nội dung cần đọc' });
+  const job = startJob('tts', `Giọng đọc: ${String(text).slice(0, 40)}`, async (update) => {
+    update({ stage: 'chờ lượt', progress: 0.05 });
+    const wav = await synthesize({ text, voice, speed }, {
+      onStage: (st) => update({ stage: st === 'load' ? 'nạp model' : st === 'synth' ? 'đang đọc' : st, progress: st === 'synth' ? 0.4 : 0.2 }),
+    });
+    if (!add) return { label: 'Bản nghe thử', previewUrl: `/cache/${path.relative(CACHE_DIR, wav).split(path.sep).join('/')}` };
+    update({ stage: 'nhập', progress: 0.9 });
+    const tmp = readProject();
+    const asset = await importMedia(tmp, wav, { name: ttsFileName(text, voice) });
+    Object.assign(asset, { tts: { text, voice, speed } });
+    const latest = readProject();
+    latest.assets.push(asset);
+    const clip = addAudioClip(latest, asset, { trackId: 'voice', trackName: 'Giọng đọc', start: Number(start) || 0 });
+    saveProject(latest, 'ui');
+    return { label: `Giọng đọc ${asset.duration?.toFixed(1)}s`, assetId: asset.id, clipId: clip.id };
+  });
+  res.json({ job });
+});
+
+/* ---- music library ---- */
+app.get('/api/music/search', async (req, res) => {
+  try { res.json(await searchMusic(req.query)); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/music/facets', async (req, res) => {
+  try { res.json(await musicFacets()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/music/add', (req, res) => {
+  const { id, start = 0, add = true, volume = 0.35 } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'Thiếu id bài nhạc' });
+  const job = startJob('music', `Nhạc: ${String(id).replace(/^\w+:/, '')}`, async (update) => {
+    update({ stage: 'tải nhạc' });
+    const tmp = readProject();
+    const asset = await importTrack(tmp, id, { onProgress: (p) => update({ progress: p * 0.9 }) });
+    const latest = readProject();
+    if (!latest.assets.some((a) => a.id === asset.id)) latest.assets.push(asset);
+    if (add) addAudioClip(latest, asset, { trackId: 'music', trackName: 'Music', start: Number(start) || 0, volume: Number(volume), fadeIn: 1, fadeOut: 2, fitToVideo: true });
+    saveProject(latest, 'ui');
+    return { label: `Đã thêm nhạc: ${asset.name}`, assetId: asset.id };
+  });
+  res.json({ job });
+});
+
 app.post('/api/render', (req, res) => {
   if (rendering && !['done', 'error'].includes(rendering.stage)) return res.status(409).json({ error: 'Đang render', job: rendering });
   const { quality, range } = req.body || {};
@@ -283,7 +378,7 @@ app.post('/api/chat/attach', upload.array('files'), async (req, res) => {
 
 wss.on('connection', (ws, req) => {
   ws.clientId = new URL(req.url, 'http://x').searchParams.get('id');
-  ws.send(JSON.stringify({ type: 'hello', project: readProject(), chat: claude.snapshot(), jobs: [...jobs.values()].slice(-30) }));
+  ws.send(JSON.stringify({ type: 'hello', project: readProject(), activeProject: projects.activeId(), chat: claude.snapshot(), jobs: [...jobs.values()].slice(-30) }));
   ws.on('message', async (raw) => {
     let m;
     try { m = JSON.parse(raw); } catch { return; }
@@ -299,10 +394,11 @@ wss.on('connection', (ws, req) => {
 const dist = path.join(ROOT, 'dist');
 if (fs.existsSync(dist)) {
   app.use(express.static(dist));
-  app.get(/^\/(?!api|media|exports|cache|ws).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
+  app.get(/^\/(?!api|media|exports|cache|library|ws).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
 }
 
 server.listen(PORT, () => {
   console.log(`[ai-video] server http://localhost:${PORT}  workspace=${WORKSPACE}`);
   console.log(`[ai-video] Claude Code CLI dùng chung: tmux attach -t ${claude.tmux}`);
 });
+

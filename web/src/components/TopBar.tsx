@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { Icon } from './Icon';
 import { openYouTube } from './YouTubeDialog';
+import { UserMenu } from './Account';
+import { openProjects } from './Projects';
 
 export async function startRender(quality: 'final' | 'draft') {
   const r = await fetch('/api/render', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ quality }) });
@@ -31,6 +33,7 @@ export const TopBar: React.FC = () => {
   return (
     <div className="topbar">
       <div className="brand"><span className="logo">▶</span> AI Video Studio</div>
+      <button className="btn ghost" title="Danh sách dự án / tạo dự án mới" onClick={openProjects}><Icon name="folder" /> Dự án ▾</button>
       <input
         className="project-name"
         value={project?.name || ''}
@@ -65,6 +68,7 @@ export const TopBar: React.FC = () => {
           </div>
         )}
       </div>
+      <UserMenu />
     </div>
   );
 };

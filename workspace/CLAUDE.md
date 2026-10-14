@@ -43,6 +43,23 @@ Run `node ../tools/vedit.mjs help` for all options. Most used:
   publish to the user's YouTube channel. **Only when the user explicitly asks to upload**, confirm title/privacy first,
   default to `private`. Setup (OAuth) is done by the user in the editor (Jobs → ▶ YouTube).
 
+## Projects
+
+The editor holds several projects (`workspace/projects/<id>/`). `project.json`, `media/` and `exports/` here always
+point at the **open** project. `vedit projects` lists them. Only switch (`projects open <id>`) or create
+(`projects new "Name" --size 1080x1920`) when the user asks — the editor UI switches along with you.
+
+## Voice-over and music
+
+- `voices [--lang vi|en]` lists TTS voices. Vietnamese: VieNeu-TTS (`vi:Trúc Ly`, `vi:Hải Đăng`, `vi:Mai Anh`… regions Bắc/Trung/Nam;
+  reads mixed English words too). English: Kokoro (`en:af_heart`, `en:am_michael`, `en:bf_emma`…).
+- `tts "text" --voice "vi:Trúc Ly" --start 2.5 [--speed 1.1]` → audio clip on track `voice` (~10–20 s per call on this CPU).
+  One call per scene/sentence so you can place each line exactly; check lengths with `info` and fit clips to them.
+  Lower music volume (0.15–0.25) under voice-over.
+- `music search <words> [--genre G] [--feel F] [--max 60]` (Incompetech, CC BY 4.0 + the user's `library/music`),
+  `music add <trackId> [--start 0] [--volume 0.35]` → track `music`, trimmed to the video and faded.
+  CC BY credits are appended to the YouTube description automatically.
+
 ## project.json schema (all times in SECONDS)
 
 ```jsonc

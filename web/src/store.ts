@@ -31,6 +31,10 @@ type State = {
   customVersion: number;
   hiddenTracks: string[];
   playbackRate: number;
+  user: { username: string; role: string; mustChange?: boolean } | null;
+  authChecked: boolean;
+  projects: ProjectInfo[];
+  activeProject: string | null;
   setProject: (p: Project, opts?: { record?: boolean; save?: boolean; from?: Project }) => void;
   update: (fn: (p: Project) => void, opts?: { record?: boolean; save?: boolean }) => void;
   undo: () => void;
@@ -48,6 +52,11 @@ function scheduleSave(p: Project) {
       .catch(() => useStore.getState().toast('Không lưu được project', 'error'));
   }, 250);
 }
+
+export type ProjectInfo = {
+  id: string; name: string; width: number; height: number; fps: number; duration: number;
+  assets: number; exports: number; thumb: string | null; updatedAt: number; active: boolean;
+};
 
 export const useStore = create<State>((set, get) => ({
   project: null,
@@ -67,6 +76,10 @@ export const useStore = create<State>((set, get) => ({
   customVersion: 0,
   hiddenTracks: [],
   playbackRate: 1,
+  user: null,
+  authChecked: false,
+  projects: [],
+  activeProject: null,
 
   setProject: (p, opts: { record?: boolean; save?: boolean; from?: Project } = {}) => {
     let { record = true } = opts;
@@ -122,4 +135,10 @@ export function applyRemoteProject(p: Project, origin: string) {
   if (JSON.stringify(p) === JSON.stringify(s.project)) return;
   s.setProject(p, { record: !!s.project, save: false });
   if (origin === 'external') useStore.setState({ remoteFlash: Date.now() });
+}
+
+/** Another project was opened: replace everything, without undo history across projects. */
+export function switchProject(p: Project, activeProject: string | null) {
+  clearTimeout(saveTimer);
+  useStore.setState({ project: normalizeProject(p), past: [], future: [], selection: null, frame: 0, playing: false, hiddenTracks: [], activeProject });
 }
