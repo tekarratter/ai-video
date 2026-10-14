@@ -3,6 +3,7 @@ import { findClip } from '../../../shared/timeline.js';
 import { useStore, type ChatItem } from '../store';
 import { currentTime } from '../player';
 import { Icon } from './Icon';
+import { openClaudeAuth, useClaudeAuth } from './Account';
 import { TerminalView } from './TerminalView';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -145,6 +146,7 @@ export const ChatPanel: React.FC = () => {
   const items = useStore((s) => s.chat);
   const status = useStore((s) => s.chatStatus);
   const tmux = useStore((s) => s.tmux);
+  const [claudeAuth] = useClaudeAuth();
   const [text, setText] = useState('');
   const [withCtx, setWithCtx] = useState(true);
   const [atts, setAtts] = useState<string[]>([]);
@@ -225,7 +227,13 @@ export const ChatPanel: React.FC = () => {
       ) : (
         <>
           <div className="chat-list" ref={listRef} onScroll={(e) => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60; }}>
-            {!status.running && (
+            {!status.running && claudeAuth && !claudeAuth.loggedIn && (
+              <div className="notice">
+                Claude Code chưa đăng nhập. Kết nối tài khoản Claude của bạn để chat với AI.
+                <button className="btn small primary" onClick={openClaudeAuth}><Icon name="link" /> Kết nối Claude Code</button>
+              </div>
+            )}
+            {!status.running && claudeAuth?.loggedIn !== false && (
               <div className="notice">
                 Claude Code chưa chạy.
                 <button className="btn small" onClick={() => restart('continue')}><Icon name="refresh" /> Khởi động (tiếp tục phiên trước)</button>

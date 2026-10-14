@@ -354,3 +354,5 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 .upload .bar > div { height: 100%; background: var(--accent); transition: width .3s; }
 .upload.processing .bar > div { background: var(--green); }
 .upload .grow { flex: 1; min-width: 0; }
+.steps { margin: 0; padding-left: 18px; line-height: 1.6; }
+.break { word-break: break-all; }

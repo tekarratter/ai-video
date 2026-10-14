@@ -1,0 +1,27 @@
+# docker compose up -d --build     → mở http://<máy chủ>:5180
+services:
+  ai-video:
+    build:
+      context: .
+      args:
+        WITH_TTS: "1"            # "0" để bỏ giọng đọc AI (nhẹ hơn ~1.5 GB)
+    image: ai-video:latest
+    container_name: ai-video
+    restart: unless-stopped
+    ports:
+      - "5180:5180"
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      # mật khẩu admin cho LẦN CHẠY ĐẦU (sau đó đổi trong app)
+      AIV_ADMIN_PASSWORD: ${AIV_ADMIN_PASSWORD:-Hoang2026}
+      # render: số frame xử lý song song (tăng nếu máy nhiều RAM)
+      RENDER_CONCURRENCY: ${RENDER_CONCURRENCY:-1}
+    volumes:
+      - workspace:/app/workspace          # dự án, media, video xuất
+      - home:/home/node                   # tài khoản app, đăng nhập Claude Code, lịch sử chat, cache model
+      - ./library/music:/app/library/music  # nhạc riêng (bỏ file mp3 vào đây)
+    shm_size: "1gb"                       # Chrome (render) cần shared memory
+
+volumes:
+  workspace:
+  home:

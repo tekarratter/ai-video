@@ -12,7 +12,7 @@ const USERS = path.join(CONF_DIR, 'users.json');
 const SESSIONS = path.join(CONF_DIR, 'sessions.json');
 const COOKIE = 'aiv_session';
 const TTL = 30 * 24 * 3600 * 1000;
-export const DEFAULT_USER = { username: 'admin', password: 'Hoang2026' };
+export const DEFAULT_USER = { username: process.env.AIV_ADMIN_USER || 'admin', password: process.env.AIV_ADMIN_PASSWORD || 'Hoang2026' };
 
 function readJson(file, fallback) { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; } }
 function writeJson(file, data) {

@@ -43,6 +43,40 @@ Gõ ở terminal thì panel thấy, gõ ở panel thì terminal thấy. Panel c�
 Biến môi trường: `PORT` (3001), `WEB_PORT` (5180), `TMUX_SESSION` (ai-video), `CLAUDE_ARGS` (ví dụ `--model opus`),
 `CLAUDE_AUTOSTART=0` để không tự khởi động Claude, `WHISPER_MODEL` (small), `RENDER_CONCURRENCY` (2).
 
+## Triển khai bằng Docker (kèm Claude Code)
+
+Image chứa đủ: editor, Remotion và Chrome để render, ffmpeg, Whisper, yt-dlp, **Claude Code CLI**, cùng giọng đọc VieNeu-TTS và Kokoro.
+
+```bash
+git clone https://github.com/tekarratter/ai-video.git && cd ai-video
+docker compose up -d --build        # lần đầu build mất khoảng 10–20 phút
+# mở http://<máy chủ>:5180  →  đăng nhập admin / Hoang2026 (đặt khác: AIV_ADMIN_PASSWORD=... docker compose up -d)
+```
+
+**Kết nối Claude Code bằng tài khoản của bạn.** Mỗi nơi triển khai dùng tài khoản Claude riêng. Vào menu tài khoản (góc trên phải) → **Tài khoản Claude Code** (chỉ admin) và chọn một trong ba cách:
+
+| Cách | Dùng cho | Thao tác |
+|---|---|---|
+| Đăng nhập Claude | Gói Pro/Max (hoặc tài khoản Console) | Bấm "Lấy link đăng nhập", đăng nhập rồi Authorize, dán mã vào app |
+| Token dài hạn | Gói Pro/Max | Chạy `claude setup-token` trên máy bất kỳ, dán token `sk-ant-oat…` |
+| API key | Anthropic Console (trả theo lượng dùng) | Dán key `sk-ant-api…` |
+
+Thông tin đăng nhập được lưu trong volume `home`, không nằm trong image. Khi đổi tài khoản, phiên Claude tự khởi động lại (lịch sử chat vẫn giữ).
+
+**Dữ liệu (volume):**
+- `workspace`: các dự án, media, video xuất.
+- `home`: tài khoản app, đăng nhập Claude Code, lịch sử chat, cache model.
+- `./library/music`: nhạc riêng.
+
+**Tuỳ chọn:**
+- `WITH_TTS: "0"` trong `docker-compose.yml`: bỏ phần giọng đọc, image nhẹ hơn khoảng 1,5 GB.
+- `RENDER_CONCURRENCY=2`: render nhanh hơn nếu máy có từ 16 GB RAM.
+- Nên chạy sau reverse proxy có HTTPS (Caddy, Nginx…) khi mở ra Internet.
+
+**Cập nhật bản mới:** `git pull && docker compose up -d --build`. Dữ liệu trong volume được giữ nguyên.
+
+**Xem Claude Code đang làm gì:** `docker exec -it ai-video tmux attach -t ai-video` (thoát bằng Ctrl+b rồi d).
+
 ## Tính năng
 
 - **Nội dung:** video, ảnh, nhạc (kéo thả hoặc tải file), **link YouTube/Vimeo/TikTok** (yt-dlp), motion graphic (component Remotion).

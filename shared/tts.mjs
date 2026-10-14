@@ -4,7 +4,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { CACHE_DIR, ROOT, hash } from './store.mjs';
 
-const PY = path.join(ROOT, '.venv-tts', 'bin', 'python');
+const PY = process.env.TTS_PYTHON || path.join(ROOT, '.venv-tts', 'bin', 'python');
 const SCRIPT = path.join(ROOT, 'tools', 'tts.py');
 const TTS_DIR = path.join(CACHE_DIR, 'tts');
 

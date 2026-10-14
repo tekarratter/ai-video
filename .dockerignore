@@ -1,0 +1,15 @@
+node_modules
+dist
+logs
+.git
+.venv-tts
+models
+library/music/*
+!library/music/README.md
+workspace/projects
+workspace/media
+workspace/exports
+workspace/.cache
+workspace/project.json
+workspace/*.tmp
+**/.DS_Store

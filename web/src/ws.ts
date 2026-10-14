@@ -66,6 +66,9 @@ export function connect() {
       case 'custom-changed':
         useStore.setState({ customVersion: st.customVersion + 1 });
         break;
+      case 'claude-auth':
+        window.dispatchEvent(new CustomEvent('claude-auth', { detail: m.status }));
+        break;
       case 'toast':
         st.toast(m.text, m.level);
         break;

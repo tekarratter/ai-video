@@ -7,7 +7,7 @@ import { Inspector } from './components/Inspector';
 import { Timeline } from './components/Timeline';
 import { TopBar } from './components/TopBar';
 import { YouTubeDialog } from './components/YouTubeDialog';
-import { LoginScreen } from './components/Account';
+import { ClaudeAuthDialog, LoginScreen } from './components/Account';
 import { ProjectsDialog } from './components/Projects';
 import { deleteSelection, duplicateSelection, fps, seek, currentTime, splitAtPlayhead, togglePlay } from './player';
 
@@ -84,6 +84,7 @@ const Editor: React.FC = () => {
       </div>
       <YouTubeDialog />
       <ProjectsDialog />
+      <ClaudeAuthDialog />
       <div className="toasts">
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.level || ''}`}>{t.text}</div>

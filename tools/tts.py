@@ -18,7 +18,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-KOKORO_DIR = ROOT / 'models' / 'kokoro'
+KOKORO_DIR = Path(os.environ.get('KOKORO_DIR') or ROOT / 'models' / 'kokoro')
 
 # Kokoro voice names → friendly labels (prefix: a=American, b=British; f/m = female/male)
 KOKORO_LABEL = {'a': 'Mỹ', 'b': 'Anh'}

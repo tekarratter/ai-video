@@ -49,8 +49,9 @@ export function parsePrompt(lines) {
 }
 
 export class ClaudeBridge extends EventEmitter {
-  constructor({ cwd, session = 'ai-video', claudeArgs = '' }) {
+  constructor({ cwd, session = 'ai-video', claudeArgs = '', env = () => ({}) }) {
     super();
+    this.env = env; // extra env for the claude process (credentials), read at every start
     this.cwd = cwd;
     this.tmux = session;
     this.claudeArgs = claudeArgs;
@@ -85,7 +86,8 @@ export class ClaudeBridge extends EventEmitter {
     if (resume === 'continue') cmd += ' --continue';
     else if (resume) cmd += ` --resume ${resume}`;
     else cmd += ` --session-id ${id}`;
-    await this.tmuxCmd('new-session', '-d', '-s', this.tmux, '-x', String(this.size.cols), '-y', String(this.size.rows), '-c', this.cwd, cmd);
+    const envArgs = Object.entries(this.env() || {}).flatMap(([k, v]) => ['-e', `${k}=${v}`]);
+    await this.tmuxCmd('new-session', '-d', '-s', this.tmux, '-x', String(this.size.cols), '-y', String(this.size.rows), '-c', this.cwd, ...envArgs, cmd);
     await this.tmuxCmd('set-option', '-t', this.tmux, 'remain-on-exit', 'off').catch(() => {});
     await this.tmuxCmd('set-option', '-t', this.tmux, 'history-limit', '5000').catch(() => {});
     if (!resume) this.switchTo(path.join(this.projectDir, `${id}.jsonl`));

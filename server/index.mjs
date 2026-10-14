@@ -19,6 +19,7 @@ import { renderProject, renderTimelineStill } from './render.mjs';
 import * as youtube from './youtube.mjs';
 import * as auth from './auth.mjs';
 import * as projects from './projects.mjs';
+import * as claudeAuth from './claudeauth.mjs';
 
 const PORT = Number(process.env.PORT || 3001);
 const MEDIA_BASE = `http://localhost:${PORT}`;
@@ -363,6 +364,7 @@ const claude = new ClaudeBridge({
   cwd: WORKSPACE,
   session: process.env.TMUX_SESSION || 'ai-video',
   claudeArgs: process.env.CLAUDE_ARGS || '',
+  env: claudeAuth.env,
 });
 claude.on('reset', (d) => broadcast({ type: 'chat-reset', ...d }));
 claude.on('items', (d) => broadcast({ type: 'chat-items', ...d }));
@@ -371,7 +373,32 @@ claude.on('screen', (s) => {
   for (const c of wss.clients) if (c.terminal && c.readyState === 1) c.send(JSON.stringify({ type: 'terminal', ...s }));
 });
 claude.watch();
-if (process.env.CLAUDE_AUTOSTART !== '0') claude.start({ resume: 'continue' }).catch((e) => console.warn('[claude] start failed:', e.message));
+// Only start Claude when it is signed in — otherwise it would sit on its login screen; the admin signs in from the UI.
+if (process.env.CLAUDE_AUTOSTART !== '0') {
+  claudeAuth.status({ fresh: true }).then((s) => {
+    if (s.loggedIn) return claude.start({ resume: 'continue' });
+    console.warn('[claude] Claude Code chưa đăng nhập — vào editor: menu tài khoản → Claude Code');
+  }).catch((e) => console.warn('[claude] start failed:', e.message));
+}
+
+/* ---- Claude Code account (admin) ---- */
+const adminOnly = (req, res, next) => (req.user?.role === 'admin' ? next() : res.status(403).json({ error: 'Chỉ admin được cấu hình Claude Code' }));
+const authRoute = (fn) => async (req, res) => {
+  try {
+    const r = await fn(req);
+    const st = await claudeAuth.status({ fresh: true });
+    broadcast({ type: 'claude-auth', status: st });
+    res.json({ ...st, ...(r || {}) });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+};
+// after credentials change, restart the Claude session so it picks them up (keeps the conversation)
+const restartClaude = async () => { const s = await claudeAuth.status({ fresh: true }); if (s.loggedIn) await claude.restart({ resume: 'continue' }); else await claude.stop(); };
+app.get('/api/claude-auth', async (req, res) => res.json(await claudeAuth.status()));
+app.post('/api/claude-auth/login', adminOnly, authRoute((req) => claudeAuth.startLogin({ console: !!req.body?.console })));
+app.post('/api/claude-auth/code', adminOnly, authRoute(async (req) => { await claudeAuth.submitCode(req.body?.code); await restartClaude(); }));
+app.post('/api/claude-auth/apikey', adminOnly, authRoute(async (req) => { claudeAuth.setApiKey(req.body?.key); await restartClaude(); }));
+app.post('/api/claude-auth/token', adminOnly, authRoute(async (req) => { claudeAuth.setToken(req.body?.token); await restartClaude(); }));
+app.post('/api/claude-auth/logout', adminOnly, authRoute(async () => { await claudeAuth.logout(); await claude.stop(); }));
 
 app.get('/api/chat', (req, res) => res.json(claude.snapshot()));
 app.post('/api/chat/send', async (req, res) => {

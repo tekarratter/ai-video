@@ -150,6 +150,7 @@ export const UserMenu: React.FC = () => {
         <button className="btn ghost" onClick={() => setOpen(!open)} title="Tài khoản"><span className="avatar">{user.username[0]?.toUpperCase()}</span> {user.username}</button>
         {open && (
           <div className="menu right" onMouseLeave={() => setOpen(false)}>
+            <button onClick={() => { setOpen(false); openClaudeAuth(); }}>Tài khoản Claude Code</button>
             <button onClick={() => { setOpen(false); setDialog('password'); }}>Đổi mật khẩu</button>
             {user.role === 'admin' && <button onClick={() => { setOpen(false); setDialog('users'); }}>Quản lý tài khoản</button>}
             <button onClick={logout}>Đăng xuất</button>
@@ -169,5 +170,119 @@ export const UserMenu: React.FC = () => {
         </div>
       )}
     </>
+  );
+};
+
+/* ---------------- Claude Code account ---------------- */
+
+export function openClaudeAuth() { window.dispatchEvent(new Event('open-claude-auth')); }
+
+type ClaudeStatus = { loggedIn: boolean; authMethod: string | null; email: string | null; orgName: string | null; method: string | null; apiKey: string | null; oauthToken: string | null; error?: string | null };
+
+/** Small hook: Claude Code sign-in status (pushed over WS when it changes). */
+export function useClaudeAuth() {
+  const [st, setSt] = useState<ClaudeStatus | null>(null);
+  useEffect(() => {
+    api('/api/claude-auth').then(setSt).catch(() => {});
+    const on = (e: Event) => setSt((e as CustomEvent).detail);
+    window.addEventListener('claude-auth', on);
+    return () => window.removeEventListener('claude-auth', on);
+  }, []);
+  return [st, setSt] as const;
+}
+
+export const ClaudeAuthDialog: React.FC = () => {
+  const user = useStore((s) => s.user);
+  const [open, setOpen] = useState(false);
+  const [st, setSt] = useClaudeAuth();
+  const [tab, setTab] = useState<'login' | 'token' | 'apikey'>('login');
+  const [url, setUrl] = useState('');
+  const [code, setCode] = useState('');
+  const [secret, setSecret] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    const on = () => { setOpen(true); setErr(''); setUrl(''); setCode(''); setSecret(''); api('/api/claude-auth').then(setSt).catch(() => {}); };
+    window.addEventListener('open-claude-auth', on);
+    return () => window.removeEventListener('open-claude-auth', on);
+  }, [setSt]);
+  if (!open) return null;
+  const admin = user?.role === 'admin';
+  const run = async (fn: () => Promise<any>) => {
+    setBusy(true); setErr('');
+    try { const r = await fn(); setSt(r); return r; } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const method = st?.method === 'apikey' ? `API key ${st.apiKey}` : st?.method === 'token' ? `token ${st.oauthToken}` : st?.authMethod === 'claude.ai' ? 'tài khoản Claude (Pro/Max)' : st?.authMethod || '';
+  return (
+    <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
+      <div className="modal">
+        <div className="modal-head">
+          <b><Icon name="sparkle" /> Tài khoản Claude Code</b>
+          <div className="spacer" />
+          <button className="icon-btn" onClick={() => setOpen(false)}><Icon name="x" /></button>
+        </div>
+        <div className="form">
+          {!st ? <div className="muted">Đang kiểm tra…</div> : st.loggedIn ? (
+            <div className="row gap small">
+              <span className="dot on" /> Đã kết nối: <b>{st.email || st.orgName || 'Claude'}</b> <span className="muted">({method})</span>
+              <div className="spacer" />
+              {admin && <button className="btn small" disabled={busy} onClick={() => confirm('Ngắt kết nối Claude Code? Chat với Claude sẽ dừng cho tới khi đăng nhập lại.') && run(() => api('/api/claude-auth/logout', 'POST'))}>Ngắt kết nối</button>}
+            </div>
+          ) : (
+            <div className="warn small">Claude Code chưa đăng nhập — phần chat AI chưa dùng được. Mỗi nơi triển khai dùng tài khoản Claude của riêng mình.</div>
+          )}
+          {!admin ? <div className="muted small">Chỉ admin cấu hình được tài khoản Claude Code.</div> : (
+            <>
+              <div className="seg">
+                <button className={tab === 'login' ? 'active' : ''} onClick={() => setTab('login')}>Đăng nhập Claude</button>
+                <button className={tab === 'token' ? 'active' : ''} onClick={() => setTab('token')}>Token dài hạn</button>
+                <button className={tab === 'apikey' ? 'active' : ''} onClick={() => setTab('apikey')}>API key</button>
+              </div>
+              {tab === 'login' && (
+                <>
+                  <ol className="small steps">
+                    <li>Bấm <b>Lấy link đăng nhập</b>, mở link, đăng nhập tài khoản Claude (gói Pro/Max) và bấm <b>Authorize</b>.</li>
+                    <li>Trang hiện ra một <b>mã (code)</b> — copy và dán vào ô dưới.</li>
+                  </ol>
+                  <div className="row gap wrap">
+                    <button className="btn" disabled={busy} onClick={() => run(() => api('/api/claude-auth/login', 'POST', {})).then((r) => { if (r?.url) { setUrl(r.url); window.open(r.url, '_blank'); } })}><Icon name="link" /> Lấy link đăng nhập</button>
+                    <button className="btn ghost small" disabled={busy} title="Tính phí theo API (Anthropic Console)" onClick={() => run(() => api('/api/claude-auth/login', 'POST', { console: true })).then((r) => { if (r?.url) { setUrl(r.url); window.open(r.url, '_blank'); } })}>…hoặc bằng tài khoản Console</button>
+                  </div>
+                  {url && (
+                    <>
+                      <a className="small break" href={url} target="_blank" rel="noreferrer">{url.slice(0, 90)}…</a>
+                      <div className="row gap">
+                        <input placeholder="Dán mã ở đây" value={code} onChange={(e) => setCode(e.target.value)} />
+                        <button className="btn primary" disabled={busy || !code.trim()} onClick={() => run(() => api('/api/claude-auth/code', 'POST', { code })).then((r) => { if (r?.loggedIn) { setUrl(''); useStore.getState().toast('Đã kết nối Claude Code'); } })}>{busy ? 'Đang xác nhận…' : 'Xác nhận'}</button>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+              {tab === 'token' && (
+                <>
+                  <div className="small muted">Trên máy bất kỳ đã cài Claude Code, chạy <code>claude setup-token</code>, đăng nhập rồi copy token <code>sk-ant-oat…</code> (dùng gói Pro/Max, hiệu lực ~1 năm).</div>
+                  <div className="row gap">
+                    <input type="password" placeholder="sk-ant-oat01-…" value={secret} onChange={(e) => setSecret(e.target.value)} />
+                    <button className="btn primary" disabled={busy || !secret.trim()} onClick={() => run(() => api('/api/claude-auth/token', 'POST', { token: secret })).then((r) => r && setSecret(''))}>Lưu</button>
+                  </div>
+                </>
+              )}
+              {tab === 'apikey' && (
+                <>
+                  <div className="small muted">API key từ <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">console.anthropic.com</a> — tính phí theo lượng dùng.</div>
+                  <div className="row gap">
+                    <input type="password" placeholder="sk-ant-api03-…" value={secret} onChange={(e) => setSecret(e.target.value)} />
+                    <button className="btn primary" disabled={busy || !secret.trim()} onClick={() => run(() => api('/api/claude-auth/apikey', 'POST', { key: secret })).then((r) => r && setSecret(''))}>Lưu</button>
+                  </div>
+                </>
+              )}
+              {err && <div className="error small">{err}</div>}
+              <div className="muted small">Thông tin lưu trên server (<code>~/.config/ai-video</code>, <code>~/.claude</code>), không gửi đi đâu khác. Đổi tài khoản sẽ khởi động lại phiên Claude.</div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };

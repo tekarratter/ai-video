@@ -7,7 +7,8 @@
     "dev": "concurrently -k -n server,web -c blue,green \"node --watch-path=server --watch-path=shared server/index.mjs\" \"vite\"",
     "build": "vite build",
     "start": "NODE_ENV=production node server/index.mjs",
-    "studio": "remotion studio remotion/index.ts"
+    "studio": "remotion studio remotion/index.ts",
+    "serve": "concurrently -k -n server,web -c blue,green \"node server/index.mjs\" \"vite\""
   },
   "dependencies": {
     "@remotion/bundler": "^4.0.535",
