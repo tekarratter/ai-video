@@ -10,3 +10,4 @@ workspace/projects/
 models/
 library/music/*
 !library/music/README.md
+.env
