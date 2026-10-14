@@ -10,6 +10,7 @@ export default defineConfig({
   resolve: { alias: { '@custom': path.resolve(__dirname, 'workspace/custom') } },
   server: {
     host: true,
+    allowedHosts: true, // allow access via any hostname (LAN name, Tailscale MagicDNS, reverse proxy)
     port: Number(process.env.WEB_PORT || 5180),
     fs: { allow: [path.resolve(__dirname)] },
     watch: { ignored: ['**/workspace/media/**', '**/workspace/exports/**', '**/workspace/.cache/**', '**/workspace/project.json'] },
