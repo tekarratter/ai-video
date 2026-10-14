@@ -55,16 +55,34 @@ chokidar.watch(PROJECT_FILE, { ignoreInitial: true, awaitWriteFinish: { stabilit
 chokidar.watch(path.join(WORKSPACE, 'custom'), { ignoreInitial: true }).on('all', () => broadcast({ type: 'custom-changed' }));
 
 /* ---------------- jobs ---------------- */
+const JOBS_FILE = path.join(CACHE_DIR, 'jobs.json');
 const jobs = new Map();
+try {
+  for (const j of JSON.parse(fs.readFileSync(JOBS_FILE, 'utf8'))) {
+    // jobs that were running when the server stopped can't be resumed
+    if (!['done', 'error'].includes(j.stage)) Object.assign(j, { stage: 'error', error: 'Server đã khởi động lại khi tác vụ đang chạy — hãy chạy lại' });
+    jobs.set(j.id, j);
+  }
+} catch { /* first run */ }
+let persistTimer;
+function persistJobs() {
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => fs.writeFileSync(JOBS_FILE, JSON.stringify([...jobs.values()].slice(-50), null, 1)), 500);
+}
 function startJob(type, label, fn) {
   const job = { id: newId('job'), type, label, stage: 'queued', progress: 0, startedAt: Date.now() };
   jobs.set(job.id, job);
-  const update = (patch) => { Object.assign(job, patch); broadcast({ type: 'job', job }); };
+  const update = (patch) => { Object.assign(job, patch); broadcast({ type: 'job', job }); persistJobs(); };
   update({});
   Promise.resolve()
     .then(() => fn(update))
     .then((res) => update({ stage: 'done', progress: 1, ...(res || {}), finishedAt: Date.now() }))
-    .catch((e) => { console.error(`[job ${type}]`, e); update({ stage: 'error', error: e.message, finishedAt: Date.now() }); });
+    .catch((e) => {
+      console.error(`[job ${type}]`, e);
+      const msg = String(e.message || e).split('\n')[0];
+      const hint = /delayRender|timeout|Request closed|Target closed/i.test(msg) ? ' (thiếu RAM hoặc video nặng — thử Render nháp / đóng bớt ứng dụng)' : '';
+      update({ stage: 'error', error: msg.slice(0, 400) + hint, finishedAt: Date.now() });
+    });
   return job;
 }
 

@@ -53,7 +53,7 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
   const serveUrl = await getBundle((p) => report({ stage: 'bundle', progress: p }));
 
   const inputProps = { project, mediaBase };
-  const composition = await selectComposition({ serveUrl, id: 'Main', inputProps });
+  const composition = await selectComposition({ serveUrl, id: 'Main', inputProps, timeoutInMilliseconds: 180000 });
   const fps = composition.fps;
   const frameRange = range ? [Math.round(range[0] * fps), Math.min(composition.durationInFrames - 1, Math.round(range[1] * fps) - 1)] : null;
 
@@ -70,7 +70,11 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
     frameRange,
     crf: quality === 'draft' ? 28 : 18,
     scale: quality === 'draft' ? 0.5 : 1,
-    concurrency: Number(process.env.RENDER_CONCURRENCY || 2),
+    // Conservative defaults: this box has little free RAM and OffthreadVideo extraction is memory hungry.
+    concurrency: Number(process.env.RENDER_CONCURRENCY || 1),
+    timeoutInMilliseconds: 180000,
+    offthreadVideoCacheSizeInBytes: 512 * 1024 * 1024,
+    offthreadVideoThreads: 2,
     onProgress: ({ progress, renderedFrames, encodedFrames }) => report({ stage: 'render', progress, renderedFrames, encodedFrames }),
   });
   report({ stage: 'done', progress: 1, file: path.relative(WORKSPACE, file).split(path.sep).join('/') });

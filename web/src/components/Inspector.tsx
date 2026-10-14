@@ -267,7 +267,8 @@ const ProjectInspector: React.FC = () => {
 };
 
 const Jobs: React.FC = () => {
-  const jobs = useStore((s) => Object.values(s.jobs).sort((a, b) => b.startedAt - a.startedAt));
+  const jobMap = useStore((s) => s.jobs);
+  const jobs = Object.values(jobMap).sort((a, b) => b.startedAt - a.startedAt);
   const [exports, setExports] = useState<any[]>([]);
   useEffect(() => { fetch('/api/exports').then((r) => r.json()).then(setExports); }, [jobs.length, jobs[0]?.stage]);
   return (

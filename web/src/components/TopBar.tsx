@@ -45,6 +45,9 @@ export const TopBar: React.FC = () => {
           <div className="bar"><div style={{ width: `${renderJob.progress * 100}%` }} /></div>
         </div>
       )}
+      {renderJob?.stage === 'error' && (
+        <span className="render-error" title={renderJob.error}>⚠ Render lỗi — xem tab Jobs</span>
+      )}
       {renderJob?.stage === 'done' && renderJob.url && (
         <a className="btn ghost" href={renderJob.url} target="_blank" rel="noreferrer"><Icon name="download" /> Video đã xuất</a>
       )}
