@@ -15,8 +15,8 @@ export async function uploadFiles(files: FileList | File[], opts: { logo?: boole
   toast(`Đang tải lên ${fd.getAll('files').length} file…`);
   try {
     const r = await fetch(`/api/upload${opts.logo ? '?logo=1' : ''}`, { method: 'POST', body: fd });
-    const j = await r.json();
-    if (!r.ok) toast(j.error || 'Upload lỗi', 'error');
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) toast(`Upload lỗi (${r.status}): ${j.error || r.statusText || 'không rõ'}`, 'error');
     else toast('Đã tải lên, đang xử lý… (xem tab Jobs)');
   } catch (e: any) {
     toast(`Upload lỗi: ${e.message}`, 'error');
@@ -160,7 +160,7 @@ export const LeftPanel: React.FC = () => {
           <input className="search" placeholder="Tìm…" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="row gap">
             <button className="btn small" onClick={() => fileRef.current?.click()}><Icon name="upload" /> Tải file</button>
-            <input ref={fileRef} type="file" multiple hidden accept="video/*,image/*,audio/*" onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ''; }} />
+            <input ref={fileRef} type="file" multiple hidden accept="video/*,image/*,audio/*,.heic,.heif,.zip" onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ''; }} />
           </div>
           <form className="url-import" onSubmit={(e) => { e.preventDefault(); if (url.trim()) { importUrl(url.trim()); setUrl(''); } }}>
             <Icon name="link" />
