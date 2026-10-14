@@ -6,6 +6,7 @@ import { addComponentClip, addSolidClip, addTextClip, uploadFiles, UploadProgres
 import { askClaude } from './ChatPanel';
 import { Icon } from './Icon';
 import { openYouTube } from './YouTubeDialog';
+import { openDub } from './DubDialog';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Field = { key: string; label: string; type: 'number' | 'text' | 'textarea' | 'color' | 'select' | 'checkbox' | 'range'; step?: number; min?: number; max?: number; options?: string[] };
@@ -204,6 +205,7 @@ const AssetInspector: React.FC<{ asset: any }> = ({ asset }) => (
       {asset.source && <><span>Nguồn</span><b><a href={asset.source} target="_blank" rel="noreferrer">link</a></b></>}
     </div>
     <div className="actions">
+      {(asset.type === 'video' || (asset.type === 'audio' && !asset.tts && !asset.dubOf)) && <button onClick={() => openDub(asset.id)}><Icon name="mic" /> Thuyết minh / lồng tiếng…</button>}
       {asset.type === 'video' && <button onClick={() => askClaude(`Xem video ${asset.id} và tìm các đoạn hay nhất để dựng highlight.`, true)}><Icon name="sparkle" /> Tìm highlight</button>}
       {asset.type === 'image' && <button onClick={() => { setLogo({ assetId: asset.id, enabled: true }); useStore.getState().toast('Đã đặt làm logo — chỉnh vị trí ở Inspector của project'); }}><Icon name="image" /> Dùng làm logo</button>}
       {asset.hasAudio && <button onClick={() => askClaude(`Transcribe ${asset.id} rồi tạo phụ đề cho timeline.`, true)}><Icon name="text" /> Tạo phụ đề</button>}
@@ -351,6 +353,7 @@ const Jobs: React.FC = () => {
             <div className="row gap job-actions">
               <a className="btn small" href={j.url} target="_blank" rel="noreferrer"><Icon name="play" /> Mở video</a>
               <a className="btn small primary" href={j.url} download={decodeURIComponent(j.url.split('/').pop() || 'video.mp4')}><Icon name="download" /> Tải về</a>
+              {(j as any).srtUrl && <a className="btn small" href={(j as any).srtUrl} download><Icon name="text" /> Phụ đề .srt</a>}
             </div>
           )}
           {(j as any).studio && <a href={(j as any).studio} target="_blank" rel="noreferrer">Mở YouTube Studio</a>}

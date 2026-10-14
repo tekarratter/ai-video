@@ -56,6 +56,10 @@ point at the **open** project. `vedit projects` lists them. Only switch (`projec
 - `tts "text" --voice "vi:Trúc Ly" --start 2.5 [--speed 1.1]` → audio clip on track `voice` (~10–20 s per call on this CPU).
   One call per scene/sentence so you can place each line exactly; check lengths with `info` and fit clips to them.
   Lower music volume (0.15–0.25) under voice-over.
+- **Dubbing / thuyết minh**: `dub <assetId|youtube-url> --to vi [--voice "vi:Thiện Minh"] [--subtitles] [--context "topic"]`
+  (needs the server; runs as a job the user sees in Jobs: Whisper or YouTube subtitles → translation → TTS fitted to the
+  original timing → `exports/<name>-thuyet-minh-vi.mp4` with the original audio at 15% + soft subtitles + `.srt`, and a
+  "Thuyết minh" audio track on the timeline). ~1.5 min per minute of video on this CPU. Only when the user asks.
 - `music search <words> [--genre G] [--feel F] [--max 60]` (Incompetech, CC BY 4.0 + the user's `library/music`),
   `music add <trackId> [--start 0] [--volume 0.35]` → track `music`, trimmed to the video and faded.
   CC BY credits are appended to the YouTube description automatically.

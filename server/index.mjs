@@ -11,9 +11,10 @@ import {
   hash, importMedia, readProject, writeProject,
 } from '../shared/store.mjs';
 import { downloadUrl } from '../shared/download.mjs';
-import { LOGO_DEFAULTS, addAudioClip, newId } from '../shared/timeline.js';
+import { LOGO_DEFAULTS, addAudioClip, layoutTrack, newId } from '../shared/timeline.js';
 import { LOCAL_MUSIC_DIR, importTrack, musicFacets, searchMusic } from '../shared/library.mjs';
 import { listVoices, synthesize, ttsFileName } from '../shared/tts.mjs';
+import { LANGS, TTS_LANGS, dubAsset } from '../shared/dub.mjs';
 import { ClaudeBridge } from './claude.mjs';
 import { renderProject, renderTimelineStill } from './render.mjs';
 import * as youtube from './youtube.mjs';
@@ -276,6 +277,85 @@ app.post('/api/tts', (req, res) => {
     const clip = addAudioClip(latest, asset, { trackId: 'voice', trackName: 'Giọng đọc', start: Number(start) || 0 });
     saveProject(latest, 'ui');
     return { label: `Giọng đọc ${asset.duration?.toFixed(1)}s`, assetId: asset.id, clipId: clip.id };
+  });
+  res.json({ job });
+});
+
+/* ---- dubbing (thuyết minh) ---- */
+app.get('/api/dub/languages', (req, res) => res.json({ languages: LANGS, tts: TTS_LANGS }));
+app.post('/api/dub', (req, res) => {
+  const b = req.body || {};
+  const to = String(b.to || 'vi');
+  if (!TTS_LANGS.includes(to)) return res.status(400).json({ error: `Chưa có giọng đọc cho ngôn ngữ ${to}` });
+  if (!b.assetId && !b.url) return res.status(400).json({ error: 'Chọn video hoặc dán link' });
+  const voice = String(b.voice || (to === 'vi' ? 'vi:Trúc Ly' : 'en:af_heart'));
+  if (voice.split(':')[0] !== to) return res.status(400).json({ error: 'Giọng đọc không khớp ngôn ngữ đích' });
+  const originalVolume = Math.max(0, Math.min(1, Number(b.originalVolume ?? 0.15)));
+  const name = b.url ? b.url : (readProject().assets.find((a) => a.id === b.assetId)?.name || b.assetId);
+  const job = startJob('dub', `Thuyết minh ${LANGS[to] ? to.toUpperCase() : to}: ${String(name).slice(0, 50)}`, async (update) => {
+    let asset;
+    if (b.url) {
+      update({ stage: 'tải video từ link', progress: 0 });
+      const f = await downloadUrl(b.url, { onProgress: (p) => update({ progress: p * 0.05 }) });
+      const tmp = readProject();
+      asset = await importMedia(tmp, f, { move: true });
+      asset.source = b.url;
+      fs.rmSync(path.dirname(f), { recursive: true, force: true });
+      const latest = readProject();
+      latest.assets.push(asset);
+      saveProject(latest, 'ui');
+    } else {
+      asset = readProject().assets.find((a) => a.id === b.assetId);
+      if (!asset) throw new Error('Không tìm thấy asset');
+    }
+    if (!['video', 'audio'].includes(asset.type)) throw new Error('Chỉ thuyết minh được video hoặc audio');
+
+    const r = await dubAsset(asset, {
+      to, from: b.from || undefined, voice, speed: Number(b.speed) || 1, originalVolume,
+      source: b.source || 'auto', context: b.context, exportVideo: b.exportVideo !== false, env: claudeAuth.env(),
+    }, update);
+
+    let clips = 0;
+    if (b.addToTimeline !== false || b.subtitles) {
+      update({ stage: 'thêm vào timeline', progress: 0.97 });
+      const tmp = readProject();
+      const dubAssetRec = await importMedia(tmp, r.dubWav, { name: `thuyet-minh-${to}-${asset.name.replace(/\.[^.]+$/, '')}.wav` });
+      dubAssetRec.dubOf = asset.id;
+      const p = readProject();
+      p.assets.push(dubAssetRec);
+      // every place the source is used on the timeline (append it to the main track when it isn't there yet)
+      const uses = () => p.tracks.filter((t) => t.type !== 'audio').flatMap((t) => layoutTrack(t, p).filter((l) => l.clip.assetId === asset.id));
+      if (!uses().length && asset.type === 'video') {
+        let main = p.tracks.find((t) => t.type === 'sequence');
+        if (!main) { main = { id: 'main', name: 'Main', type: 'sequence', clips: [] }; p.tracks.unshift(main); }
+        main.clips.push({ id: newId(), name: asset.name, kind: 'video', assetId: asset.id, in: 0, out: asset.duration });
+      }
+      for (const l of uses()) {
+        const cin = l.clip.in ?? 0, cout = l.clip.out ?? asset.duration;
+        if (b.addToTimeline !== false) {
+          const c = addAudioClip(p, dubAssetRec, { trackId: 'dub', trackName: 'Thuyết minh', start: l.start, volume: 1 });
+          c.in = Math.min(cin, dubAssetRec.duration);
+          c.out = Math.min(cout, dubAssetRec.duration);
+          l.clip.volume = originalVolume;
+          clips++;
+        }
+        if (b.subtitles) {
+          for (const q of r.cues) {
+            if (q.end <= cin || q.start >= cout) continue;
+            p.subtitles.cues.push({ start: +(l.start + Math.max(q.start, cin) - cin).toFixed(3), end: +(l.start + Math.min(q.end, cout) - cin).toFixed(3), text: q.text });
+          }
+          p.subtitles.cues.sort((x, y) => x.start - y.start);
+          p.subtitles.enabled = true;
+        }
+      }
+      saveProject(p, 'ui');
+    }
+    const url = r.video ? `/exports/${encodeURIComponent(path.basename(r.video))}` : null;
+    return {
+      label: `Thuyết minh xong: ${r.lines.length} câu (${r.sourceLang} → ${to})${clips ? `, thêm ${clips} clip vào timeline` : ''}`,
+      url, file: r.video ? `exports/${path.basename(r.video)}` : null,
+      srtUrl: r.video ? url.replace(/\.mp4$/, '.srt') : null,
+    };
   });
   res.json({ job });
 });

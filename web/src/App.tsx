@@ -9,6 +9,7 @@ import { TopBar } from './components/TopBar';
 import { YouTubeDialog } from './components/YouTubeDialog';
 import { ClaudeAuthDialog, LoginScreen } from './components/Account';
 import { ProjectsDialog } from './components/Projects';
+import { DubDialog } from './components/DubDialog';
 import { deleteSelection, duplicateSelection, fps, seek, currentTime, splitAtPlayhead, togglePlay } from './player';
 
 function useShortcuts() {
@@ -84,6 +85,7 @@ const Editor: React.FC = () => {
       </div>
       <YouTubeDialog />
       <ProjectsDialog />
+      <DubDialog />
       <ClaudeAuthDialog />
       <div className="toasts">
         {toasts.map((t) => (

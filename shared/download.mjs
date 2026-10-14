@@ -16,7 +16,8 @@ export function downloadUrl(url, { audioOnly = false, maxHeight = 1080, section,
   const fmt = audioOnly
     ? 'bestaudio[ext=m4a]/bestaudio'
     : `bv*[height<=${maxHeight}][vcodec^=avc1]+ba[ext=m4a]/bv*[height<=${maxHeight}]+ba/b[height<=${maxHeight}]/b`;
-  const args = ['--no-playlist', '--newline', '-f', fmt, '-o', path.join(dir, '%(title).80s.%(ext)s'), '--restrict-filenames'];
+  // YouTube needs a JS runtime + challenge solver now (yt-dlp EJS): use node, fetch the solver script
+  const args = ['--js-runtimes', 'node', '--remote-components', 'ejs:github', '--no-playlist', '--newline', '-f', fmt, '-o', path.join(dir, '%(title).80s.%(ext)s'), '--restrict-filenames'];
   if (!audioOnly) args.push('--merge-output-format', 'mp4');
   if (section) args.push('--download-sections', `*${section}`, '--force-keyframes-at-cuts');
   args.push(url);

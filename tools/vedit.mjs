@@ -336,6 +336,22 @@ const commands = {
     } else die('usage: projects [list] | projects new "Name" [--size WxH] | projects open <id>');
   },
 
+  async dub() {
+    if (!pos[0]) die('usage: dub <assetId|url> [--to vi|en] [--from en] [--voice "vi:Trúc Ly"] [--speed 1] [--original 0.15] [--no-video] [--no-timeline] [--subtitles] [--context "…"]');
+    const isUrl = /^https?:\/\//.test(pos[0]);
+    const r = await api('POST', '/api/dub', {
+      ...(isUrl ? { url: pos[0] } : { assetId: pos[0] }),
+      to: opt.to || 'vi', from: opt.from && opt.from !== true ? opt.from : undefined,
+      voice: opt.voice && opt.voice !== true ? String(opt.voice) : undefined, speed: Number(opt.speed || 1),
+      originalVolume: opt.original != null ? Number(opt.original) : 0.15,
+      exportVideo: !opt['no-video'], addToTimeline: !opt['no-timeline'], subtitles: !!opt.subtitles,
+      context: opt.context && opt.context !== true ? String(opt.context) : undefined,
+    });
+    const j = await waitJob(r.job.id, 'dub');
+    console.log(j.label);
+    if (j.file) console.log(path.join(WORKSPACE, j.file));
+  },
+
   async logo() {
     const p = readProject();
     if (opt.remove) { delete p.logo; writeProject(p); return console.log('logo removed'); }
@@ -407,6 +423,8 @@ const commands = {
   voices [--lang vi|en]                  list TTS voices
   tts "text" [--voice "vi:Trúc Ly"] [--speed 1] [--start s] [--file f.txt] [--no-add]   voice-over → track "voice"
   projects [list] | projects new "Name" [--size 1080x1920] | projects open <id>   manage projects (needs server)
+  dub <assetId|url> [--to vi|en] [--from en] [--voice "vi:Trúc Ly"] [--original 0.15] [--subtitles] [--no-video] [--no-timeline]
+                                         dubbing: transcript → Claude translation → TTS → exports/<name>-thuyet-minh-<to>.mp4 (+ track "dub")
   logo [assetId|file] [--position top-right] [--size 0.18] [--margin 0.04] [--opacity 0.9] [--off|--on|--remove]
                                          logo/watermark over the whole video (no args: show current)
   validate                               sanity-check project.json`);

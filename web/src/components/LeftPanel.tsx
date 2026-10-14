@@ -5,6 +5,7 @@ import { useStore, type Project, type Upload } from '../store';
 import { currentTime } from '../player';
 import { Icon } from './Icon';
 import { MusicPanel, VoicePanel } from './AudioLibrary';
+import { openDub } from './DubDialog';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -228,6 +229,7 @@ export const LeftPanel: React.FC = () => {
           <UploadProgress />
           <div className="row gap">
             <button className="btn small" onClick={() => fileRef.current?.click()}><Icon name="upload" /> Tải file</button>
+            <button className="btn small" onClick={() => openDub()} title="Dịch lời thoại của video/link YouTube và đọc lại bằng giọng AI"><Icon name="mic" /> Thuyết minh</button>
             <input ref={fileRef} type="file" multiple hidden accept="video/*,image/*,audio/*,.heic,.heif,.zip" onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ''; }} />
           </div>
           <form className="url-import" onSubmit={(e) => { e.preventDefault(); if (url.trim()) { importUrl(url.trim()); setUrl(''); } }}>
