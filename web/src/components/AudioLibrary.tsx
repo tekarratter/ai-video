@@ -343,8 +343,8 @@ export const VoicePanel: React.FC = () => {
       )}
       <div className="section-title">Tạo giọng đọc mới</div>
       <div className="seg">
-        <button className={lang === 'vi' ? 'active' : ''} onClick={() => setLang('vi')}>Tiếng Việt (VieNeu)</button>
-        <button className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')}>English (Kokoro)</button>
+        <button className={lang === 'vi' ? 'active' : ''} onClick={() => setLang('vi')} title="VieNeu-TTS">Tiếng Việt</button>
+        <button className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')} title="Kokoro">English</button>
       </div>
       <VoicePicker value={voice} onChange={setVoice} lang={lang} text={text} speed={speed} />
       <textarea rows={5} placeholder={lang === 'vi' ? 'Nhập lời đọc… (VieNeu đọc được cả từ tiếng Anh xen kẽ)' : 'Type the narration…'} value={text} onChange={(e) => setText(e.target.value)} />
