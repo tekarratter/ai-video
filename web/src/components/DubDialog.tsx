@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { Icon } from './Icon';
+import { VoicePicker, useVoices } from './AudioLibrary';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -22,7 +23,7 @@ export const DubDialog: React.FC = () => {
   const [url, setUrl] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState<'vi' | 'en'>('vi');
-  const [voices, setVoices] = useState<any[]>([]);
+  const { voices } = useVoices();
   const [voice, setVoice] = useState('vi:Trúc Ly');
   const [speed, setSpeed] = useState(1);
   const [origVol, setOrigVol] = useState(0.15);
@@ -38,11 +39,10 @@ export const DubDialog: React.FC = () => {
       const id = (e as CustomEvent).detail?.assetId;
       setOpen(true); setErr('');
       if (id) { setAssetId(id); setMode('asset'); }
-      if (!voices.length) fetch('/api/tts/voices').then((r) => r.json()).then((v) => Array.isArray(v) && setVoices(v)).catch(() => {});
     };
     window.addEventListener('open-dub', on);
     return () => window.removeEventListener('open-dub', on);
-  }, [voices.length]);
+  }, []);
 
   const media = useMemo(() => (project?.assets || []).filter((a: any) => a.type === 'video' || (a.type === 'audio' && !a.tts && !a.dubOf && !a.libraryId)), [project]);
   useEffect(() => { if (open && !assetId && media[0]) setAssetId(media[0].id); }, [open, assetId, media]);
@@ -98,11 +98,9 @@ export const DubDialog: React.FC = () => {
               <option value="en">Tiếng Anh (Kokoro)</option>
             </select>
           </label>
-          <label className="field"><span>Giọng đọc</span>
-            <select value={voice} onChange={(e) => setVoice(e.target.value)}>
-              {list.map((v) => <option key={v.id} value={v.id}>{v.featured ? '⭐ ' : ''}{v.name} — {v.description}</option>)}
-            </select>
-          </label>
+          <div className="field"><span>Giọng đọc</span>
+            <VoicePicker value={voice} onChange={setVoice} lang={to} speed={speed} />
+          </div>
           <label className="field"><span>Tốc độ đọc</span>
             <div className="row gap"><input type="range" min={0.8} max={1.4} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} /><span className="num small">{speed.toFixed(2)}×</span></div>
           </label>

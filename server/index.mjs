@@ -11,7 +11,7 @@ import {
   hash, importMedia, readProject, writeProject,
 } from '../shared/store.mjs';
 import { downloadUrl } from '../shared/download.mjs';
-import { LOGO_DEFAULTS, addAudioClip, layoutTrack, newId } from '../shared/timeline.js';
+import { LOGO_DEFAULTS, addAudioClip, findClip, layoutTrack, newId } from '../shared/timeline.js';
 import { LOCAL_MUSIC_DIR, importTrack, musicFacets, searchMusic } from '../shared/library.mjs';
 import { listVoices, synthesize, ttsFileName } from '../shared/tts.mjs';
 import { LANGS, TTS_LANGS, dubAsset } from '../shared/dub.mjs';
@@ -285,6 +285,39 @@ app.post('/api/tts', (req, res) => {
     const clip = addAudioClip(latest, asset, { trackId: 'voice', trackName: 'Giọng đọc', start: Number(start) || 0 });
     saveProject(latest, 'ui');
     return { label: `Giọng đọc ${asset.duration?.toFixed(1)}s`, assetId: asset.id, clipId: clip.id };
+  });
+  res.json({ job });
+});
+
+// re-read voice-over clips with another voice (and/or speed/text); the clips keep their position, volume and fades
+app.post('/api/tts/revoice', (req, res) => {
+  const { clipIds, voice, speed, text } = req.body || {};
+  const ids = Array.isArray(clipIds) ? clipIds.map(String) : [];
+  const p0 = readProject();
+  const todo = ids.map((id) => findClip(p0, id)?.clip).filter(Boolean)
+    .map((c) => ({ id: c.id, tts: p0.assets.find((a) => a.id === c.assetId)?.tts })).filter((x) => x.tts);
+  if (!todo.length) return res.status(400).json({ error: 'Không có clip giọng đọc nào để đọc lại' });
+  if (text != null && todo.length !== 1) return res.status(400).json({ error: 'Chỉ sửa lời được cho một clip' });
+  const job = startJob('tts', `Đổi giọng ${todo.length} clip → ${String(voice || '').split(':').pop() || 'giữ giọng'}`, async (update) => {
+    let n = 0;
+    for (const [i, x] of todo.entries()) {
+      const opts = { text: text != null ? String(text) : x.tts.text, voice: voice || x.tts.voice, speed: Number(speed || x.tts.speed || 1) };
+      if (!opts.text.trim()) continue;
+      const base = i / todo.length;
+      update({ stage: `đọc ${i + 1}/${todo.length}`, progress: base });
+      const wav = await synthesize(opts, { onStage: (st) => update({ stage: st === 'load' ? 'nạp model' : `đọc ${i + 1}/${todo.length}`, progress: base + 0.5 / todo.length }) });
+      const tmp = readProject();
+      const asset = await importMedia(tmp, wav, { name: ttsFileName(opts.text, opts.voice) });
+      asset.tts = opts;
+      const latest = readProject();
+      const c = findClip(latest, x.id)?.clip;
+      if (!c) continue; // deleted meanwhile
+      latest.assets.push(asset);
+      Object.assign(c, { assetId: asset.id, name: asset.name, in: 0, out: asset.duration });
+      saveProject(latest, 'ui');
+      n++;
+    }
+    return { label: `Đã đọc lại ${n} clip bằng giọng ${String(voice || '').split(':').pop() || 'cũ'}` };
   });
   res.json({ job });
 });

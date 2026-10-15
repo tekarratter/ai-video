@@ -34,6 +34,138 @@ function usePreview() {
   return { playing, toggle };
 }
 
+/* ---------------- voice picker (dropdown with per-voice preview) ---------------- */
+
+const SAMPLE: Record<string, string> = {
+  vi: 'Xin chào! Đây là giọng đọc thử cho video của bạn.',
+  en: 'Hello there! This is a quick preview of this voice for your video.',
+};
+let voicesCache: Promise<any[]> | null = null;
+/** Voice list from /api/tts/voices, fetched once per page load. */
+export function useVoices() {
+  const [voices, setVoices] = useState<any[]>([]);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    voicesCache ||= fetch('/api/tts/voices').then(async (r) => {
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      return j;
+    });
+    voicesCache.then(setVoices).catch((e) => { voicesCache = null; setErr(e.message); });
+  }, []);
+  return { voices, err };
+}
+
+const previewUrls = new Map<string, string>(); // voice|speed|text → generated preview file
+/** Synthesizes a short preview (cached server- and client-side) and plays it. */
+function useVoiceSample() {
+  const { playing, toggle } = usePreview();
+  const jobs = useStore((s) => s.jobs);
+  const [pending, setPending] = useState<{ key: string; job: string } | null>(null);
+  const job: any = pending ? jobs[pending.job] : null;
+  useEffect(() => {
+    if (!job || !pending) return;
+    if (job.stage === 'error') { useStore.getState().toast(`Nghe thử lỗi: ${job.error || ''}`, 'error'); setPending(null); return; }
+    if (job.stage !== 'done' || !job.previewUrl) return;
+    previewUrls.set(pending.key, job.previewUrl);
+    toggle(pending.key, job.previewUrl);
+    setPending(null);
+  }, [job, pending]); // eslint-disable-line react-hooks/exhaustive-deps
+  const play = async (voice: string, text: string, speed = 1) => {
+    const key = `${voice}|${speed}|${text}`;
+    const url = previewUrls.get(key);
+    if (url) return toggle(key, url);
+    if (pending) return;
+    try {
+      const { job } = await post('/api/tts', { text, voice, speed, add: false });
+      setPending({ key, job: job.id });
+    } catch (e: any) { useStore.getState().toast(e.message, 'error'); }
+  };
+  const state = (voice: string, text: string, speed = 1) => {
+    const key = `${voice}|${speed}|${text}`;
+    return pending?.key === key ? 'loading' : playing === key ? 'playing' : 'idle';
+  };
+  return { play, state, busy: !!pending };
+}
+
+/**
+ * Dropdown for choosing a TTS voice. Every row has a ▶ button that reads `text`
+ * (or a short sample sentence) in that voice so voices can be compared before choosing.
+ */
+export const VoicePicker: React.FC<{
+  value: string; onChange: (id: string) => void; lang?: string; text?: string; speed?: number;
+}> = ({ value, onChange, lang, text, speed = 1 }) => {
+  const { voices, err } = useVoices();
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  const { play, state } = useVoiceSample();
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    ref.current?.querySelector('.vp-row.active')?.scrollIntoView({ block: 'nearest' });
+  }, [open]);
+
+  const cur = voices.find((v) => v.id === value);
+  const ql = q.trim().toLowerCase();
+  const list = voices.filter((v) => (!lang || v.lang === lang) && (!ql || `${v.name} ${v.description}`.toLowerCase().includes(ql)));
+  const groups = [...new Set(list.map((v) => v.lang))];
+  const sample = (v: any) => (text?.trim() ? text.trim().slice(0, 160) : SAMPLE[v.lang] || SAMPLE.en);
+  const curState = cur ? state(cur.id, sample(cur), speed) : 'idle';
+
+  return (
+    <div className="voice-picker" ref={ref}>
+      <div className="vp-current">
+        <button type="button" className="vp-btn" onClick={() => setOpen(!open)} title="Chọn giọng đọc">
+          <span className={`voice-dot ${cur?.gender || ''}`} />
+          <span className="vp-label">{cur ? <>{cur.featured ? '⭐ ' : ''}{cur.name} <span className="muted small">{cur.description}</span></> : (err || value || 'Chọn giọng…')}</span>
+          <Icon name="chevdown" />
+        </button>
+        {cur && (
+          <button type="button" className="icon-btn" title="Nghe thử giọng đang chọn" onClick={() => play(cur.id, sample(cur), speed)}>
+            {curState === 'loading' ? <span className="spinner" /> : <Icon name={curState === 'playing' ? 'pause' : 'play'} />}
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="vp-menu">
+          {voices.length > 8 && <input className="vp-search" autoFocus placeholder="Tìm giọng (tên, nam/nữ, miền…)" value={q} onChange={(e) => setQ(e.target.value)} />}
+          <div className="vp-list">
+            {groups.map((g) => (
+              <React.Fragment key={g}>
+                {!lang && <div className="vp-group">{g === 'vi' ? 'Tiếng Việt (VieNeu)' : g === 'en' ? 'English (Kokoro)' : g}</div>}
+                {list.filter((v) => v.lang === g).map((v) => {
+                  const st = state(v.id, sample(v), speed);
+                  return (
+                    <div key={v.id} className={`vp-row ${v.id === value ? 'active' : ''}`} onClick={() => { onChange(v.id); setOpen(false); }}>
+                      <button type="button" className="icon-btn" title="Nghe thử" onClick={(e) => { e.stopPropagation(); play(v.id, sample(v), speed); }}>
+                        {st === 'loading' ? <span className="spinner" /> : <Icon name={st === 'playing' ? 'pause' : 'play'} />}
+                      </button>
+                      <span className={`voice-dot ${v.gender}`} />
+                      <span className="vp-name">{v.featured ? '⭐ ' : ''}{v.name}</span>
+                      <span className="muted small vp-desc">{v.description}</span>
+                      {v.id === value && <Icon name="check" />}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+            {!list.length && <div className="muted small vp-empty">{err || (voices.length ? 'Không có giọng phù hợp' : 'Đang tải danh sách giọng…')}</div>}
+          </div>
+          <div className="muted small vp-foot">▶ đọc {text?.trim() ? 'lời của clip' : 'câu mẫu'} bằng giọng đó · lần đầu mất ~15s để nạp model</div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 /* ---------------- music ---------------- */
 
 export const MusicPanel: React.FC = () => {
@@ -114,8 +246,7 @@ export const MusicPanel: React.FC = () => {
 /* ---------------- voice-over ---------------- */
 
 export const VoicePanel: React.FC = () => {
-  const [voices, setVoices] = useState<any[]>([]);
-  const [err, setErr] = useState('');
+  const { voices, err } = useVoices();
   const [lang, setLang] = useState<'vi' | 'en'>('vi');
   const [voice, setVoice] = useState('vi:Trúc Ly');
   const [speed, setSpeed] = useState(1);
@@ -124,14 +255,6 @@ export const VoicePanel: React.FC = () => {
   const jobs = useStore((s) => s.jobs);
   const { playing, toggle } = usePreview();
   const lastPreview = useRef<{ key: string; url: string } | null>(null);
-
-  useEffect(() => {
-    fetch('/api/tts/voices').then(async (r) => {
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
-      setVoices(j);
-    }).catch((e) => setErr(e.message));
-  }, []);
 
   const list = useMemo(() => voices.filter((v) => v.lang === lang), [voices, lang]);
   useEffect(() => { if (list.length && !list.some((v) => v.id === voice)) setVoice(list[0].id); }, [list, voice]);
@@ -167,15 +290,7 @@ export const VoicePanel: React.FC = () => {
         <button className={lang === 'vi' ? 'active' : ''} onClick={() => setLang('vi')}>Tiếng Việt (VieNeu)</button>
         <button className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')}>English (Kokoro)</button>
       </div>
-      <div className="voice-grid">
-        {list.map((v) => (
-          <button key={v.id} className={`voice ${voice === v.id ? 'active' : ''}`} onClick={() => setVoice(v.id)} title={v.description}>
-            <span className={`voice-dot ${v.gender}`} />
-            <span className="voice-name">{v.featured ? '⭐ ' : ''}{v.name}</span>
-            <span className="muted small">{v.description.split('·').slice(1).join('·').trim()}</span>
-          </button>
-        ))}
-      </div>
+      <VoicePicker value={voice} onChange={setVoice} lang={lang} text={text} speed={speed} />
       <textarea rows={5} placeholder={lang === 'vi' ? 'Nhập lời đọc… (VieNeu đọc được cả từ tiếng Anh xen kẽ)' : 'Type the narration…'} value={text} onChange={(e) => setText(e.target.value)} />
       <label className="field"><span>Tốc độ</span>
         <div className="row gap"><input type="range" min={0.7} max={1.5} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} /><span className="num small">{speed.toFixed(2)}×</span></div>

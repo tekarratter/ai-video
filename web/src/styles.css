@@ -374,3 +374,21 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 .seek-hover { position: absolute; bottom: 24px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line2); border-radius: 4px; padding: 1px 6px; font-size: 11px; pointer-events: none; white-space: nowrap; }
 .crash { margin: 16px; padding: 14px; border: 1px solid var(--red); border-radius: 8px; background: var(--panel); display: flex; flex-direction: column; gap: 8px; max-width: 640px; }
 .crash code { white-space: pre-wrap; word-break: break-word; color: var(--red); font-size: 12px; }
+
+/* voice picker */
+.voice-picker { position: relative; min-width: 0; }
+.vp-current { display: flex; gap: 4px; align-items: center; }
+.vp-btn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; color: var(--text); cursor: pointer; font-size: 12px; text-align: left; }
+.vp-btn:hover { border-color: var(--accent); }
+.vp-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vp-menu { position: absolute; z-index: 50; left: 0; right: 0; top: calc(100% + 4px); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 28px #0007; display: flex; flex-direction: column; }
+.vp-search { margin: 6px; }
+.vp-list { max-height: 300px; overflow: auto; padding: 2px 4px; }
+.vp-group { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 6px 6px 2px; }
+.vp-row { display: grid; grid-template-columns: 26px 8px auto minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 2px 6px 2px 2px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+.vp-row:hover { background: var(--panel2); }
+.vp-row.active { background: var(--accent-soft); }
+.vp-name { white-space: nowrap; }
+.vp-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
+.vp-empty, .vp-foot { padding: 6px 8px; }
+.vp-foot { border-top: 1px solid var(--line); font-size: 10px; }

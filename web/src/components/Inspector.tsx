@@ -7,6 +7,7 @@ import { askClaude } from './ChatPanel';
 import { Icon } from './Icon';
 import { openYouTube } from './YouTubeDialog';
 import { openDub } from './DubDialog';
+import { VoicePicker } from './AudioLibrary';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Field = { key: string; label: string; type: 'number' | 'text' | 'textarea' | 'color' | 'select' | 'checkbox' | 'range'; step?: number; min?: number; max?: number; options?: string[] };
@@ -128,6 +129,46 @@ const JsonEditor: React.FC<{ value: any; onApply: (v: any) => void }> = ({ value
   );
 };
 
+/** Voice-over clip: pick another voice (▶ previews this clip's text in it), tweak text/speed, re-read. */
+const VoiceSection: React.FC<{ clipId: string; tts: { text: string; voice: string; speed?: number } }> = ({ clipId, tts }) => {
+  const project = useStore((s) => s.project);
+  const [voice, setVoice] = useState(tts.voice);
+  const [speed, setSpeed] = useState(tts.speed || 1);
+  const [text, setText] = useState(tts.text);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setVoice(tts.voice); setSpeed(tts.speed || 1); setText(tts.text); }, [clipId, tts.voice, tts.speed, tts.text]);
+  // every voice-over clip in the project (for "apply to all")
+  const all = (project?.tracks || []).flatMap((t: any) => t.clips).filter((c: any) => c.assetId && assetById(project, c.assetId)?.tts).map((c: any) => c.id);
+  const changed = voice !== tts.voice || speed !== (tts.speed || 1) || text !== tts.text;
+  const run = async (ids: string[]) => {
+    setBusy(true);
+    try {
+      const body: any = { clipIds: ids, voice, speed };
+      if (ids.length === 1 && text !== tts.text) body.text = text;
+      const r = await fetch('/api/tts/revoice', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || r.statusText);
+      useStore.getState().toast(`Đang đọc lại ${ids.length} clip — xem tab Jobs`);
+    } catch (e: any) { useStore.getState().toast(e.message, 'error'); } finally { setBusy(false); }
+  };
+  return (
+    <>
+      <div className="section-title">Giọng đọc AI</div>
+      <div className="form">
+        <VoicePicker value={voice} onChange={setVoice} text={text} speed={speed} />
+        <label className="field range"><span>Tốc độ</span>
+          <div className="row gap"><input type="range" min={0.7} max={1.5} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} /><span className="num small">{speed.toFixed(2)}×</span></div>
+        </label>
+        <label className="field textarea"><span>Lời đọc</span><textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} /></label>
+        <div className="row gap wrap">
+          <button className="btn small primary" disabled={busy || !changed || !text.trim()} onClick={() => run([clipId])}><Icon name="mic" /> Đọc lại clip này</button>
+          {all.length > 1 && <button className="btn small" disabled={busy || text !== tts.text} title="Đọc lại mọi clip giọng đọc trong dự án bằng giọng & tốc độ này (giữ lời từng clip)" onClick={() => { if (confirm(`Đọc lại tất cả ${all.length} clip giọng đọc bằng giọng này?`)) run(all); }}>Áp dụng cho cả {all.length} clip</button>}
+        </div>
+      </div>
+    </>
+  );
+};
+
 const ClipInspector: React.FC<{ id: string }> = ({ id }) => {
   const project = useStore((s) => s.project);
   const [mode, setMode] = useState<'form' | 'json'>('form');
@@ -152,6 +193,7 @@ const ClipInspector: React.FC<{ id: string }> = ({ id }) => {
         <span>Thời lượng</span><b>{clipDuration(clip, project).toFixed(2)}s</b>
         {asset && <><span>Nguồn</span><b title={asset.path}>{asset.name}</b></>}
       </div>
+      {asset?.tts && <VoiceSection clipId={id} tts={asset.tts} />}
       <div className="seg">
         <button className={mode === 'form' ? 'active' : ''} onClick={() => setMode('form')}>Schema</button>
         <button className={mode === 'json' ? 'active' : ''} onClick={() => setMode('json')}>JSON</button>
