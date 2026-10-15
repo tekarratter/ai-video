@@ -93,6 +93,7 @@ Track types: `sequence` (clips play one after another, no `start`; `transition` 
 - **video**: `{ "kind":"video", "assetId", "in", "out", "volume":1, "speed":1, "fit":"cover|contain" }` — `in/out` are source seconds.
 - **image**: `{ "kind":"image", "assetId", "duration", "fit", "kenBurns": { "preset":"zoom-in", "amount":0.15 } }` — presets:
   `zoom-in|zoom-out|pan-left|pan-right|pan-up|pan-down|zoom-in-left|zoom-in-right`; or manual `{ "from":1, "to":1.15, "origin":"center" }`.
+- image/video clips may set `"look"` (colour filter): `sepia|bw|bw-soft|vintage|faded|polaroid|kodak|warm|cool|dramatic|noir|spooky`.
 - **solid**: `{ "kind":"solid", "color":"#111", "duration" }`
 - **component** (motion graphic): `{ "kind":"component", "component":"TitleCard", "props":{…}, "duration" }`
 - **text** (overlay tracks only): `{ "kind":"text", "text", "start", "duration", "x":0.5, "y":0.5, "width":0.8,
@@ -114,7 +115,10 @@ describes the transition **into the next clip** (it shortens the total duration 
 Templates in `custom/` (see `custom/index.tsx` for all + default props): `TitleCard`, `LowerThird` (transparent, use on overlay),
 `KineticText` (words in `*stars*` are highlighted), `StatCounter`, `Countdown` (3‑2‑1‑GO), `QuoteCard` (testimonial scene),
 transparent overlays `Confetti` (`mode: burst|rain`), `CallToAction` (subscribe/like button with click), `ProgressBar`
-(span the whole video), `LightLeak` (1–2s warm flare between scenes), `Snowfall`, `FallingLeaves`. To create a new one: write `custom/MyThing.tsx` exporting a React component that uses Remotion
+(span the whole video), `LightLeak` (1–2s warm flare between scenes), `Snowfall`, `FallingLeaves`.
+Halloween: `HalloweenTitle` (scene), overlays `HalloweenBats`, `SpookyFog`, `HangingSpider`, `FloatingGhost` (+ look `spooky`).
+Retro/nostalgic: overlays `OldFilm` (sepia/B&W, grain, scratches, flicker — span the scenes; pair with look `sepia`/`vintage`),
+`VHS` (scanlines, tape colour, PLAY/date OSD); scenes `FilmLeader` (5‑4‑3‑2‑1), `RetroTitle` (70s sunburst title). To create a new one: write `custom/MyThing.tsx` exporting a React component that uses Remotion
 (`useCurrentFrame`, `useVideoConfig`, `spring`, `interpolate`, `AbsoluteFill`, `Img`, `staticFile` is NOT available — use
 props for media URLs: `/media/<file>`). Register it in `custom/index.tsx` (`components` + optional `componentDefaults`), then add a
 `component` clip. The component gets its own clip duration via `useVideoConfig().durationInFrames`. Use a transparent

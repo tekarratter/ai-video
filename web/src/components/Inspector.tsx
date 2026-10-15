@@ -9,6 +9,7 @@ import { Icon } from './Icon';
 import { openYouTube } from './YouTubeDialog';
 import { openDub } from './DubDialog';
 import { VoiceSection } from './AudioLibrary';
+import { LOOK_OPTIONS, LOOKS } from '../../../remotion/looks';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Field = { key: string; label: string; type: 'number' | 'text' | 'textarea' | 'color' | 'select' | 'checkbox' | 'range'; step?: number; min?: number; max?: number; options?: string[]; def?: number };
@@ -70,11 +71,13 @@ function fieldsFor(clip: any, trackType: string): Field[] {
         { key: 'out', label: 'Điểm ra (s)', type: 'number', step: 0.04 },
         { key: 'speed', label: 'Tốc độ', type: 'number', step: 0.25 },
         { key: 'volume', label: 'Âm lượng', type: 'range', min: 0, max: 2, step: 0.05 },
-        { key: 'fit', label: 'Khung', type: 'select', options: ['cover', 'contain'] }, ...tail];
+        { key: 'fit', label: 'Khung', type: 'select', options: ['cover', 'contain'] },
+        { key: 'look', label: 'Bộ lọc màu', type: 'select', options: LOOK_OPTIONS }, ...tail];
     case 'image':
       return [...timing,
         { key: 'duration', label: 'Thời lượng (s)', type: 'number', step: 0.1 },
         { key: 'fit', label: 'Khung', type: 'select', options: ['cover', 'contain'] },
+        { key: 'look', label: 'Bộ lọc màu', type: 'select', options: LOOK_OPTIONS },
         { key: 'kenBurns.preset', label: 'Ken Burns', type: 'select', options: KEN_BURNS_PRESETS },
         { key: 'kenBurns.amount', label: 'Độ zoom/lia', type: 'range', min: 0.05, max: 0.5, step: 0.01, def: 0.15 },
         ...(clip.kenBurns?.preset ? [] : [
@@ -429,6 +432,20 @@ const ProjectInspector: React.FC = () => {
         </label>
         <label className="field"><span>Duration</span><b className="num">{projectDuration(project).toFixed(2)}s</b></label>
         <label className="field color"><span>Nền</span><FieldInput f={{ key: 'bg', label: '', type: 'color' }} value={project.settings.background} onChange={(v) => set('settings.background', v)} /></label>
+      </div>
+      <div className="form">
+        <label className="field"><span>Bộ lọc màu</span>
+          <select value="" onChange={(e) => {
+            const v = e.target.value;
+            if (v === '-') return;
+            useStore.getState().update((p) => { for (const t of p.tracks) for (const c of t.clips) if (c.kind === 'image' || c.kind === 'video') { if (v) c.look = v; else delete c.look; } }, { record: true });
+            useStore.getState().toast(v ? `Đã áp bộ lọc "${LOOKS[v].label}" cho mọi ảnh/video` : 'Đã bỏ bộ lọc màu');
+          }}>
+            <option value="-">Áp cho mọi ảnh/video…</option>
+            <option value="">Không lọc (gốc)</option>
+            {Object.entries(LOOKS).map(([k, l]) => <option key={k} value={k}>{l.label}</option>)}
+          </select>
+        </label>
       </div>
       <LogoSection />
       <div className="section-title">Phụ đề ({st.cues.length})</div>

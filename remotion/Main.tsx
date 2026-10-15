@@ -11,6 +11,7 @@ import { flip } from '@remotion/transitions/flip';
 import { clockWipe } from '@remotion/transitions/clock-wipe';
 import { components } from '@custom';
 import { assetById, clipDuration, layoutTrack, normalizeProject, projectDuration } from '../shared/timeline.js';
+import { lookFilter } from './looks';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Project = any;
@@ -68,7 +69,7 @@ const Media: React.FC<{ clip: Clip; durationFrames: number; overlay?: boolean }>
   const m = useSrc(clip.assetId);
   if (!m) return <Missing label={`asset ${clip.assetId}`} />;
   const fit = clip.fit || (overlay ? 'contain' : 'cover');
-  const style: React.CSSProperties = { width: '100%', height: '100%', objectFit: fit };
+  const style: React.CSSProperties = { width: '100%', height: '100%', objectFit: fit, filter: lookFilter(clip.look) };
   if (m.asset.type === 'image') {
     let transform = 'none';
     if (clip.kenBurns) {

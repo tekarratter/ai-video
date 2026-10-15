@@ -25,6 +25,16 @@ import { QuoteCard } from './QuoteCard';
 import { ProgressBar } from './ProgressBar';
 import { LightLeak } from './LightLeak';
 
+import { HalloweenTitle } from './HalloweenTitle';
+import { HalloweenBats } from './HalloweenBats';
+import { SpookyFog } from './SpookyFog';
+import { HangingSpider } from './HangingSpider';
+import { FloatingGhost } from './FloatingGhost';
+import { OldFilm } from './OldFilm';
+import { VHS } from './VHS';
+import { FilmLeader } from './FilmLeader';
+import { RetroTitle } from './RetroTitle';
+
 export const components: Record<string, React.FC<any>> = {
   TitleCard,
   LowerThird,
@@ -48,6 +58,15 @@ export const components: Record<string, React.FC<any>> = {
   QuoteCard,
   ProgressBar,
   LightLeak,
+  HalloweenTitle,
+  HalloweenBats,
+  SpookyFog,
+  HangingSpider,
+  FloatingGhost,
+  OldFilm,
+  VHS,
+  FilmLeader,
+  RetroTitle,
 };
 
 /** Default props shown in the editor's "Motion" library (optional). */
@@ -74,4 +93,13 @@ export const componentDefaults: Record<string, Record<string, unknown>> = {
   QuoteCard: { quote: 'Đội ngũ làm việc rất chuyên nghiệp, đúng tiến độ và kết quả vượt mong đợi.', author: 'Anh Minh', role: 'Khách hàng' },
   ProgressBar: { color: '#f59e0b', thickness: 10, position: 'bottom' },
   LightLeak: { color: '#ff8a3d', color2: '#ffd166', intensity: 0.85 },
+  HalloweenTitle: { title: 'HAPPY\nHALLOWEEN', subtitle: '31.10', color: '#ff7a1a', pumpkins: true },
+  HalloweenBats: { count: 14, color: '#0b0b0f', speed: 1 },
+  SpookyFog: { color: '#c9d6e3', tint: 'rgba(80,0,120,0.18)', density: 0.7, vignette: 0.65 },
+  HangingSpider: { x: 0.8, drop: 0.35, size: 0.09 },
+  FloatingGhost: { y: 0.4, size: 0.22, direction: 'right', text: 'Boo!' },
+  OldFilm: { sepia: 0.75, grain: 0.35, scratches: 3, flicker: 0.12, vignette: 0.7, blackWhite: false },
+  VHS: { date: 'OCT. 31 1994', label: 'PLAY ▶', glitch: 0.5, showOsd: true },
+  FilmLeader: { from: 5 },
+  RetroTitle: { title: 'NGÀY XƯA\nYÊU DẤU', subtitle: 'since 1975' },
 };
