@@ -273,7 +273,7 @@ app.post('/api/tts', (req, res) => {
   const job = startJob('tts', `Giọng đọc: ${String(text).slice(0, 40)}`, async (update) => {
     update({ stage: 'chờ lượt', progress: 0.05 });
     const wav = await synthesize({ text, voice, speed }, {
-      onStage: (st) => update({ stage: st === 'load' ? 'nạp model' : st === 'synth' ? 'đang đọc' : st, progress: st === 'synth' ? 0.4 : 0.2 }),
+      onStage: (st) => update({ stage: st === 'load' ? 'nạp model' : st === 'synth' ? 'đang đọc' : st === 'done' ? 'lưu file' : st, progress: st === 'synth' ? 0.4 : 0.2 }),
     });
     if (!add) return { label: 'Bản nghe thử', previewUrl: `/cache/${path.relative(CACHE_DIR, wav).split(path.sep).join('/')}` };
     update({ stage: 'nhập', progress: 0.9 });

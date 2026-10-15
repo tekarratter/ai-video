@@ -403,3 +403,4 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 
 .voice-sel { border: 1px solid var(--accent); border-radius: 8px; padding: 2px 8px 8px; background: var(--accent-soft); }
 .lib .field.textarea { grid-template-columns: 1fr; gap: 4px; }
+.tts-player { width: 100%; height: 36px; flex-shrink: 0; }

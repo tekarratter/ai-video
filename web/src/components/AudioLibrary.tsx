@@ -30,7 +30,11 @@ function usePreview() {
     if (!previewAudio) return;
     if (playing === key) { previewAudio.pause(); return; }
     previewAudio.src = url;
-    previewAudio.play().then(() => setPlaying(key)).catch((e) => useStore.getState().toast(`Không phát được: ${e.message}`, 'error'));
+    previewAudio.play().then(() => setPlaying(key)).catch((e) => {
+      // autoplay blocked (the preview finished long after the click) — the file is cached, a click on ▶ plays it
+      if (e.name === 'NotAllowedError') useStore.getState().toast('Bản nghe thử đã sẵn sàng — bấm ▶ để nghe');
+      else useStore.getState().toast(`Không phát được: ${e.message}`, 'error');
+    });
   };
   return { playing, toggle };
 }
@@ -298,8 +302,7 @@ export const VoicePanel: React.FC = () => {
   const jobs = useStore((s) => s.jobs);
   const project = useStore((s) => s.project);
   const selection = useStore((s) => s.selection);
-  const { playing, toggle } = usePreview();
-  const lastPreview = useRef<{ key: string; url: string } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const list = useMemo(() => voices.filter((v) => v.lang === lang), [voices, lang]);
   useEffect(() => { if (list.length && !list.some((v) => v.id === voice)) setVoice(list[0].id); }, [list, voice]);
@@ -309,10 +312,10 @@ export const VoicePanel: React.FC = () => {
   useEffect(() => {
     if (!job || !pending) return;
     if (job.stage === 'error') { setPending(null); return; }
-    if (job.stage !== 'done') return;
+    if (job.stage !== 'done' || !job.finishedAt) return; // (the TTS engine's own 'done' stage arrives before the result)
     if (pending.play && job.previewUrl) {
-      lastPreview.current = { key: job.previewUrl, url: job.previewUrl };
-      toggle(job.previewUrl, job.previewUrl);
+      previewAudio?.pause();
+      setPreviewUrl(job.previewUrl); // the <audio> below autoplays; if the browser blocks it, its ▶ is right there
     }
     setPending(null);
   }, [job, pending]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -353,9 +356,9 @@ export const VoicePanel: React.FC = () => {
       </label>
       <div className="row gap wrap">
         <button className="btn" disabled={busy || !text.trim()} onClick={() => run(false)}><Icon name="play" /> Nghe thử</button>
-        {lastPreview.current && <button className="icon-btn" title="Phát lại" onClick={() => toggle(lastPreview.current!.key, lastPreview.current!.url)}><Icon name={playing ? 'pause' : 'volume'} /></button>}
         <button className="btn primary" disabled={busy || !text.trim()} onClick={() => run(true)}><Icon name="plus" /> Thêm tại playhead</button>
       </div>
+      {previewUrl && <audio key={previewUrl} className="tts-player" src={previewUrl} controls autoPlay />}
       {busy && <div className="muted small">{job ? `${job.stage}…` : 'Đang gửi…'} (lần đầu mất ~15s để nạp model)</div>}
       <button className="btn small" onClick={() => askClaude(`Viết lời dẫn (voice-over) cho video này rồi tạo giọng đọc bằng vedit tts, giọng ${cur?.name || voice}, đặt khớp với từng cảnh.`, false)}>
         <Icon name="sparkle" /> Nhờ Claude viết lời & lồng tiếng…
