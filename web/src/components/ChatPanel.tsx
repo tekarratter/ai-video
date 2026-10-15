@@ -24,10 +24,24 @@ function uiContext() {
   return `[UI] ${parts.join(' · ')}`;
 }
 
-export async function sendToClaude(text: string) {
-  const r = await fetch('/api/chat/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
-  if (!r.ok) useStore.getState().toast((await r.json()).error || 'Không gửi được', 'error');
+export async function sendToClaude(text: string): Promise<boolean> {
+  try {
+    const r = await fetch('/api/chat/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
+    if (r.ok) return true;
+    useStore.getState().toast((await r.json().catch(() => ({}))).error || `Không gửi được (lỗi ${r.status})`, 'error');
+  } catch {
+    useStore.getState().toast('Không gửi được — mất kết nối tới server', 'error');
+  }
+  return false;
 }
+
+/* Draft + unconfirmed message survive reloads; a message counts as delivered only once it shows up in the transcript. */
+const DRAFT_KEY = 'aiv.chatDraft', PENDING_KEY = 'aiv.chatPending';
+const CONFIRM_MS = 25_000; // Claude idle but the message never appeared → it was swallowed (e.g. a dialog open in the CLI)
+type Pending = { body: string; atts: string[]; probe: string; userCount: number; sentAt: number; failed?: boolean };
+const lsGet = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+const lsSet = (k: string, v: unknown) => { try { if (v == null || v === '') localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage off */ } };
+const norm = (t: string) => t.replace(/\s+/g, ' ').trim();
 
 const key = (k: string) => fetch('/api/chat/key', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key: k }) });
 
@@ -147,9 +161,33 @@ export const ChatPanel: React.FC = () => {
   const status = useStore((s) => s.chatStatus);
   const tmux = useStore((s) => s.tmux);
   const [claudeAuth] = useClaudeAuth();
-  const [text, setText] = useState('');
+  const [text, setText] = useState<string>(() => lsGet(DRAFT_KEY, ''));
   const [withCtx, setWithCtx] = useState(true);
   const [atts, setAtts] = useState<string[]>([]);
+  const [pending, setPendingState] = useState<Pending | null>(() => lsGet(PENDING_KEY, null));
+  const setPending = (p: Pending | null) => { setPendingState(p); lsSet(PENDING_KEY, p); };
+  const idleSince = useRef(Date.now());
+  useEffect(() => { lsSet(DRAFT_KEY, text); }, [text]);
+  useEffect(() => { if (!status.busy) idleSince.current = Date.now(); }, [status.busy]);
+  // delivered once a new user message containing it appears in the transcript
+  useEffect(() => {
+    if (!pending || pending.failed) return;
+    const fresh = items.filter((it) => it.type === 'user').slice(pending.userCount);
+    if (fresh.some((it) => norm(it.text || '').includes(pending.probe))) setPending(null);
+  }, [items, pending]);
+  // not delivered: Claude has been idle for a while and the message still isn't there → give it back
+  useEffect(() => {
+    if (!pending || pending.failed) return;
+    const t = setInterval(() => {
+      if (status.busy || !status.running) return; // queued messages are only recorded after the current turn
+      if (Date.now() - Math.max(pending.sentAt, idleSince.current) < CONFIRM_MS) return;
+      setPending({ ...pending, failed: true });
+      if (!text.trim()) setText(pending.body);
+      if (pending.atts.length) setAtts((a) => [...new Set([...a, ...pending.atts])]);
+      useStore.getState().toast('Claude chưa nhận được tin nhắn — đã đưa lại vào ô soạn để gửi lại', 'error');
+    }, 1000);
+    return () => clearInterval(t);
+  }, [pending, status.busy, status.running, text]);
   const [uploading, setUploading] = useState(false);
   const [view, setView] = useState<'chat' | 'term'>('chat');
   const [dragging, setDragging] = useState(false);
@@ -168,10 +206,17 @@ export const ChatPanel: React.FC = () => {
     let msg = body;
     if (atts.length) msg += `\n(Đính kèm: ${atts.join(', ')})`;
     if (withCtx) msg += `\n${uiContext()}`;
-    setText('');
+    const sentAtts = atts, keepText = override === undefined;
+    if (keepText) setText('');
     setAtts([]);
     stick.current = true;
-    await sendToClaude(msg);
+    const userCount = useStore.getState().chat.filter((it) => it.type === 'user').length;
+    if (await sendToClaude(msg)) {
+      setPending({ body, atts: sentAtts, probe: norm(msg).slice(0, 40), userCount, sentAt: Date.now() });
+    } else {
+      if (keepText) setText((t) => t || body); // never lose what was typed
+      setAtts((a) => [...new Set([...a, ...sentAtts])]);
+    }
   };
 
   useEffect(() => {
@@ -272,6 +317,19 @@ export const ChatPanel: React.FC = () => {
           </div>
 
           <div className="composer">
+            {pending && (
+              <div className={`chat-pending ${pending.failed ? 'failed' : ''}`}>
+                {pending.failed ? (
+                  <>
+                    <span>⚠</span>
+                    <span className="grow">Tin nhắn chưa tới Claude — nội dung đã đưa lại vào ô soạn, bấm Gửi để thử lại. Nếu vẫn không được, mở terminal (<Icon name="terminal" size={10} />) và bấm <b>Esc</b>.</span>
+                  </>
+                ) : (
+                  <><span className="spinner" /><span className="grow ellipsis">Đang chờ Claude nhận: “{pending.body || pending.atts.join(', ')}”</span></>
+                )}
+                <button className="icon-btn" title="Bỏ qua" onClick={() => setPending(null)}><Icon name="x" size={11} /></button>
+              </div>
+            )}
             {atts.length > 0 && (
               <div className="att-row">
                 {atts.map((a) => (
