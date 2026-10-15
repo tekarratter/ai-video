@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import express from 'express';
 import multer from 'multer';
 import chokidar from 'chokidar';
@@ -93,7 +93,10 @@ function persistJobs() {
 function startJob(type, label, fn) {
   const job = { id: newId('job'), type, label, stage: 'queued', progress: 0, startedAt: Date.now() };
   jobs.set(job.id, job);
-  const update = (patch) => { Object.assign(job, patch); broadcast({ type: 'job', job }); persistJobs(); };
+  const update = (patch) => {
+    if (job.finishedAt && !('finishedAt' in patch)) return;
+    Object.assign(job, patch); broadcast({ type: 'job', job }); persistJobs();
+  };
   update({});
   Promise.resolve()
     .then(() => fn(update))
@@ -315,10 +318,18 @@ app.get('/api/projects', (req, res) => res.json(projectsPayload()));
 function openProject(id) {
   const busy = busyJobs();
   if (busy.length) throw Object.assign(new Error(`Đang có tác vụ chạy (${busy.map((j) => j.label).join(', ')}) — đợi xong rồi chuyển project`), { status: 409 });
+  const from = projects.activeId();
+  if (from === id) return;
+  if (claude.status.busy) throw Object.assign(new Error('Claude đang làm việc — đợi xong (hoặc bấm Dừng) rồi chuyển dự án'), { status: 409 });
+  if (from && claude.status.sessionId) projects.setClaudeSession(from, claude.status.sessionId);
   projects.open(id);
   const text = fs.readFileSync(PROJECT_FILE, 'utf8');
   lastHash = hash(text);
   broadcast({ type: 'project-switched', project: readProject(), ...projectsPayload() });
+  // each project keeps its own Claude conversation: resume this one's (a fresh one if it never had one)
+  claude.isRunning().then((running) => {
+    if (running) return claude.restart({ resume: projects.claudeSession(id) || undefined });
+  }).catch((e) => console.warn('[claude] switch session', e.message));
 }
 const handle = (fn) => (req, res) => {
   try { res.json(fn(req) ?? projectsPayload()); } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
@@ -329,6 +340,45 @@ app.post('/api/projects', handle((req) => {
   else broadcast({ type: 'projects', ...projectsPayload() });
 }));
 app.post('/api/projects/:id/open', handle((req) => { openProject(req.params.id); }));
+// Backup: one .zip with project.json, media, exports (?exports=0 to skip), motion components and the Claude conversation.
+app.get('/api/projects/:id/backup', (req, res) => {
+  let dir;
+  try { dir = projects.backupStage(req.params.id, { exports: req.query.exports !== '0', claudeDir: claude.projectDir }); }
+  catch (e) { return res.status(e.status || 400).json({ error: e.message }); }
+  const cleanup = () => fs.rmSync(dir, { recursive: true, force: true });
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${projects.backupName(req.params.id)}"`);
+  // already-compressed media is stored as is (fast, no CPU burn); JSON/TSX get deflated
+  const zip = spawn('zip', ['-r', '-q', '-n', '.mp4:.mov:.m4v:.webm:.mkv:.jpg:.jpeg:.png:.webp:.gif:.heic:.mp3:.m4a:.aac:.ogg:.flac:.wav:.zip', '-', '.'], { cwd: dir });
+  zip.stdout.pipe(res);
+  zip.stderr.on('data', (d) => console.warn('[backup]', String(d).trim()));
+  zip.on('error', (e) => { console.warn('[backup]', e.message); cleanup(); res.destroy(e); });
+  zip.on('close', (code) => { cleanup(); if (code) { console.warn('[backup] zip exit', code); res.destroy(new Error(`zip exit ${code}`)); } });
+  res.on('close', () => { if (zip.exitCode === null) zip.kill(); });
+});
+// Restore: the .zip arrives through the chunked upload above, then is unpacked into a NEW project.
+app.post('/api/projects/restore', (req, res) => {
+  let part;
+  try { part = partPath(req.body?.uploadId); } catch (e) { return res.status(400).json({ error: e.message }); }
+  if (partSize(part) !== Number(req.body?.size)) return res.status(400).json({ error: 'File sao lưu chưa tải lên đủ' });
+  const job = startJob('restore', `Khôi phục ${req.body?.fileName || 'bản sao lưu'}`, async (update) => {
+    const dir = path.join(projects.PROJECTS_DIR, `.restore-${Date.now()}`);
+    fs.mkdirSync(dir, { recursive: true });
+    try {
+      update({ stage: 'giải nén' });
+      await new Promise((resolve, reject) => execFile('unzip', ['-qq', '-o', part, '-d', dir], { maxBuffer: 1 << 24 }, (err) => (err && err.code > 1 ? reject(new Error(`unzip lỗi ${err.code}`)) : resolve())));
+      update({ stage: 'tạo dự án', progress: 0.8 });
+      const r = projects.restoreUnpacked(dir, { name: req.body?.name, claudeDir: claude.projectDir });
+      broadcast({ type: 'projects', ...projectsPayload() });
+      broadcast({ type: 'toast', text: `Đã khôi phục dự án "${r.name}"${r.notes.length ? ` (${r.notes.join(', ')})` : ''} — mở trong danh sách Dự án` });
+      return { label: `Đã khôi phục "${r.name}"` };
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+      fs.rmSync(part, { force: true });
+    }
+  });
+  res.json({ job });
+});
 app.post('/api/projects/:id/duplicate', handle((req) => { projects.duplicate(req.params.id); broadcast({ type: 'projects', ...projectsPayload() }); }));
 app.patch('/api/projects/:id', handle((req) => {
   projects.rename(req.params.id, req.body?.name);
@@ -561,7 +611,7 @@ const claude = new ClaudeBridge({
   claudeArgs: process.env.CLAUDE_ARGS || '',
   env: claudeAuth.env,
 });
-claude.on('reset', (d) => broadcast({ type: 'chat-reset', ...d }));
+claude.on('reset', (d) => { projects.setClaudeSession(projects.activeId(), d.sessionId); broadcast({ type: 'chat-reset', ...d }); });
 claude.on('items', (d) => broadcast({ type: 'chat-items', ...d }));
 claude.on('status', (status) => broadcast({ type: 'chat-status', status }));
 claude.on('screen', (s) => {
@@ -571,7 +621,7 @@ claude.watch();
 // Only start Claude when it is signed in — otherwise it would sit on its login screen; the admin signs in from the UI.
 if (process.env.CLAUDE_AUTOSTART !== '0') {
   claudeAuth.status({ fresh: true }).then((s) => {
-    if (s.loggedIn) return claude.start({ resume: 'continue' });
+    if (s.loggedIn) return claude.start({ resume: projects.claudeSession() || 'continue' });
     console.warn('[claude] Claude Code chưa đăng nhập — vào editor: menu tài khoản → Claude Code');
   }).catch((e) => console.warn('[claude] start failed:', e.message));
 }
@@ -587,7 +637,7 @@ const authRoute = (fn) => async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 };
 // after credentials change, restart the Claude session so it picks them up (keeps the conversation)
-const restartClaude = async () => { const s = await claudeAuth.status({ fresh: true }); if (s.loggedIn) await claude.restart({ resume: 'continue' }); else await claude.stop(); };
+const restartClaude = async () => { const s = await claudeAuth.status({ fresh: true }); if (s.loggedIn) await claude.restart({ resume: projects.claudeSession() || 'continue' }); else await claude.stop(); };
 app.get('/api/claude-auth', async (req, res) => res.json(await claudeAuth.status()));
 app.post('/api/claude-auth/login', adminOnly, authRoute((req) => claudeAuth.startLogin({ console: !!req.body?.console })));
 app.post('/api/claude-auth/code', adminOnly, authRoute(async (req) => { await claudeAuth.submitCode(req.body?.code); await restartClaude(); }));
@@ -601,7 +651,7 @@ app.post('/api/chat/send', async (req, res) => {
 });
 app.post('/api/chat/key', async (req, res) => { await claude.key(req.body.key); res.json({ ok: true }); });
 app.post('/api/chat/restart', async (req, res) => {
-  await claude.restart({ resume: req.body?.mode === 'new' ? undefined : req.body?.sessionId || 'continue' });
+  await claude.restart({ resume: req.body?.mode === 'new' ? undefined : req.body?.sessionId || projects.claudeSession() || 'continue' });
   res.json({ ok: true });
 });
 app.post('/api/chat/attach', upload.array('files'), async (req, res) => {

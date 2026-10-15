@@ -72,8 +72,9 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
     scale: quality === 'draft' ? 0.5 : 1,
     // Conservative defaults: this box has little free RAM and OffthreadVideo extraction is memory hungry.
     concurrency: Number(process.env.RENDER_CONCURRENCY || 1),
-    timeoutInMilliseconds: 180000,
-    offthreadVideoCacheSizeInBytes: 512 * 1024 * 1024,
+    // generous timeout: when the machine swaps, extracting one video frame can take minutes
+    timeoutInMilliseconds: Number(process.env.RENDER_TIMEOUT_MS || 600000),
+    offthreadVideoCacheSizeInBytes: Number(process.env.RENDER_VIDEO_CACHE_MB || 256) * 1024 * 1024,
     offthreadVideoThreads: 2,
     onProgress: ({ progress, renderedFrames, encodedFrames }) => report({ stage: 'render', progress, renderedFrames, encodedFrames }),
   });

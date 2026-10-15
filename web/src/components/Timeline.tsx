@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { assetById, findClip, fmtTime, layoutTrack, projectDuration } from '../../../shared/timeline.js';
-import { useStore, type Project } from '../store';
+import { toggleLayout, useStore, type Project } from '../store';
 import { currentTime, deleteSelection, player, seek, splitAtPlayhead, togglePlay } from '../player';
 import { addAssetClip } from './LeftPanel';
 import { Icon } from './Icon';
@@ -33,6 +33,7 @@ function rulerStep(pps: number) {
 
 export const Timeline: React.FC = () => {
   const project = useStore((s) => s.project);
+  const tlCollapsed = useStore((s) => s.layout.timeline);
   const zoom = useStore((s) => s.zoom);
   const selection = useStore((s) => s.selection);
   const hidden = useStore((s) => s.hiddenTracks);
@@ -195,7 +196,7 @@ export const Timeline: React.FC = () => {
   for (let t = 0; t <= duration + 10; t += step) ticks.push(t);
 
   return (
-    <div className={`timeline panel ${flash && Date.now() - flash < 2500 ? 'ai-updated' : ''}`}>
+    <div className={`timeline panel ${flash && Date.now() - flash < 2500 ? 'ai-updated' : ''} ${tlCollapsed ? 'collapsed' : ''}`}>
       <Transport duration={duration} fps={fps} onFit={fit} />
       <div className="tl-scroll" ref={scrollRef} onDragOver={(e) => { if (e.dataTransfer.types.includes('application/x-asset')) e.preventDefault(); }} onDrop={(e) => onDrop(e)}>
         <div className="tl-inner" style={{ width: LEFT + width }}>
@@ -311,6 +312,7 @@ const Transport: React.FC<{ duration: number; fps: number; onFit: () => void }> 
   const zoom = useStore((s) => s.zoom);
   const selection = useStore((s) => s.selection);
   const rate = useStore((s) => s.playbackRate);
+  const tlCollapsed = useStore((s) => s.layout.timeline);
   const [muted, setMuted] = useState(false);
   return (
     <div className="transport">
@@ -331,6 +333,7 @@ const Transport: React.FC<{ duration: number; fps: number; onFit: () => void }> 
       <button className="icon-btn" onClick={() => useStore.setState({ zoom: Math.max(5, zoom / 1.3) })}><Icon name="zoomout" /></button>
       <input type="range" min={5} max={400} value={zoom} onChange={(e) => useStore.setState({ zoom: Number(e.target.value) })} />
       <button className="icon-btn" onClick={() => useStore.setState({ zoom: Math.min(400, zoom * 1.3) })}><Icon name="zoomin" /></button>
+      <button className="icon-btn" onClick={() => toggleLayout('timeline')} title={tlCollapsed ? 'Mở timeline' : 'Thu gọn timeline'}><Icon name="chevdown" className={tlCollapsed ? 'flip' : undefined} /></button>
     </div>
   );
 };

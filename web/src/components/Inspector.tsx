@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { componentDefaults } from '@custom';
 import { assetById, clipDuration, findClip, layoutTrack, KEN_BURNS_PRESETS, LOGO_DEFAULTS, LOGO_POSITIONS, LOOP_ANIMATIONS, projectDuration, TEXT_ANIMATIONS, TRANSITIONS } from '../../../shared/timeline.js';
-import { useStore } from '../store';
+import { toggleLayout, useStore } from '../store';
 import { currentTime, seek } from '../player';
 import { addComponentClip, addSolidClip, addTextClip, uploadFiles, UploadProgress } from './LeftPanel';
 import { askClaude } from './ChatPanel';
@@ -557,6 +557,8 @@ export const Inspector: React.FC = () => {
         <button className={tab === 'insp' ? 'active' : ''} onClick={() => setTab('insp')}>Inspector</button>
         <button className={tab === 'jobs' ? 'active' : ''} onClick={() => setTab('jobs')}>Jobs {running && <span className="dot busy" />}</button>
         <button className={tab === 'exports' ? 'active' : ''} onClick={() => setTab('exports')}><Icon name="film" size={12} /> Exports</button>
+        <div className="spacer" />
+        <button className="collapse-btn" onClick={() => toggleLayout('right')} title="Thu gọn panel"><Icon name="chevron" size={13} /></button>
       </div>
       <div className="panel-body">
         {tab === 'jobs' ? <Jobs /> : tab === 'exports' ? <Exports />

@@ -91,6 +91,7 @@ export class ClaudeBridge extends EventEmitter {
     await this.tmuxCmd('set-option', '-t', this.tmux, 'remain-on-exit', 'off').catch(() => {});
     await this.tmuxCmd('set-option', '-t', this.tmux, 'history-limit', '5000').catch(() => {});
     if (!resume) this.switchTo(path.join(this.projectDir, `${id}.jsonl`));
+    else if (resume !== 'continue' && fs.existsSync(path.join(this.projectDir, `${resume}.jsonl`))) this.switchTo(path.join(this.projectDir, `${resume}.jsonl`));
     this.startedAt = Date.now();
     if (resume) {
       // --resume/--continue exits immediately when there is nothing to resume: fall back to a new session.

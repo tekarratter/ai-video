@@ -23,7 +23,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # system tools + libraries for the headless Chrome used by Remotion + fonts with Vietnamese glyphs
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      tini tmux ffmpeg unzip curl ca-certificates git procps \
+      tini tmux ffmpeg zip unzip curl ca-certificates git procps \
       python3 python3-venv python3-pip \
       fonts-noto-core fonts-noto-color-emoji fonts-dejavu-core fontconfig \
       libnss3 libdbus-1-3 libatk1.0-0 libatk-bridge2.0-0 libgbm1 libasound2 libxrandr2 libxkbcommon0 \

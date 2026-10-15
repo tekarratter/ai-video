@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { components, componentDefaults } from '@custom';
 import { Player, Thumbnail } from '@remotion/player';
 import { newId, layoutTrack, projectDuration } from '../../../shared/timeline.js';
-import { useStore, type Project, type Upload } from '../store';
+import { toggleLayout, useStore, type Project, type Upload } from '../store';
 import { currentTime } from '../player';
 import { Icon } from './Icon';
 import { MusicPanel, VoicePanel } from './AudioLibrary';
@@ -373,6 +373,7 @@ export const LeftPanel: React.FC = () => {
         <button className={tab === 'motion' ? 'active' : ''} onClick={() => setTab('motion')}>Motion</button>
         <button className={tab === 'music' ? 'active' : ''} onClick={() => setTab('music')} title="Thư viện nhạc nền">Music</button>
         <button className={tab === 'voice' ? 'active' : ''} onClick={() => setTab('voice')} title="Giọng đọc AI (TTS) — chọn & nghe thử giọng cho clip"><Icon name="mic" size={11} />Voice</button>
+        <button className="collapse-btn" onClick={() => toggleLayout('left')} title="Thu gọn panel"><Icon name="chevron" size={13} className="flip" /></button>
       </div>
 
       {tab === 'music' && <MusicPanel />}

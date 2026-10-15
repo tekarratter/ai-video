@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { useStore } from '../store';
+import React, { useEffect, useRef, useState } from 'react';
+import { flushSave, rememberProject, useStore } from '../store';
 import { api } from './Account';
 import { Icon } from './Icon';
+import { uploadParts } from '../upload';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -31,6 +32,27 @@ export const ProjectsDialog: React.FC = () => {
   const [preset, setPreset] = useState(0);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [restoring, setRestoring] = useState('');
+  const restoreRef = useRef<HTMLInputElement>(null);
+
+  const backup = (p: any) => {
+    const withExports = !p.exports || confirm(`Kèm ${p.exports} video đã xuất vào bản sao lưu?\n\nOK = kèm (file lớn hơn) · Huỷ = chỉ timeline + media + motion + hội thoại Claude`);
+    const a = document.createElement('a');
+    a.href = `/api/projects/${p.id}/backup${withExports ? '' : '?exports=0'}`;
+    a.download = '';
+    document.body.appendChild(a); a.click(); a.remove();
+    useStore.getState().toast(`Đang tạo bản sao lưu "${p.name}" — trình duyệt sẽ tải file .zip về`);
+  };
+  const restore = async (file: File) => {
+    setErr('');
+    try {
+      setRestoring('0%');
+      const uploadId = await uploadParts(file, (l, t) => setRestoring(`${t ? Math.floor((l / t) * 100) : 100}%`));
+      setRestoring('đang giải nén…');
+      await api('/api/projects/restore', 'POST', { uploadId, size: file.size, fileName: file.name });
+      window.dispatchEvent(new Event('show-jobs'));
+    } catch (e: any) { setErr(`Khôi phục lỗi: ${e.message}`); } finally { setRestoring(''); }
+  };
 
   const refresh = () => api('/api/projects').then((r) => useStore.setState({ projects: r.projects, activeProject: r.active })).catch((e) => setErr(e.message));
   useEffect(() => {
@@ -48,7 +70,8 @@ export const ProjectsDialog: React.FC = () => {
       if (close) setOpen(false);
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   };
-  const create = () => run(() => api('/api/projects', 'POST', { name: name.trim() || 'Dự án mới', width: PRESETS[preset].w, height: PRESETS[preset].h, fps: 30 }), true);
+  const openP = (id: string) => run(async () => { await flushSave(); rememberProject(); return api(`/api/projects/${id}/open`, 'POST'); }, true);
+  const create = () => run(async () => { await flushSave(); rememberProject(); return api('/api/projects', 'POST', { name: name.trim() || 'Dự án mới', width: PRESETS[preset].w, height: PRESETS[preset].h, fps: 30 }); }, true);
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
@@ -56,6 +79,10 @@ export const ProjectsDialog: React.FC = () => {
         <div className="modal-head">
           <b><Icon name="folder" /> Dự án</b>
           <div className="spacer" />
+          <button className="btn small" disabled={!!restoring} onClick={() => restoreRef.current?.click()} title="Tạo dự án mới từ file sao lưu .zip">
+            <Icon name="upload" /> {restoring ? `Đang tải lên ${restoring}` : 'Khôi phục từ file…'}
+          </button>
+          <input ref={restoreRef} type="file" hidden accept=".zip,application/zip" onChange={(e) => { const f = e.target.files?.[0]; if (f) restore(f); e.target.value = ''; }} />
           <button className="btn primary small" onClick={() => setCreating(!creating)}><Icon name="plus" /> Dự án mới</button>
           <button className="icon-btn" onClick={() => setOpen(false)}><Icon name="x" /></button>
         </div>
@@ -72,7 +99,7 @@ export const ProjectsDialog: React.FC = () => {
         <div className="project-grid">
           {projects.map((p) => (
             <div key={p.id} className={`project-card ${p.active ? 'active' : ''}`}>
-              <div className="project-thumb" style={{ aspectRatio: `${p.width} / ${p.height}` }} onClick={() => !p.active && run(() => api(`/api/projects/${p.id}/open`, 'POST'), true)}>
+              <div className="project-thumb" style={{ aspectRatio: `${p.width} / ${p.height}` }} onClick={() => !p.active && openP(p.id)}>
                 {p.thumb ? <img src={p.thumb} alt="" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} /> : <Icon name="film" size={22} />}
                 {p.active && <span className="badge">Đang mở</span>}
               </div>
@@ -82,15 +109,16 @@ export const ProjectsDialog: React.FC = () => {
                 <span className="muted small">{ago(p.updatedAt)}</span>
               </div>
               <div className="row gap">
-                {!p.active && <button className="btn small primary" disabled={busy} onClick={() => run(() => api(`/api/projects/${p.id}/open`, 'POST'), true)}>Mở</button>}
+                {!p.active && <button className="btn small primary" disabled={busy} onClick={() => openP(p.id)}>Mở</button>}
                 <button className="icon-btn" title="Đổi tên" onClick={() => { const n = prompt('Tên mới:', p.name); if (n) run(() => api(`/api/projects/${p.id}`, 'PATCH', { name: n })); }}><Icon name="text" /></button>
+                <button className="icon-btn" title="Sao lưu ra file .zip (timeline, media, video xuất, motion component, hội thoại Claude)" onClick={() => backup(p)}><Icon name="download" /></button>
                 <button className="icon-btn" title="Nhân bản (kèm media)" disabled={busy} onClick={() => run(() => api(`/api/projects/${p.id}/duplicate`, 'POST'))}><Icon name="copy" /></button>
                 {!p.active && <button className="icon-btn" title="Xoá" onClick={() => confirm(`Xoá project "${p.name}"? (chuyển vào workspace/projects/.trash)`) && run(() => api(`/api/projects/${p.id}`, 'DELETE'))}><Icon name="trash" /></button>}
               </div>
             </div>
           ))}
         </div>
-        <div className="muted small">Mỗi dự án có media, video xuất và timeline riêng. Motion component (thư mục custom) và cuộc trò chuyện với Claude dùng chung.</div>
+        <div className="muted small">Mỗi dự án có timeline, media, video xuất và cuộc trò chuyện với Claude riêng; chuyển qua lại vẫn giữ playhead, clip đang chọn và lịch sử hoàn tác. Motion component (thư mục custom) dùng chung. Nút <Icon name="download" size={11} /> sao lưu dự án ra file .zip để cất giữ hoặc chuyển sang máy khác.</div>
       </div>
     </div>
   );

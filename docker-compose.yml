@@ -16,6 +16,9 @@ services:
       AIV_ADMIN_PASSWORD: ${AIV_ADMIN_PASSWORD:-Hoang2026}
       # render: số frame xử lý song song (tăng nếu máy nhiều RAM)
       RENDER_CONCURRENCY: ${RENDER_CONCURRENCY:-1}
+      # render trên máy ít RAM: chờ frame lâu hơn, bộ đệm video nhỏ hơn
+      RENDER_TIMEOUT_MS: ${RENDER_TIMEOUT_MS:-600000}
+      RENDER_VIDEO_CACHE_MB: ${RENDER_VIDEO_CACHE_MB:-256}
     volumes:
       - workspace:/app/workspace          # dự án, media, video xuất
       - home:/home/node                   # tài khoản app, đăng nhập Claude Code, lịch sử chat, cache model

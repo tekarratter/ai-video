@@ -136,6 +136,9 @@ export const Preview: React.FC = () => {
   const hiddenTracks = useStore((s) => s.hiddenTracks);
   const playbackRate = useStore((s) => s.playbackRate);
   const ref = useRef<PlayerRef>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const activeProject = useStore((s) => s.activeProject);
+  const [isFull, setFull] = useState(false);
   const { width, height, fps } = project.settings;
   const isMain = openComp === 'Main';
   const Custom = (components as Record<string, React.FC<any>>)[openComp]; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -161,8 +164,24 @@ export const Preview: React.FC = () => {
     };
   }, [openComp]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // switching project restores its playhead
+  useEffect(() => { ref.current?.seekTo(Math.min(useStore.getState().frame, duration - 1)); }, [activeProject]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // full screen = the whole preview (frame + seek bar), so playback controls stay usable
+  const toggleFull = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else box.current?.requestFullscreen().catch(() => useStore.getState().toast('Trình duyệt không cho phép toàn màn hình', 'error'));
+  };
+  useEffect(() => {
+    const onChange = () => setFull(!!box.current && document.fullscreenElement === box.current);
+    const onKey = () => toggleFull();
+    document.addEventListener('fullscreenchange', onChange);
+    window.addEventListener('preview-fullscreen', onKey);
+    return () => { document.removeEventListener('fullscreenchange', onChange); window.removeEventListener('preview-fullscreen', onKey); };
+  }, []);
+
   return (
-    <div className="preview">
+    <div className="preview" ref={box}>
       <div className="tabbar">
         <div className="tab active"><Icon name="comp" /> {isMain ? project.name || 'Main' : openComp}</div>
         {!isMain && (
@@ -194,6 +213,9 @@ export const Preview: React.FC = () => {
         ) : (
           <div className="player-error">Không tìm thấy component “{openComp}”</div>
         )}
+        <button className="fs-btn" onClick={toggleFull} title={isFull ? 'Thoát toàn màn hình (F / Esc)' : 'Xem toàn màn hình (F)'}>
+          <Icon name={isFull ? 'fsexit' : 'fullscreen'} size={16} />
+        </button>
       </div>
       {(isMain || !!Custom) && <SeekBar durationFrames={duration} />}
     </div>

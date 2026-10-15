@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useStore } from './store';
+import { toggleLayout, useStore, type Layout } from './store';
+import { Icon } from './components/Icon';
 import { ChatPanel } from './components/ChatPanel';
 import { LeftPanel } from './components/LeftPanel';
 import { Preview } from './components/Preview';
@@ -32,6 +33,7 @@ function useShortcuts() {
         case 'ArrowLeft': seek(currentTime() - (e.shiftKey ? 1 : 1 / fps())); break;
         case 'ArrowRight': seek(currentTime() + (e.shiftKey ? 1 : 1 / fps())); break;
         case 'Home': seek(0); break;
+        case 'f': case 'F': window.dispatchEvent(new Event('preview-fullscreen')); break;
       }
     };
     window.addEventListener('keydown', onKey);
@@ -47,8 +49,17 @@ export const App: React.FC = () => {
   return <Editor />;
 };
 
+/** Thin bar shown in place of a collapsed panel; click to expand. */
+const Strip: React.FC<{ k: keyof Layout; label: string }> = ({ k, label }) => (
+  <button className={`collapsed-strip ${k}`} onClick={() => toggleLayout(k)} title={`Mở ${label}`}>
+    <Icon name={k === 'left' ? 'chevron' : k === 'right' ? 'chevron' : 'chevdown'} size={13} />
+    <span>{label}</span>
+  </button>
+);
+
 const Editor: React.FC = () => {
   const project = useStore((s) => s.project);
+  const layout = useStore((s) => s.layout);
   const toasts = useStore((s) => s.toasts);
   const [chatW, setChatW] = useState(400);
   const [tlH, setTlH] = useState(300);
@@ -70,18 +81,20 @@ const Editor: React.FC = () => {
     <div className="app" style={{ gridTemplateColumns: `${chatW}px 4px 1fr` }}>
       <ErrorBoundary label="chat"><ChatPanel /></ErrorBoundary>
       <div className="splitter-x" onPointerDown={drag('x')} />
-      <div className="editor" style={{ gridTemplateRows: `auto 1fr 4px ${tlH}px` }}>
+      <div className="editor" style={{ gridTemplateRows: layout.timeline ? 'auto 1fr 0px 39px' : `auto 1fr 4px ${tlH}px` }}>
         <TopBar />
         {project ? (
-          <div className="editor-main">
-            <ErrorBoundary label="panel trái"><LeftPanel /></ErrorBoundary>
+          <div className="editor-main" style={{ ...(layout.left ? { '--lw': '30px' } : {}), ...(layout.right ? { '--rw': '30px' } : {}) } as React.CSSProperties}>
+            {layout.left && <Strip k="left" label="Assets" />}
+            <div style={{ display: layout.left ? 'none' : 'contents' }}><ErrorBoundary label="panel trái"><LeftPanel /></ErrorBoundary></div>
             <ErrorBoundary label="preview"><Preview /></ErrorBoundary>
-            <ErrorBoundary label="inspector"><Inspector /></ErrorBoundary>
+            {layout.right && <Strip k="right" label="Inspector" />}
+            <div style={{ display: layout.right ? 'none' : 'contents' }}><ErrorBoundary label="inspector"><Inspector /></ErrorBoundary></div>
           </div>
         ) : (
           <div className="loading">Đang kết nối server…</div>
         )}
-        <div className="splitter-y" onPointerDown={drag('y')} />
+        <div className="splitter-y" style={layout.timeline ? { display: 'none' } : undefined} onPointerDown={drag('y')} />
         {project && <ErrorBoundary label="timeline"><Timeline /></ErrorBoundary>}
       </div>
       <YouTubeDialog />

@@ -44,6 +44,22 @@ docker compose logs -f            # xem log, Ctrl+C để thoát
 
 Mở trình duyệt: **http://<địa-chỉ-máy-chủ>:5180**
 
+### Máy chủ không có mạng ra GitHub / muốn build một lần, chạy nhiều nơi
+
+Build image ở một máy có Docker rồi chép sang máy chủ:
+
+```bash
+# máy build
+docker compose build
+docker save ai-video:latest | gzip > ai-video-image.tgz
+scp ai-video-image.tgz docker-compose.yml user@may-chu:~/ai-video/
+
+# máy chủ
+cd ~/ai-video
+gunzip -c ai-video-image.tgz | docker load
+docker compose up -d --no-build
+```
+
 - Đăng nhập lần đầu bằng `admin` / mật khẩu trong `.env`. Nếu không đặt, mật khẩu mặc định là `Hoang2026`.
 - App sẽ yêu cầu **đổi mật khẩu** ngay.
 - Thêm tài khoản cho người khác: menu tài khoản (góc trên phải) → **Quản lý tài khoản**.
@@ -84,7 +100,17 @@ Nếu muốn dùng tài khoản Anthropic Console (trả theo lượng dùng), b
 | `ai-video_home` → `/home/node` | Tài khoản app, đăng nhập Claude Code, lịch sử chat, cache model |
 | `./library/music` → `/app/library/music` | Nhạc riêng: bỏ file mp3/m4a vào đây, thư mục con được dùng làm thể loại |
 
-Sao lưu:
+### Sao lưu từng dự án ngay trong app
+
+Mở **Dự án** (nút 📁 trên thanh trên cùng):
+
+- Nút **⬇ Sao lưu** trên mỗi dự án tải về một file `.zip` gồm: timeline (`project.json`), toàn bộ media, video đã xuất (có thể bỏ), motion component và hội thoại Claude của dự án.
+- **Khôi phục từ file…** tải file `.zip` lên và tạo thành một **dự án mới** (không ghi đè dự án đang có). Motion component chỉ được thêm nếu chưa có.
+- Tải lên được chia thành từng phần 8 MB nên chạy được qua Cloudflare Tunnel / proxy giới hạn 100 MB mỗi request.
+
+**Chuyển dự án từ máy dev sang máy chủ mới:** ở máy dev bấm Sao lưu → ở máy chủ bấm Khôi phục từ file.
+
+### Sao lưu toàn bộ (volume)
 
 ```bash
 docker run --rm -v ai-video_workspace:/data -v $PWD:/backup alpine tar czf /backup/workspace-$(date +%F).tgz -C /data .
@@ -103,6 +129,8 @@ Khôi phục: tạo lại volume rồi giải nén ngược với `tar xzf … -
 |---|---|---|
 | `AIV_ADMIN_PASSWORD` | `Hoang2026` | Mật khẩu admin, chỉ dùng cho **lần chạy đầu** (sau đó đổi trong app) |
 | `RENDER_CONCURRENCY` | `1` | Số frame render song song. Đặt 2–4 nếu RAM từ 16 GB trở lên |
+| `RENDER_TIMEOUT_MS` | `600000` | Thời gian tối đa chờ một frame (máy thiếu RAM có thể rất chậm) |
+| `RENDER_VIDEO_CACHE_MB` | `256` | Bộ nhớ đệm frame video khi render. Tăng (512–1024) nếu nhiều RAM để render nhanh hơn |
 | build arg `WITH_TTS` | `1` | Đặt `"0"` để bỏ giọng đọc AI, image nhẹ hơn khoảng 1,5 GB |
 | build arg `CLAUDE_CODE_VERSION` | `latest` | Ghim phiên bản Claude Code CLI |
 
