@@ -39,6 +39,9 @@ export function splitAtPlayhead() {
 export function deleteSelection() {
   const s = useStore.getState();
   if (!s.selection) return;
+  const sub = /^sub:(\d+)$/.exec(s.selection);
+  if (sub) { s.update((p) => { p.subtitles.cues.splice(Number(sub[1]), 1); }); s.select(null); return; }
+  if (s.selection === 'subs') return;
   s.update((p) => { for (const t of p.tracks) t.clips = t.clips.filter((c: any) => c.id !== s.selection); }); // eslint-disable-line @typescript-eslint/no-explicit-any
   s.select(null);
 }

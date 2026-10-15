@@ -72,6 +72,64 @@ const SeekBar: React.FC<{ durationFrames: number }> = ({ durationFrames }) => {
   );
 };
 
+const FORMATS: [string, number, number, string][] = [
+  ['9:16', 1080, 1920, 'Dọc · Reels / TikTok / Shorts'],
+  ['16:9', 1920, 1080, 'Ngang · YouTube'],
+  ['1:1', 1080, 1080, 'Vuông · Instagram / Facebook'],
+  ['4:5', 1080, 1350, 'Dọc 4:5 · bài đăng Instagram'],
+  ['16:9 4K', 3840, 2160, 'Ngang 4K (render lâu)'],
+  ['16:9 720p', 1280, 720, 'Ngang 720p (nhẹ, render nhanh)'],
+  ['9:16 720p', 720, 1280, 'Dọc 720p (nhẹ)'],
+];
+
+/** "1080×1920 · 30fps" in the preview header — click to change the output format. */
+const FormatPicker: React.FC = () => {
+  const settings = useStore((s) => s.project.settings);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+  const { width, height, fps } = settings;
+  const set = (patch: Record<string, number>) => useStore.getState().update((p) => { Object.assign(p.settings, patch); }, { record: true });
+  const commit = (k: 'width' | 'height', v: string) => { const n = Math.max(16, Math.round(Number(v) / 2) * 2); if (n && n !== settings[k]) set({ [k]: n }); };
+  const ratio = (w: number, h: number) => { const g = (a: number, b: number): number => (b ? g(b, a % b) : a); const d = g(w, h); return `${w / d}:${h / d}`; };
+  return (
+    <div className="fmt-picker" ref={ref}>
+      <button className="fmt-btn" onClick={() => setOpen(!open)} title="Đổi định dạng xuất (khung hình, độ phân giải, fps)">
+        {width}×{height} · {fps}fps <Icon name="chevdown" size={12} />
+      </button>
+      {open && (
+        <div className="fmt-menu">
+          <div className="section-title">Khung hình</div>
+          {FORMATS.map(([name, w, h, desc]) => (
+            <button key={`${w}x${h}`} className={`fmt-row ${w === width && h === height ? 'active' : ''}`} onClick={() => set({ width: w, height: h })}>
+              <span className="fmt-shape" style={{ aspectRatio: `${w} / ${h}`, [w >= h ? 'width' : 'height']: 22 }} />
+              <span><b>{name}</b> <span className="muted small">{w}×{h}</span><br /><span className="muted small">{desc}</span></span>
+              {w === width && h === height && <Icon name="check" />}
+            </button>
+          ))}
+          <div className="section-title">Tốc độ khung hình</div>
+          <div className="seg fmt-fps">
+            {[24, 25, 30, 50, 60].map((f) => <button key={f} className={f === fps ? 'active' : ''} onClick={() => set({ fps: f })}>{f}</button>)}
+          </div>
+          <div className="fmt-custom">
+            <span className="muted small">Tuỳ chỉnh</span>
+            <input key={`width${width}`} type="number" min={16} step={2} defaultValue={width} onBlur={(e) => commit('width', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') commit('width', (e.target as HTMLInputElement).value); }} />
+            ×
+            <input key={`height${height}`} type="number" min={16} step={2} defaultValue={height} onBlur={(e) => commit('height', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') commit('height', (e.target as HTMLInputElement).value); }} />
+            <span className="muted small">{ratio(width, height)}</span>
+          </div>
+          <div className="muted small fmt-note">Vị trí chữ/logo tính theo tỉ lệ khung nên tự co giãn; ảnh/video dùng chế độ "cover" sẽ được cắt lại theo khung mới. Có thể hoàn tác bằng Ctrl+Z.</div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const Preview: React.FC = () => {
   const project = useStore((s) => s.project);
   const openComp = useStore((s) => s.openComp);
@@ -111,7 +169,7 @@ export const Preview: React.FC = () => {
           <button className="tab-close" onClick={() => useStore.setState({ openComp: 'Main' })} title="Đóng, về timeline chính"><Icon name="x" size={12} /></button>
         )}
         <div className="spacer" />
-        <span className="muted small">{width}×{height} · {fps}fps</span>
+        {isMain ? <FormatPicker /> : <span className="muted small">{width}×{height} · {fps}fps</span>}
       </div>
       <div className="stage">
         {isMain || Custom ? (

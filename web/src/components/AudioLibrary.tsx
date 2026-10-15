@@ -213,6 +213,30 @@ export const VoiceSection: React.FC<{ clipIds: string[]; tts: { text: string; vo
   );
 };
 
+/** Progress + seek for whatever the shared preview <audio> is playing. */
+const NowPlaying: React.FC<{ title: string; onStop: () => void }> = ({ title, onStop }) => {
+  const [t, setT] = useState(0);
+  const [d, setD] = useState(0);
+  useEffect(() => {
+    if (!previewAudio) return;
+    const u = () => { setT(previewAudio.currentTime); setD(previewAudio.duration || 0); };
+    u();
+    previewAudio.addEventListener('timeupdate', u);
+    previewAudio.addEventListener('loadedmetadata', u);
+    return () => { previewAudio.removeEventListener('timeupdate', u); previewAudio.removeEventListener('loadedmetadata', u); };
+  }, []);
+  return (
+    <div className="now-playing">
+      <button className="icon-btn" onClick={onStop} title="Dừng"><Icon name="pause" /></button>
+      <div className="np-body">
+        <div className="lib-title">{title}</div>
+        <input type="range" min={0} max={d || 1} step={0.1} value={t} onChange={(e) => { if (previewAudio) previewAudio.currentTime = Number(e.target.value); }} />
+      </div>
+      <span className="muted small num">{fmt(t)} / {d ? fmt(d) : '…'}</span>
+    </div>
+  );
+};
+
 /* ---------------- music ---------------- */
 
 export const MusicPanel: React.FC = () => {
@@ -262,16 +286,16 @@ export const MusicPanel: React.FC = () => {
           <option value="180">≤ 3 phút</option>
         </select>
       </div>
-      <div className="chips">
-        {facets?.feels.slice(0, 14).map((f) => (
-          <button key={f} className={`chip ${feel === f ? 'active' : ''}`} onClick={() => setFeel(feel === f ? '' : f)}>{f}</button>
-        ))}
-      </div>
+      <select value={feel} onChange={(e) => setFeel(e.target.value)}>
+        <option value="">Mọi cảm xúc / không khí</option>
+        {facets?.feels.map((f) => <option key={f} value={f}>{f}</option>)}
+      </select>
       {err && <div className="error small">{err}</div>}
       <div className="muted small">{loading ? 'Đang tìm…' : `${items.length}${items.length === 80 ? '+' : ''} bài`} · {facets?.total ?? '…'} bài trong thư viện</div>
+      {playing && items.find((t) => t.id === playing) && <NowPlaying title={items.find((t) => t.id === playing)!.title} onStop={() => previewAudio?.pause()} />}
       <div className="lib-list">
         {items.map((t) => (
-          <div key={t.id} className="lib-item" title={t.description}>
+          <div key={t.id} className={`lib-item ${playing === t.id ? 'playing' : ''}`} title={t.description}>
             <button className="icon-btn" onClick={() => toggle(t.id, t.url)}><Icon name={playing === t.id ? 'pause' : 'play'} /></button>
             <div className="lib-meta">
               <div className="lib-title">{t.title}</div>

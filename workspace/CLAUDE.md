@@ -91,13 +91,16 @@ Track types: `sequence` (clips play one after another, no `start`; `transition` 
 ### Clip kinds (every clip has a unique `id`, optional `name`)
 
 - **video**: `{ "kind":"video", "assetId", "in", "out", "volume":1, "speed":1, "fit":"cover|contain" }` — `in/out` are source seconds.
-- **image**: `{ "kind":"image", "assetId", "duration", "fit", "kenBurns": { "from":1, "to":1.15, "origin":"center" } }`
+- **image**: `{ "kind":"image", "assetId", "duration", "fit", "kenBurns": { "preset":"zoom-in", "amount":0.15 } }` — presets:
+  `zoom-in|zoom-out|pan-left|pan-right|pan-up|pan-down|zoom-in-left|zoom-in-right`; or manual `{ "from":1, "to":1.15, "origin":"center" }`.
 - **solid**: `{ "kind":"solid", "color":"#111", "duration" }`
 - **component** (motion graphic): `{ "kind":"component", "component":"TitleCard", "props":{…}, "duration" }`
 - **text** (overlay tracks only): `{ "kind":"text", "text", "start", "duration", "x":0.5, "y":0.5, "width":0.8,
   "style": { "fontSize":72, "color":"#fff", "fontFamily":"Georgia, serif", "fontWeight":700, "align":"center|left|right",
   "background":"rgba(0,0,0,.5)", "uppercase":false, "letterSpacing":2, "shadow":"…" },
-  "animation": { "in":"fade|slide-up|slide-down|slide-left|slide-right|scale|typewriter|blur|none", "out":"fade|…", "duration":0.6 } }`
+  "animation": { "in":"fade|slide-up|slide-down|slide-left|slide-right|scale|typewriter|blur|zoom-in|zoom-out|pop|bounce|drop|rotate|flip|wipe|wipe-up|none",
+  "out":"fade|…", "duration":0.6, "loop":"pulse|heartbeat|float|shake|wiggle|spin|zoom|none", "loopStrength":1 } }`
+  — `loop` is a continuous emphasis while the clip is visible (e.g. `pulse` on a price, `float` on a logo).
   — `x`,`y` are the 0..1 position of the text box anchor (centre; left/right edge when align is left/right).
 - **overlay media/solid/component** on overlay tracks also take `start`, `x`, `y` (centre, 0..1), `width`, `height` (0..1 of frame),
   `opacity`, `borderRadius`, `animation`.
@@ -108,8 +111,10 @@ describes the transition **into the next clip** (it shortens the total duration 
 
 ## Motion graphics
 
-Templates in `custom/`: `TitleCard`, `LowerThird` (transparent, use on overlay), `KineticText` (words in `*stars*` are highlighted),
-`StatCounter`. To create a new one: write `custom/MyThing.tsx` exporting a React component that uses Remotion
+Templates in `custom/` (see `custom/index.tsx` for all + default props): `TitleCard`, `LowerThird` (transparent, use on overlay),
+`KineticText` (words in `*stars*` are highlighted), `StatCounter`, `Countdown` (3‑2‑1‑GO), `QuoteCard` (testimonial scene),
+transparent overlays `Confetti` (`mode: burst|rain`), `CallToAction` (subscribe/like button with click), `ProgressBar`
+(span the whole video), `LightLeak` (1–2s warm flare between scenes), `Snowfall`, `FallingLeaves`. To create a new one: write `custom/MyThing.tsx` exporting a React component that uses Remotion
 (`useCurrentFrame`, `useVideoConfig`, `spring`, `interpolate`, `AbsoluteFill`, `Img`, `staticFile` is NOT available — use
 props for media URLs: `/media/<file>`). Register it in `custom/index.tsx` (`components` + optional `componentDefaults`), then add a
 `component` clip. The component gets its own clip duration via `useVideoConfig().durationInFrames`. Use a transparent

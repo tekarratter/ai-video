@@ -2,7 +2,12 @@
 // All times in project.json are in SECONDS. Remotion converts to frames at render time.
 
 export const TRANSITIONS = ['none', 'fade', 'slide', 'wipe', 'flip', 'clock-wipe'];
-export const TEXT_ANIMATIONS = ['none', 'fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'typewriter', 'blur'];
+export const TEXT_ANIMATIONS = ['none', 'fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'typewriter', 'blur',
+  'zoom-in', 'zoom-out', 'pop', 'bounce', 'drop', 'rotate', 'flip', 'wipe', 'wipe-up'];
+/** Continuous emphasis while a clip is on screen (`animation.loop`, strength `animation.loopStrength`). */
+export const LOOP_ANIMATIONS = ['none', 'pulse', 'heartbeat', 'float', 'shake', 'wiggle', 'spin', 'zoom'];
+/** Image `kenBurns.preset` (strength `kenBurns.amount`, default 0.15). */
+export const KEN_BURNS_PRESETS = ['', 'zoom-in', 'zoom-out', 'pan-left', 'pan-right', 'pan-up', 'pan-down', 'zoom-in-left', 'zoom-in-right'];
 
 export function newId(prefix = 'c') {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;

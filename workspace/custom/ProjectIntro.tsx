@@ -3,8 +3,8 @@ import { AbsoluteFill, Img, interpolate, spring, useCurrentFrame, useVideoConfig
 import { mediaUrl } from './mediaUrl';
 
 /** Opening scene: hero photo with zoom, project name and tagline. Main-track scene. */
-export const ProjectIntro: React.FC<{ src?: string; kicker?: string; title?: string; subtitle?: string; accent?: string }> = ({
-  src, kicker = 'SolidLine Project', title = 'THE WINDING\nHOUSE', subtitle = 'From open patio to sunroom', accent = '#1e73be',
+export const ProjectIntro: React.FC<{ src?: string; kicker?: string; title?: string; subtitle?: string; accent?: string; kickerColor?: string; tint?: string }> = ({
+  src, kicker = 'SolidLine Project', title = 'THE WINDING\nHOUSE', subtitle = 'From open patio to sunroom', accent = '#1e73be', kickerColor = '#7cc4ff', tint = '11,22,34',
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -16,9 +16,9 @@ export const ProjectIntro: React.FC<{ src?: string; kicker?: string; title?: str
   return (
     <AbsoluteFill style={{ background: '#0b1622', fontFamily: 'Inter, Arial, sans-serif', justifyContent: 'center' }}>
       {src ? <Img src={mediaUrl(src)!} style={{ position: 'absolute', height: '100%', left: '50%', transform: `translateX(-50%) scale(${z})`, filter: 'brightness(0.55)' }} /> : null}
-      <AbsoluteFill style={{ background: 'linear-gradient(180deg, rgba(11,22,34,0.1) 30%, rgba(11,22,34,0.85) 100%)' }} />
+      <AbsoluteFill style={{ background: `linear-gradient(180deg, rgba(${tint},0.1) 30%, rgba(${tint},0.85) 100%)` }} />
       <div style={{ position: 'relative', padding: '0 80px', marginTop: 420 }}>
-        <div style={{ color: '#7cc4ff', fontSize: 40, fontWeight: 800, letterSpacing: 10, textTransform: 'uppercase', opacity: k, transform: `translateY(${(1 - k) * 30}px)` }}>{kicker}</div>
+        <div style={{ color: kickerColor, fontSize: 40, fontWeight: 800, letterSpacing: 10, textTransform: 'uppercase', opacity: k, transform: `translateY(${(1 - k) * 30}px)` }}>{kicker}</div>
         {lines.map((l, i) => {
           const p = spring({ frame: frame - 12 - i * 7, fps, config: { damping: 13, mass: 0.7 } });
           return (

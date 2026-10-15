@@ -16,6 +16,14 @@ import { ProjectIntro } from './ProjectIntro';
 import { FeatureList } from './FeatureList';
 import { BeforeAfter } from './BeforeAfter';
 import { BrandOutro } from './BrandOutro';
+import { Snowfall } from './Snowfall';
+import { FallingLeaves } from './FallingLeaves';
+import { Countdown } from './Countdown';
+import { Confetti } from './Confetti';
+import { CallToAction } from './CallToAction';
+import { QuoteCard } from './QuoteCard';
+import { ProgressBar } from './ProgressBar';
+import { LightLeak } from './LightLeak';
 
 export const components: Record<string, React.FC<any>> = {
   TitleCard,
@@ -32,6 +40,14 @@ export const components: Record<string, React.FC<any>> = {
   FeatureList,
   BeforeAfter,
   BrandOutro,
+  Snowfall,
+  FallingLeaves,
+  Countdown,
+  Confetti,
+  CallToAction,
+  QuoteCard,
+  ProgressBar,
+  LightLeak,
 };
 
 /** Default props shown in the editor's "Motion" library (optional). */
@@ -50,4 +66,12 @@ export const componentDefaults: Record<string, Record<string, unknown>> = {
   FeatureList: { items: ['Feature one', 'Feature two'] },
   BeforeAfter: { before: '/media/WINDING_HOUSE_4.jpg', after: '/media/WINDING_HOUSE_14.jpg' },
   BrandOutro: { logo: '/media/Logo_SolidLine_US_rounded.png' },
+  Snowfall: { count: 70 },
+  FallingLeaves: { count: 22 },
+  Countdown: { from: 3, endText: 'GO!', accent: '#f59e0b' },
+  Confetti: { count: 140, mode: 'burst' },
+  CallToAction: { label: 'ĐĂNG KÝ', doneLabel: 'ĐÃ ĐĂNG KÝ', color: '#ef4444', icon: '🔔' },
+  QuoteCard: { quote: 'Đội ngũ làm việc rất chuyên nghiệp, đúng tiến độ và kết quả vượt mong đợi.', author: 'Anh Minh', role: 'Khách hàng' },
+  ProgressBar: { color: '#f59e0b', thickness: 10, position: 'bottom' },
+  LightLeak: { color: '#ff8a3d', color2: '#ffd166', intensity: 0.85 },
 };

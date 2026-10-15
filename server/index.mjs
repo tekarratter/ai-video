@@ -218,11 +218,34 @@ app.get('/api/custom-components', (req, res) => {
 });
 
 app.get('/api/jobs', (req, res) => res.json([...jobs.values()].slice(-30)));
-app.get('/api/exports', (req, res) => {
+const exportInfo = new Map(); // name|mtime → { duration, width, height }
+function probeExport(file) {
+  return new Promise((resolve) => execFile('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height:format=duration', '-of', 'json', file], (err, out) => {
+    try { const j = JSON.parse(out); resolve({ duration: Number(j.format?.duration) || null, width: j.streams?.[0]?.width, height: j.streams?.[0]?.height }); } catch { resolve({}); }
+  }));
+}
+app.get('/api/exports', async (req, res) => {
   const files = fs.readdirSync(EXPORT_DIR).filter((f) => f.endsWith('.mp4'))
-    .map((f) => ({ name: f, url: `/exports/${encodeURIComponent(f)}`, size: fs.statSync(path.join(EXPORT_DIR, f)).size, mtime: fs.statSync(path.join(EXPORT_DIR, f)).mtimeMs }))
+    .map((f) => { const st = fs.statSync(path.join(EXPORT_DIR, f)); return { name: f, url: `/exports/${encodeURIComponent(f)}`, size: st.size, mtime: st.mtimeMs }; })
     .sort((a, b) => b.mtime - a.mtime);
+  const busy = rendering && [...jobs.values()].some((j) => j.type === 'render' && !['done', 'error'].includes(j.stage));
+  for (const f of files) {
+    const key = `${f.name}|${f.mtime}`;
+    if (!exportInfo.has(key) && !(busy && Date.now() - f.mtime < 60e3)) exportInfo.set(key, await probeExport(path.join(EXPORT_DIR, f.name)));
+    Object.assign(f, exportInfo.get(key) || {});
+    const srt = f.name.replace(/\.mp4$/, '.srt');
+    if (fs.existsSync(path.join(EXPORT_DIR, srt))) f.srtUrl = `/exports/${encodeURIComponent(srt)}`;
+  }
   res.json(files);
+});
+app.delete('/api/exports/:name', (req, res) => {
+  const name = path.basename(String(req.params.name));
+  const file = path.join(EXPORT_DIR, name);
+  if (!name.endsWith('.mp4') || !fs.existsSync(file)) return res.status(404).json({ error: 'Không tìm thấy file' });
+  if ([...jobs.values()].some((j) => !['done', 'error'].includes(j.stage) && String(j.file || '').endsWith(name))) return res.status(409).json({ error: 'File đang được dùng' });
+  fs.rmSync(file);
+  fs.rmSync(file.replace(/\.mp4$/, '.srt'), { force: true });
+  res.json({ ok: true });
 });
 
 let rendering = null;

@@ -2,8 +2,8 @@ import React from 'react';
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 
 /** Step caption: big outlined number, label, title. Transparent — use on an overlay track. */
-export const StepTitle: React.FC<{ step?: string; label?: string; title?: string; accent?: string; y?: number }> = ({
-  step = '01', label = 'STEP 1', title = 'Title', accent = '#1e73be', y = 0.6,
+export const StepTitle: React.FC<{ step?: string; label?: string; title?: string; accent?: string; accent2?: string; y?: number }> = ({
+  step = '01', label = 'STEP 1', title = 'Title', accent = '#1e73be', accent2 = '#7cc4ff', y = 0.6,
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames, height } = useVideoConfig();
@@ -21,7 +21,7 @@ export const StepTitle: React.FC<{ step?: string; label?: string; title?: string
             <div style={{ background: accent, color: '#fff', fontWeight: 800, fontSize: 34, letterSpacing: 5, padding: '8px 20px', borderRadius: 8, transform: `translateY(${(1 - b) * 60}px)` }}>{label}</div>
           </div>
         </div>
-        <div style={{ width: `${bar * 100}%`, height: 6, background: `linear-gradient(90deg, ${accent}, #7cc4ff)`, borderRadius: 3, margin: '18px 0' }} />
+        <div style={{ width: `${bar * 100}%`, height: 6, background: `linear-gradient(90deg, ${accent}, ${accent2})`, borderRadius: 3, margin: '18px 0' }} />
         <div style={{ color: '#fff', fontSize: 78, fontWeight: 900, lineHeight: 1.08, whiteSpace: 'pre-line', opacity: b, transform: `translateY(${(1 - b) * 40}px)`, textShadow: '0 6px 30px rgba(0,0,0,.7)' }}>{title}</div>
       </div>
     </AbsoluteFill>

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { componentDefaults } from '@custom';
-import { assetById, clipDuration, findClip, layoutTrack, LOGO_DEFAULTS, LOGO_POSITIONS, projectDuration, TEXT_ANIMATIONS, TRANSITIONS } from '../../../shared/timeline.js';
+import { assetById, clipDuration, findClip, layoutTrack, KEN_BURNS_PRESETS, LOGO_DEFAULTS, LOGO_POSITIONS, LOOP_ANIMATIONS, projectDuration, TEXT_ANIMATIONS, TRANSITIONS } from '../../../shared/timeline.js';
 import { useStore } from '../store';
+import { currentTime, seek } from '../player';
 import { addComponentClip, addSolidClip, addTextClip, uploadFiles, UploadProgress } from './LeftPanel';
 import { askClaude } from './ChatPanel';
 import { Icon } from './Icon';
@@ -10,7 +11,7 @@ import { openDub } from './DubDialog';
 import { VoiceSection } from './AudioLibrary';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type Field = { key: string; label: string; type: 'number' | 'text' | 'textarea' | 'color' | 'select' | 'checkbox' | 'range'; step?: number; min?: number; max?: number; options?: string[] };
+type Field = { key: string; label: string; type: 'number' | 'text' | 'textarea' | 'color' | 'select' | 'checkbox' | 'range'; step?: number; min?: number; max?: number; options?: string[]; def?: number };
 
 const get = (o: any, path: string) => path.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
 const setPath = (o: any, path: string, v: any) => {
@@ -32,6 +33,8 @@ const ANIM: Field[] = [
   { key: 'animation.in', label: 'Hiệu ứng vào', type: 'select', options: TEXT_ANIMATIONS },
   { key: 'animation.out', label: 'Hiệu ứng ra', type: 'select', options: TEXT_ANIMATIONS },
   { key: 'animation.duration', label: 'Thời lượng hiệu ứng', type: 'number', step: 0.1 },
+  { key: 'animation.loop', label: 'Hiệu ứng lặp', type: 'select', options: LOOP_ANIMATIONS },
+  { key: 'animation.loopStrength', label: 'Độ mạnh lặp', type: 'range', min: 0.2, max: 3, step: 0.1 },
 ];
 const TRANS: Field[] = [
   { key: 'transition.type', label: 'Chuyển cảnh →', type: 'select', options: TRANSITIONS },
@@ -72,8 +75,11 @@ function fieldsFor(clip: any, trackType: string): Field[] {
       return [...timing,
         { key: 'duration', label: 'Thời lượng (s)', type: 'number', step: 0.1 },
         { key: 'fit', label: 'Khung', type: 'select', options: ['cover', 'contain'] },
-        { key: 'kenBurns.from', label: 'Ken Burns từ', type: 'number', step: 0.05 },
-        { key: 'kenBurns.to', label: 'Ken Burns đến', type: 'number', step: 0.05 }, ...tail];
+        { key: 'kenBurns.preset', label: 'Ken Burns', type: 'select', options: KEN_BURNS_PRESETS },
+        { key: 'kenBurns.amount', label: 'Độ zoom/lia', type: 'range', min: 0.05, max: 0.5, step: 0.01, def: 0.15 },
+        ...(clip.kenBurns?.preset ? [] : [
+          { key: 'kenBurns.from', label: 'Ken Burns từ', type: 'number', step: 0.05 } as Field,
+          { key: 'kenBurns.to', label: 'Ken Burns đến', type: 'number', step: 0.05 } as Field]), ...tail];
     case 'solid':
       return [...timing, { key: 'color', label: 'Màu', type: 'color' }, { key: 'duration', label: 'Thời lượng (s)', type: 'number', step: 0.1 }, ...tail];
     case 'component':
@@ -107,8 +113,8 @@ const FieldInput: React.FC<{ f: Field; value: any; onChange: (v: any) => void }>
     case 'checkbox': return <input type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked || undefined)} />;
     case 'range': return (
       <div className="row gap">
-        <input type="range" min={f.min} max={f.max} step={f.step} value={value ?? 1} onChange={(e) => onChange(Number(e.target.value))} />
-        <span className="num">{Number(value ?? 1).toFixed(2)}</span>
+        <input type="range" min={f.min} max={f.max} step={f.step} value={value ?? f.def ?? 1} onChange={(e) => onChange(Number(e.target.value))} />
+        <span className="num">{Number(value ?? f.def ?? 1).toFixed(2)}</span>
       </div>
     );
     case 'number': return <input type="number" step={f.step} value={value ?? ''} onChange={(e) => onChange(num(e.target.value))} />;
@@ -189,6 +195,110 @@ const ClipInspector: React.FC<{ id: string }> = ({ id }) => {
       <div className="actions">
         <button onClick={() => askClaude(`Với clip ${id} (${clip.kind}${clip.text ? ` "${clip.text}"` : ''}): `)}><Icon name="sparkle" /> Hỏi Claude về clip này…</button>
         <button onClick={() => { useStore.getState().update((p) => { for (const t of p.tracks) t.clips = t.clips.filter((c: any) => c.id !== id); }); useStore.getState().select(null); }}><Icon name="trash" /> Xoá clip</button>
+      </div>
+    </div>
+  );
+};
+
+/* ---------- subtitles ---------- */
+const fmtT = (t: number) => `${Math.floor(t / 60)}:${(t % 60).toFixed(2).padStart(5, '0')}`;
+
+const SubtitleStyle: React.FC = () => {
+  const st = useStore((s) => s.project.subtitles);
+  const set = (k: string, v: any) => useStore.getState().update((p) => { setPath(p.subtitles, k, v); }, { record: true });
+  const s = st.style;
+  return (
+    <>
+      <div className="section-title">Kiểu phụ đề (áp dụng cho tất cả)</div>
+      <div className="form">
+        <label className="field checkbox"><span>Hiển thị</span><input type="checkbox" checked={st.enabled} onChange={(e) => set('enabled', e.target.checked)} /></label>
+        <label className="field"><span>Cỡ chữ</span><input type="number" step={2} value={s.fontSize} onChange={(e) => set('style.fontSize', Number(e.target.value))} /></label>
+        <label className="field color"><span>Màu chữ</span><FieldInput f={{ key: 'c', label: '', type: 'color' }} value={s.color} onChange={(v) => set('style.color', v)} /></label>
+        <label className="field"><span>Nền</span>
+          <select value={s.background} onChange={(e) => set('style.background', e.target.value)}>
+            {!['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.85)', 'transparent', 'rgba(255,255,255,0.85)'].includes(s.background) && <option value={s.background}>{s.background}</option>}
+            <option value="rgba(0,0,0,0.55)">Đen mờ</option>
+            <option value="rgba(0,0,0,0.85)">Đen đậm</option>
+            <option value="rgba(255,255,255,0.85)">Trắng</option>
+            <option value="transparent">Không nền</option>
+          </select>
+        </label>
+        <label className="field"><span>Độ đậm</span>
+          <select value={String(s.fontWeight)} onChange={(e) => set('style.fontWeight', Number(e.target.value))}>{[400, 600, 700, 800, 900].map((w) => <option key={w} value={w}>{w}</option>)}</select>
+        </label>
+        <label className="field range"><span>Vị trí dọc</span>
+          <div className="row gap"><input type="range" min={0.05} max={0.95} step={0.01} value={s.position} onChange={(e) => set('style.position', Number(e.target.value))} /><span className="num small">{Math.round(s.position * 100)}%</span></div>
+        </label>
+        <label className="field range"><span>Bề rộng tối đa</span>
+          <div className="row gap"><input type="range" min={0.4} max={1} step={0.05} value={s.maxWidth} onChange={(e) => set('style.maxWidth', Number(e.target.value))} /><span className="num small">{Math.round(s.maxWidth * 100)}%</span></div>
+        </label>
+      </div>
+    </>
+  );
+};
+
+const SubtitleList: React.FC<{ current?: number }> = ({ current }) => {
+  const cues = useStore((s) => s.project.subtitles.cues);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => { ref.current?.querySelector('.sub-row.active')?.scrollIntoView({ block: 'nearest' }); }, [current]);
+  return (
+    <>
+      <div className="section-title">Tất cả phụ đề ({cues.length})</div>
+      <div className="sub-list" ref={ref}>
+        {cues.map((c: any, i: number) => (
+          <div key={i} className={`sub-row ${i === current ? 'active' : ''}`} onClick={() => { useStore.getState().select(`sub:${i}`); seek(c.start + 0.01); }}>
+            <span className="num muted small">{fmtT(c.start)}</span>
+            <span className="sub-text">{c.text}</span>
+          </div>
+        ))}
+        {!cues.length && <div className="muted small">Chưa có phụ đề. Chọn một video/âm thanh → "Tạo phụ đề", hoặc thêm câu bên dưới.</div>}
+      </div>
+      <button className="btn small" onClick={() => {
+        const t = currentTime();
+        useStore.getState().update((p) => {
+          p.subtitles.cues.push({ start: +t.toFixed(2), end: +(t + 2).toFixed(2), text: 'Phụ đề mới' });
+          p.subtitles.cues.sort((a: any, b: any) => a.start - b.start);
+          useStore.setState({ selection: `sub:${p.subtitles.cues.findIndex((c: any) => c.start === +t.toFixed(2) && c.text === 'Phụ đề mới')}` });
+        }, { record: true });
+      }}><Icon name="plus" /> Thêm câu tại playhead</button>
+    </>
+  );
+};
+
+const SubtitleInspector: React.FC<{ index: number | null }> = ({ index }) => {
+  const cues = useStore((s) => s.project.subtitles.cues);
+  const cue = index != null ? cues[index] : null;
+  const set = (k: string, v: any) => useStore.getState().update((p) => {
+    const c = p.subtitles.cues[index!];
+    if (!c) return;
+    c[k] = v;
+    if (k === 'start' && c.end <= v) c.end = +(v + 0.5).toFixed(2);
+  }, { record: true });
+  const go = (i: number) => { if (cues[i]) { useStore.getState().select(`sub:${i}`); seek(cues[i].start + 0.01); } };
+  return (
+    <div className="inspector-body">
+      <div className="insp-title"><Icon name="text" /> <b>{cue ? `Phụ đề #${index! + 1}` : 'Phụ đề'}</b></div>
+      {cue && (
+        <>
+          <div className="form">
+            <label className="field textarea"><span>Nội dung</span><textarea rows={3} value={cue.text} onChange={(e) => set('text', e.target.value)} /></label>
+            <label className="field"><span>Bắt đầu (s)</span><input type="number" step={0.05} value={cue.start} onChange={(e) => set('start', Number(e.target.value))} /></label>
+            <label className="field"><span>Kết thúc (s)</span><input type="number" step={0.05} value={cue.end} onChange={(e) => set('end', Number(e.target.value))} /></label>
+            <div className="meta-grid"><span>Thời lượng</span><b>{(cue.end - cue.start).toFixed(2)}s · {cue.text.length} ký tự</b></div>
+          </div>
+          <div className="row gap wrap" style={{ marginTop: 6 }}>
+            <button className="btn small" disabled={index === 0} onClick={() => go(index! - 1)}><Icon name="prev" /> Trước</button>
+            <button className="btn small" disabled={index === cues.length - 1} onClick={() => go(index! + 1)}>Sau <Icon name="next" /></button>
+            <button className="btn small" title="Đặt điểm bắt đầu = playhead" onClick={() => set('start', +currentTime().toFixed(2))}>⇤ Playhead</button>
+            <button className="btn small" title="Đặt điểm kết thúc = playhead" onClick={() => set('end', +currentTime().toFixed(2))}>Playhead ⇥</button>
+            <button className="btn small" onClick={() => { useStore.getState().update((p) => { p.subtitles.cues.splice(index!, 1); }, { record: true }); useStore.getState().select(null); }}><Icon name="trash" /> Xoá câu</button>
+          </div>
+        </>
+      )}
+      <SubtitleList current={index ?? undefined} />
+      <SubtitleStyle />
+      <div className="actions">
+        <button onClick={() => askClaude('Rà soát toàn bộ phụ đề: sửa chính tả, ngắt câu cho dễ đọc (tối đa ~42 ký tự/dòng), khớp lại thời gian nếu lệch.', false)}><Icon name="sparkle" /> Nhờ Claude sửa phụ đề…</button>
       </div>
     </div>
   );
@@ -322,12 +432,7 @@ const ProjectInspector: React.FC = () => {
       </div>
       <LogoSection />
       <div className="section-title">Phụ đề ({st.cues.length})</div>
-      <div className="form">
-        <label className="field checkbox"><span>Hiển thị</span><input type="checkbox" checked={st.enabled} onChange={(e) => set('subtitles.enabled', e.target.checked)} /></label>
-        <label className="field"><span>Cỡ chữ</span><input type="number" value={st.style.fontSize} onChange={(e) => set('subtitles.style.fontSize', Number(e.target.value))} /></label>
-        <label className="field color"><span>Màu</span><FieldInput f={{ key: 'c', label: '', type: 'color' }} value={st.style.color} onChange={(v) => set('subtitles.style.color', v)} /></label>
-        <label className="field"><span>Vị trí Y</span><input type="number" step={0.01} value={st.style.position} onChange={(e) => set('subtitles.style.position', Number(e.target.value))} /></label>
-      </div>
+      <div className="actions"><button onClick={() => useStore.getState().select('subs')}><Icon name="text" /> Sửa phụ đề & kiểu chữ…</button></div>
       <div className="section-title">Actions</div>
       <div className="actions">
         <button onClick={() => addSolidClip()}><Icon name="square" /> Add Solid</button>
@@ -344,8 +449,6 @@ const Jobs: React.FC = () => {
   const jobMap = useStore((s) => s.jobs);
   const jobs = Object.values(jobMap).sort((a, b) => b.startedAt - a.startedAt);
   const hasUploads = useStore((s) => Object.keys(s.uploads).length > 0);
-  const [exports, setExports] = useState<any[]>([]);
-  useEffect(() => { fetch('/api/exports').then((r) => r.json()).then(setExports); }, [jobs.length, jobs[0]?.stage]);
   return (
     <div className="inspector-body">
       {hasUploads && <div className="section-title">Đang tải lên</div>}
@@ -368,11 +471,48 @@ const Jobs: React.FC = () => {
           {(j as any).studio && <a href={(j as any).studio} target="_blank" rel="noreferrer">Mở YouTube Studio</a>}
         </div>
       ))}
-      <div className="section-title">Exports</div>
-      {exports.map((e) => (
-        <div key={e.name} className="export-row">
-          <a className="export-item" href={e.url} target="_blank" rel="noreferrer" download><Icon name="download" /> {e.name} <span className="muted small">{(e.size / 1e6).toFixed(1)}MB</span></a>
-          <button className="btn small yt" title="Đăng lên YouTube" onClick={() => openYouTube(`exports/${e.name}`)}>▶ YouTube</button>
+      <div className="muted small" style={{ marginTop: 8 }}>File video đã xuất nằm ở tab <a href="#" onClick={(e) => { e.preventDefault(); window.dispatchEvent(new Event('show-exports')); }}>Exports</a>.</div>
+    </div>
+  );
+};
+
+const Exports: React.FC = () => {
+  const jobs = useStore((s) => s.jobs);
+  const [list, setList] = useState<any[] | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const doneCount = Object.values(jobs).filter((j) => j.stage === 'done').length;
+  const load = () => fetch('/api/exports').then((r) => r.json()).then(setList).catch(() => setList([]));
+  useEffect(() => { load(); }, [doneCount]);
+  const del = async (e: any) => {
+    if (!confirm(`Xoá file ${e.name}?`)) return;
+    const r = await fetch(`/api/exports/${encodeURIComponent(e.name)}`, { method: 'DELETE' });
+    if (!r.ok) useStore.getState().toast((await r.json().catch(() => ({}))).error || 'Không xoá được', 'error');
+    load();
+  };
+  const ago = (t: number) => new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+  const dur = (d?: number) => (d ? `${Math.floor(d / 60)}:${String(Math.round(d % 60)).padStart(2, '0')}` : '');
+  return (
+    <div className="inspector-body">
+      {list === null && <div className="muted small">Đang tải…</div>}
+      {list?.length === 0 && <div className="empty">Chưa có video nào được xuất.<br />Bấm <b>Render</b> ở thanh trên.</div>}
+      {list?.map((e) => (
+        <div key={e.name} className={`export-card ${open === e.name ? 'open' : ''}`}>
+          <div className="export-head" onClick={() => setOpen(open === e.name ? null : e.name)} title="Bấm để xem">
+            <video className="export-thumb" src={`${e.url}#t=1`} preload="metadata" muted />
+            <div className="export-meta">
+              <div className="export-name">{e.name}</div>
+              <div className="muted small">{[dur(e.duration), e.width && `${e.width}×${e.height}`, `${(e.size / 1e6).toFixed(1)}MB`].filter(Boolean).join(' · ')}</div>
+              <div className="muted small">{ago(e.mtime)}</div>
+            </div>
+          </div>
+          {open === e.name && <video className="export-player" src={e.url} controls autoPlay />}
+          <div className="row gap wrap">
+            <a className="btn small primary" href={e.url} download={e.name}><Icon name="download" /> Tải về</a>
+            <button className="btn small yt" title="Đăng lên YouTube" onClick={() => openYouTube(`exports/${e.name}`)}>▶ YouTube</button>
+            {e.srtUrl && <a className="btn small" href={e.srtUrl} download><Icon name="text" /> .srt</a>}
+            <a className="btn small" href={e.url} target="_blank" rel="noreferrer" title="Mở ở tab mới"><Icon name="link" /></a>
+            <button className="icon-btn" title="Xoá file" onClick={() => del(e)}><Icon name="trash" /></button>
+          </div>
         </div>
       ))}
     </div>
@@ -383,22 +523,29 @@ export const Inspector: React.FC = () => {
   const selection = useStore((s) => s.selection);
   const project = useStore((s) => s.project);
   const running = useStore((s) => Object.values(s.jobs).some((j) => !['done', 'error'].includes(j.stage)) || Object.values(s.uploads).some((u) => u.state === 'uploading' || u.state === 'processing'));
-  const [tab, setTab] = useState<'insp' | 'jobs'>('insp');
+  const [tab, setTab] = useState<'insp' | 'jobs' | 'exports'>('insp');
   useEffect(() => {
     const show = () => setTab('jobs');
+    const showEx = () => setTab('exports');
     window.addEventListener('show-jobs', show);
-    return () => window.removeEventListener('show-jobs', show);
+    window.addEventListener('show-exports', showEx);
+    return () => { window.removeEventListener('show-jobs', show); window.removeEventListener('show-exports', showEx); };
   }, []);
   const asset = selection ? assetById(project, selection) : null;
   const clip = selection && findClip(project, selection);
+  const subIdx = selection?.startsWith('sub:') ? Number(selection.slice(4)) : null;
   return (
     <div className="inspector panel">
       <div className="panel-tabs">
         <button className={tab === 'insp' ? 'active' : ''} onClick={() => setTab('insp')}>Inspector</button>
         <button className={tab === 'jobs' ? 'active' : ''} onClick={() => setTab('jobs')}>Jobs {running && <span className="dot busy" />}</button>
+        <button className={tab === 'exports' ? 'active' : ''} onClick={() => setTab('exports')}><Icon name="film" size={12} /> Exports</button>
       </div>
       <div className="panel-body">
-        {tab === 'jobs' ? <Jobs /> : clip ? <ClipInspector id={selection!} /> : asset ? <AssetInspector asset={asset} /> : <ProjectInspector />}
+        {tab === 'jobs' ? <Jobs /> : tab === 'exports' ? <Exports />
+          : selection === 'subs' ? <SubtitleInspector index={null} />
+          : subIdx != null && project.subtitles.cues[subIdx] ? <SubtitleInspector index={subIdx} />
+          : clip ? <ClipInspector id={selection!} /> : asset ? <AssetInspector asset={asset} /> : <ProjectInspector />}
       </div>
     </div>
   );

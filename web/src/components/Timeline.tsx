@@ -211,10 +211,16 @@ export const Timeline: React.FC = () => {
             if (r.kind === 'subs') {
               return (
                 <div key="subs" className="tl-row track-row">
-                  <div className="tl-label"><Icon name="text" size={12} /> Phụ đề <span className="muted small">{project.subtitles.cues.length}</span></div>
+                  <div className={`tl-label ${selection === 'subs' ? 'selected' : ''}`} style={{ cursor: 'pointer' }} onClick={() => useStore.getState().select('subs')} title="Chỉnh kiểu chữ / danh sách phụ đề"><Icon name="text" size={12} /> Phụ đề <span className="muted small">{project.subtitles.cues.length}</span></div>
                   <div className="tl-lane" style={{ width }} onPointerDown={scrub}>
                     {project.subtitles.cues.map((c: any, j: number) => (
-                      <div key={j} className="tl-cue" style={{ left: c.start * zoom, width: Math.max(2, (c.end - c.start) * zoom) }} title={c.text}>{c.text}</div>
+                      <div
+                        key={j}
+                        className={`tl-cue ${selection === `sub:${j}` ? 'selected' : ''}`}
+                        style={{ left: c.start * zoom, width: Math.max(2, (c.end - c.start) * zoom) }}
+                        title={`${c.text}\n(bấm để sửa trong Inspector)`}
+                        onPointerDown={(e) => { e.stopPropagation(); useStore.getState().select(`sub:${j}`); seek(c.start + 0.01); }}
+                      >{c.text}</div>
                     ))}
                   </div>
                 </div>

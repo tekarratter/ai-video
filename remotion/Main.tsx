@@ -50,6 +50,18 @@ function presentation(type: string, dir: string | undefined, w: number, h: numbe
 
 /* ---------- clip contents ---------- */
 
+/** Ken Burns presets → [scaleFrom, scaleTo, xFrom, xTo, yFrom, yTo] (translate as a fraction of the image box). */
+const KEN_BURNS: Record<string, (k: number) => number[]> = {
+  'zoom-in': (k) => [1, 1 + k, 0, 0, 0, 0],
+  'zoom-out': (k) => [1 + k, 1, 0, 0, 0, 0],
+  'pan-left': (k) => [1 + k, 1 + k, k / 2.4, -k / 2.4, 0, 0],
+  'pan-right': (k) => [1 + k, 1 + k, -k / 2.4, k / 2.4, 0, 0],
+  'pan-up': (k) => [1 + k, 1 + k, 0, 0, k / 2.4, -k / 2.4],
+  'pan-down': (k) => [1 + k, 1 + k, 0, 0, -k / 2.4, k / 2.4],
+  'zoom-in-left': (k) => [1, 1 + k, 0, k / 2.4, 0, 0],
+  'zoom-in-right': (k) => [1, 1 + k, 0, -k / 2.4, 0, 0],
+};
+
 const Media: React.FC<{ clip: Clip; durationFrames: number; overlay?: boolean }> = ({ clip, durationFrames, overlay }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -58,14 +70,23 @@ const Media: React.FC<{ clip: Clip; durationFrames: number; overlay?: boolean }>
   const fit = clip.fit || (overlay ? 'contain' : 'cover');
   const style: React.CSSProperties = { width: '100%', height: '100%', objectFit: fit };
   if (m.asset.type === 'image') {
-    let scale = 1;
+    let transform = 'none';
     if (clip.kenBurns) {
       const kb = typeof clip.kenBurns === 'object' ? clip.kenBurns : {};
-      scale = interpolate(frame, [0, durationFrames], [kb.from ?? 1, kb.to ?? 1.15], { extrapolateRight: 'clamp' }) as unknown as number;
+      const p = interpolate(frame, [0, durationFrames], [0, 1], { extrapolateRight: 'clamp' });
+      const e = p * p * (3 - 2 * p); // ease in-out
+      const k = kb.amount ?? 0.15;
+      const preset = KEN_BURNS[kb.preset as string];
+      if (preset) {
+        const [s0, s1, x0, x1, y0, y1] = preset(k);
+        transform = `scale(${s0 + (s1 - s0) * e}) translate(${(x0 + (x1 - x0) * e) * 100}%, ${(y0 + (y1 - y0) * e) * 100}%)`;
+      } else {
+        transform = `scale(${(kb.from ?? 1) + ((kb.to ?? 1.15) - (kb.from ?? 1)) * p})`;
+      }
     }
     return (
       <AbsoluteFill style={{ overflow: 'hidden' }}>
-        <Img src={m.src} style={{ ...style, transform: `scale(${scale})`, transformOrigin: clip.kenBurns?.origin || 'center' }} />
+        <Img src={m.src} style={{ ...style, transform, transformOrigin: clip.kenBurns?.origin || 'center' }} />
       </AbsoluteFill>
     );
   }
@@ -87,8 +108,12 @@ const Media: React.FC<{ clip: Clip; durationFrames: number; overlay?: boolean }>
 function animStyle(anim: any, frame: number, total: number, fps: number): React.CSSProperties {
   const a = anim || {};
   const d = Math.max(1, Math.round((a.duration ?? 0.6) * fps));
-  const pin = a.in && a.in !== 'none' ? spring({ frame, fps, durationInFrames: d, config: { damping: 200 } }) : 1;
+  const bouncy = ['pop', 'bounce', 'drop'].includes(a.in);
+  const pin = a.in && a.in !== 'none'
+    ? spring({ frame, fps, durationInFrames: bouncy ? undefined : d, config: bouncy ? { damping: a.in === 'pop' ? 9 : 7, stiffness: 140, mass: 0.7 } : { damping: 200 } })
+    : 1;
   const pout = a.out && a.out !== 'none' ? interpolate(frame, [total - d, total], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 1;
+  const op = (p: number) => Math.min(1, Math.max(0, p * 1.5));
   const one = (type: string, p: number): React.CSSProperties => {
     switch (type) {
       case 'fade': case 'typewriter': return { opacity: p };
@@ -98,15 +123,40 @@ function animStyle(anim: any, frame: number, total: number, fps: number): React.
       case 'slide-right': return { opacity: p, transform: `translateX(${(p - 1) * 80}px)` };
       case 'scale': return { opacity: p, transform: `scale(${0.7 + 0.3 * p})` };
       case 'blur': return { opacity: p, filter: `blur(${(1 - p) * 12}px)` };
+      case 'zoom-in': return { opacity: op(p), transform: `scale(${1.6 - 0.6 * p})`, filter: `blur(${(1 - Math.min(1, p)) * 8}px)` };
+      case 'zoom-out': return { opacity: op(p), transform: `scale(${0.3 + 0.7 * p})` };
+      case 'pop': return { opacity: op(p), transform: `scale(${p})` };
+      case 'bounce': return { opacity: op(p), transform: `translateY(${(1 - p) * 220}px)` };
+      case 'drop': return { opacity: op(p), transform: `translateY(${(p - 1) * 260}px)` };
+      case 'rotate': return { opacity: p, transform: `rotate(${(1 - p) * -25}deg) scale(${0.6 + 0.4 * p})` };
+      case 'flip': return { opacity: op(p), transform: `perspective(900px) rotateX(${(1 - p) * 90}deg)` };
+      case 'wipe': return { clipPath: `inset(0 ${(1 - Math.min(1, p)) * 100}% 0 0)` };
+      case 'wipe-up': return { clipPath: `inset(${(1 - Math.min(1, p)) * 100}% 0 0 0)` };
       default: return {};
+    }
+  };
+  // continuous emphasis while the clip is on screen
+  const t = frame / fps;
+  const amt = a.loopStrength ?? 1;
+  const loop = (): string | undefined => {
+    switch (a.loop) {
+      case 'pulse': return `scale(${1 + 0.05 * amt * Math.sin(t * Math.PI * 2 * 0.8)})`;
+      case 'heartbeat': { const ph = (t * 1.1) % 1; return `scale(${1 + 0.09 * amt * (Math.exp(-((ph - 0.1) ** 2) / 0.002) + 0.6 * Math.exp(-((ph - 0.3) ** 2) / 0.002))})`; }
+      case 'float': return `translateY(${Math.sin(t * Math.PI * 2 * 0.4) * 14 * amt}px)`;
+      case 'shake': return `translateX(${Math.sin(t * 60) * 6 * amt}px) rotate(${Math.sin(t * 47) * 1.2 * amt}deg)`;
+      case 'wiggle': return `rotate(${Math.sin(t * Math.PI * 2 * 1.2) * 4 * amt}deg)`;
+      case 'spin': return `rotate(${t * 90 * amt}deg)`;
+      case 'zoom': return `scale(${1 + 0.12 * amt * Math.min(1, t / Math.max(0.1, total / fps))})`;
+      default: return undefined;
     }
   };
   const sIn = one(a.in, pin);
   const sOut = frame > total - d ? one(a.out, pout) : {};
   return {
     opacity: (sIn.opacity as number ?? 1) * (sOut.opacity as number ?? 1),
-    transform: [sIn.transform, sOut.transform].filter(Boolean).join(' ') || undefined,
+    transform: [sIn.transform, sOut.transform, loop()].filter(Boolean).join(' ') || undefined,
     filter: sIn.filter || sOut.filter,
+    clipPath: sIn.clipPath || sOut.clipPath,
   };
 }
 
