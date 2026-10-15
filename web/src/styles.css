@@ -295,7 +295,7 @@ input[type='range'] { accent-color: var(--accent); flex: 1; }
 
 /* music & voice library */
 .left-panel .panel-tabs { overflow-x: auto; scrollbar-width: none; }
-.left-panel .panel-tabs button { padding: 8px 9px; white-space: nowrap; }
+.left-panel .panel-tabs button { padding: 8px 2px; white-space: nowrap; flex: 1 1 auto; min-width: 0; justify-content: center; gap: 3px; }
 .lib { display: flex; flex-direction: column; gap: 8px; }
 .lib select { flex: 1; min-width: 0; }
 .lib textarea { width: 100%; resize: vertical; }
@@ -392,3 +392,5 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 .vp-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; }
 .vp-empty, .vp-foot { padding: 6px 8px; }
 .vp-foot { border-top: 1px solid var(--line); font-size: 10px; }
+
+.voice-sel { border: 1px solid var(--accent); border-radius: 8px; padding: 2px 8px 8px; background: var(--accent-soft); }

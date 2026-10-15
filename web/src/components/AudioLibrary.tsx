@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { assetById, findClip } from '../../../shared/timeline.js';
 import { useStore } from '../store';
 import { currentTime } from '../player';
 import { askClaude } from './ChatPanel';
@@ -166,6 +167,48 @@ export const VoicePicker: React.FC<{
   );
 };
 
+/** Voice-over clip: pick another voice (▶ previews this clip's text in it), tweak text/speed, re-read. */
+export const VoiceSection: React.FC<{ clipIds: string[]; tts: { text: string; voice: string; speed?: number }; title?: string }> = ({ clipIds, tts, title = 'Giọng đọc AI' }) => {
+  const clipId = clipIds.join(',');
+  const project = useStore((s) => s.project);
+  const [voice, setVoice] = useState(tts.voice);
+  const [speed, setSpeed] = useState(tts.speed || 1);
+  const [text, setText] = useState(tts.text);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setVoice(tts.voice); setSpeed(tts.speed || 1); setText(tts.text); }, [clipId, tts.voice, tts.speed, tts.text]);
+  // every voice-over clip in the project (for "apply to all")
+  const all = (project?.tracks || []).flatMap((t: any) => t.clips).filter((c: any) => c.assetId && assetById(project, c.assetId)?.tts).map((c: any) => c.id);
+  const changed = voice !== tts.voice || speed !== (tts.speed || 1) || text !== tts.text;
+  const run = async (ids: string[]) => {
+    setBusy(true);
+    try {
+      const body: any = { clipIds: ids, voice, speed };
+      if (text !== tts.text) body.text = text;
+      const r = await fetch('/api/tts/revoice', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || r.statusText);
+      useStore.getState().toast(`Đang đọc lại ${ids.length} clip — xem tab Jobs`);
+    } catch (e: any) { useStore.getState().toast(e.message, 'error'); } finally { setBusy(false); }
+  };
+  return (
+    <>
+      <div className="section-title">{title}</div>
+      <div className="form">
+        <VoicePicker value={voice} onChange={setVoice} text={text} speed={speed} />
+        <label className="field range"><span>Tốc độ</span>
+          <div className="row gap"><input type="range" min={0.7} max={1.5} step={0.05} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} /><span className="num small">{speed.toFixed(2)}×</span></div>
+        </label>
+        <label className="field textarea"><span>Lời đọc</span><textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} /></label>
+        <div className="row gap wrap">
+          <button className="btn small primary" disabled={busy || !clipIds.length || !changed || !text.trim()} onClick={() => run(clipIds)}><Icon name="mic" /> {clipIds.length > 1 ? `Đọc lại ${clipIds.length} clip này` : 'Đọc lại clip này'}</button>
+          {!clipIds.length && <div className="muted small">Giọng này chưa được dùng trên timeline.</div>}
+          {all.length > 1 && <button className="btn small" disabled={busy || text !== tts.text} title="Đọc lại mọi clip giọng đọc trong dự án bằng giọng & tốc độ này (giữ lời từng clip)" onClick={() => { if (confirm(`Đọc lại tất cả ${all.length} clip giọng đọc bằng giọng này?`)) run(all); }}>Áp dụng cho cả {all.length} clip</button>}
+        </div>
+      </div>
+    </>
+  );
+};
+
 /* ---------------- music ---------------- */
 
 export const MusicPanel: React.FC = () => {
@@ -253,6 +296,8 @@ export const VoicePanel: React.FC = () => {
   const [text, setText] = useState('');
   const [pending, setPending] = useState<{ job: string; play: boolean } | null>(null);
   const jobs = useStore((s) => s.jobs);
+  const project = useStore((s) => s.project);
+  const selection = useStore((s) => s.selection);
   const { playing, toggle } = usePreview();
   const lastPreview = useRef<{ key: string; url: string } | null>(null);
 
@@ -283,9 +328,20 @@ export const VoicePanel: React.FC = () => {
 
   const busy = !!pending;
   const cur = voices.find((v) => v.id === voice);
+  const selClip = selection ? findClip(project, selection)?.clip : null;
+  const selAsset = selClip?.assetId ? assetById(project, selClip.assetId) : selection ? assetById(project, selection) : null;
+  const selIds = !selAsset?.tts ? [] : selClip ? [selClip.id] : (project?.tracks || []).flatMap((t: any) => t.clips).filter((c: any) => c.assetId === selAsset.id).map((c: any) => c.id);
   return (
     <div className="panel-body lib">
       {err && <div className="error small">{err}</div>}
+      {selAsset?.tts ? (
+        <div className="voice-sel">
+          <VoiceSection clipIds={selIds} tts={selAsset.tts} title={selClip ? 'Giọng của clip đang chọn' : `Giọng của ${selIds.length} clip dùng file này`} />
+        </div>
+      ) : (
+        <div className="muted small">Mẹo: chọn một clip giọng đọc trên timeline để đổi giọng / nghe thử các giọng khác cho clip đó.</div>
+      )}
+      <div className="section-title">Tạo giọng đọc mới</div>
       <div className="seg">
         <button className={lang === 'vi' ? 'active' : ''} onClick={() => setLang('vi')}>Tiếng Việt (VieNeu)</button>
         <button className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')}>English (Kokoro)</button>

@@ -194,8 +194,8 @@ export const LeftPanel: React.FC = () => {
         <button className={tab === 'comp' ? 'active' : ''} onClick={() => setTab('comp')}>Comps</button>
         <button className={tab === 'assets' ? 'active' : ''} onClick={() => setTab('assets')}>Assets</button>
         <button className={tab === 'motion' ? 'active' : ''} onClick={() => setTab('motion')}>Motion</button>
-        <button className={tab === 'music' ? 'active' : ''} onClick={() => setTab('music')} title="Thư viện nhạc nền"><Icon name="music" size={12} /> Nhạc</button>
-        <button className={tab === 'voice' ? 'active' : ''} onClick={() => setTab('voice')} title="Giọng đọc AI (TTS)"><Icon name="mic" size={12} /> Giọng</button>
+        <button className={tab === 'music' ? 'active' : ''} onClick={() => setTab('music')} title="Thư viện nhạc nền">Music</button>
+        <button className={tab === 'voice' ? 'active' : ''} onClick={() => setTab('voice')} title="Giọng đọc AI (TTS) — chọn & nghe thử giọng cho clip"><Icon name="mic" size={11} />Voice</button>
       </div>
 
       {tab === 'music' && <MusicPanel />}
