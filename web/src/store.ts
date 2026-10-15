@@ -57,6 +57,7 @@ function scheduleSave(p: Project) {
 export type Upload = {
   id: string; name: string; files: number; loaded: number; total: number; speed: number;
   state: 'uploading' | 'processing' | 'error' | 'cancelled'; error?: string; startedAt: number; abort?: () => void;
+  current?: string; retry?: string;
 };
 
 export type ProjectInfo = {

@@ -10,46 +10,96 @@ import { openDub } from './DubDialog';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/** Upload with real progress (XHR — fetch can't report upload progress). Shown in <UploadProgress>. */
+const CHUNK = 8 * 1024 * 1024; // well under Cloudflare's 100 MB request limit
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Upload in 8 MB parts, one file after another (a single huge multipart request is buffered —
+ * and over 100 MB rejected — by proxies like Cloudflare, so progress froze and nothing arrived).
+ * Each part is retried on network errors and resumes from what the server already has.
+ * Progress is shown in <UploadProgress>.
+ */
 export function uploadFiles(files: FileList | File[], opts: { logo?: boolean } = {}) {
   const list = Array.from(files);
   if (!list.length) return;
-  const fd = new FormData();
-  for (const f of list) fd.append('files', f);
   const id = `up_${Date.now()}`;
   const total = list.reduce((n, f) => n + f.size, 0);
   const name = list.length === 1 ? list[0].name : `${list.length} file`;
-  const xhr = new XMLHttpRequest();
-  const set = (patch: Partial<Upload>) => useStore.setState((s) => ({ uploads: { ...s.uploads, [id]: { ...s.uploads[id], ...patch } } }));
+  let xhr: XMLHttpRequest | null = null;
+  let cancelled = false;
+  const set = (patch: Partial<Upload>) => useStore.setState((s) => (s.uploads[id] || patch.id ? { uploads: { ...s.uploads, [id]: { ...s.uploads[id], ...patch } } } : {}));
   const done = (ms = 0) => setTimeout(() => useStore.setState((s) => { const u = { ...s.uploads }; delete u[id]; return { uploads: u }; }), ms);
-  set({ id, name, files: list.length, loaded: 0, total, speed: 0, state: 'uploading', startedAt: Date.now(), abort: () => xhr.abort() });
-  let lastT = Date.now(), lastLoaded = 0;
-  xhr.upload.onprogress = (e) => {
-    const now = Date.now();
-    const dt = (now - lastT) / 1000;
-    if (dt < 0.5 && e.loaded < e.total) return;
-    const speed = dt > 0 ? (e.loaded - lastLoaded) / dt : 0;
-    lastT = now; lastLoaded = e.loaded;
-    const prev = useStore.getState().uploads[id]?.speed || speed;
-    set({ loaded: e.loaded, total: e.total || total, speed: prev ? prev * 0.6 + speed * 0.4 : speed });
+  const parts = list.map((f, i) => ({ file: f, id: `${id}_${i}_${Math.random().toString(36).slice(2, 8)}` }));
+  set({ id, name, files: list.length, loaded: 0, total, speed: 0, state: 'uploading', startedAt: Date.now(),
+    abort: () => { cancelled = true; xhr?.abort(); } });
+
+  let base = 0; // bytes of fully uploaded files + parts
+  let lastT = Date.now(), lastLoaded = 0, speed = 0;
+  const report = (loaded: number) => {
+    const now = Date.now(), dt = (now - lastT) / 1000;
+    if (dt < 0.5) { set({ loaded }); return; }
+    const sp = (loaded - lastLoaded) / dt;
+    speed = speed ? speed * 0.6 + sp * 0.4 : sp;
+    lastT = now; lastLoaded = loaded;
+    set({ loaded, speed });
   };
-  xhr.upload.onload = () => set({ loaded: total, state: 'processing' });
-  xhr.onload = () => {
-    let j: any = {};
-    try { j = JSON.parse(xhr.responseText); } catch { /* not json */ }
-    if (xhr.status >= 200 && xhr.status < 300) {
-      useStore.getState().toast(`Đã tải lên ${name} — đang xử lý (tab Jobs)`);
-      done(1500);
-    } else {
-      const error = `Lỗi ${xhr.status}: ${j.error || xhr.statusText || 'không rõ'}`;
-      set({ state: 'error', error });
-      useStore.getState().toast(`Upload lỗi — ${error}`, 'error');
+  const put = (pid: string, blob: Blob, offset: number) => new Promise<{ status: number; body: any }>((resolve, reject) => {
+    const x = new XMLHttpRequest(); xhr = x;
+    x.open('PUT', `/api/upload/part/${pid}?offset=${offset}`);
+    x.setRequestHeader('Content-Type', 'application/octet-stream');
+    x.timeout = 120_000;
+    x.upload.onprogress = (e) => report(base + e.loaded);
+    x.onload = () => { let b: any = {}; try { b = JSON.parse(x.responseText); } catch { /* not json */ } resolve({ status: x.status, body: b }); };
+    x.onerror = () => reject(new Error('network'));
+    x.ontimeout = () => reject(new Error('timeout'));
+    x.onabort = () => reject(new Error('abort'));
+    x.send(blob);
+  });
+
+  (async () => {
+    for (const [i, { file, id: pid }] of parts.entries()) {
+      set({ current: `${i + 1}/${list.length} ${file.name}` });
+      let offset = 0, tries = 0;
+      const fileBase = base;
+      while (offset < file.size || (file.size === 0 && offset === 0 && tries === 0)) {
+        if (cancelled) throw new Error('abort');
+        const blob = file.slice(offset, Math.min(file.size, offset + CHUNK));
+        try {
+          const r = await put(pid, blob, offset);
+          if (r.status === 200 || r.status === 409) { offset = Number(r.body.size) || 0; tries = 0; }
+          else if (r.status === 401) throw Object.assign(new Error('Phiên đăng nhập đã hết — hãy đăng nhập lại rồi tải lên lại'), { fatal: true });
+          else if (r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 429) throw Object.assign(new Error(`Lỗi ${r.status}: ${r.body.error || 'không rõ'}`), { fatal: true });
+          else throw new Error(`Lỗi ${r.status}`);
+          base = fileBase + offset;
+          report(base);
+          if (file.size === 0) break;
+        } catch (e: any) {
+          if (cancelled || e.message === 'abort' || e.fatal) throw e;
+          if (++tries > 8) throw new Error(`Mất kết nối khi tải ${file.name} (${e.message}) — hãy thử lại`);
+          set({ retry: `Mạng chập chờn — thử lại lần ${tries}/8…` });
+          await sleep(Math.min(30_000, 1000 * 2 ** tries));
+          // ask the server how much of this file it already has, then continue from there
+          try { const r = await fetch(`/api/upload/part/${pid}`); if (r.ok) offset = Number((await r.json()).size) || 0; } catch { /* retry anyway */ }
+          base = fileBase + offset;
+          set({ retry: undefined });
+        }
+      }
     }
-  };
-  xhr.onerror = () => set({ state: 'error', error: 'Mất kết nối tới server khi đang tải lên (mạng chập chờn hoặc server khởi động lại) — hãy thử lại' });
-  xhr.onabort = () => { set({ state: 'cancelled' }); done(2500); };
-  xhr.open('POST', `/api/upload${opts.logo ? '?logo=1' : ''}`);
-  xhr.send(fd);
+    set({ loaded: total, state: 'processing', current: undefined });
+    const r = await fetch('/api/upload/finish', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ logo: !!opts.logo, files: parts.map((p) => ({ id: p.id, name: p.file.name, size: p.file.size })) }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error(`Lỗi ${r.status}: ${j.error || 'không rõ'}`), { fatal: true });
+    useStore.getState().toast(`Đã tải lên ${name} — đang xử lý (tab Jobs)`);
+    done(1500);
+  })().catch((e: any) => {
+    for (const p of parts) fetch(`/api/upload/part/${p.id}`, { method: 'DELETE' }).catch(() => {});
+    if (cancelled || e.message === 'abort') { set({ state: 'cancelled', retry: undefined }); done(2500); return; }
+    set({ state: 'error', error: e.message, retry: undefined });
+    useStore.getState().toast(`Upload lỗi — ${e.message}`, 'error');
+  });
   window.dispatchEvent(new Event('show-jobs')); // follow progress in the Jobs tab
 }
 
@@ -78,6 +128,8 @@ export const UploadProgress: React.FC<{ compact?: boolean }> = ({ compact }) => 
             {!compact && u.state === 'uploading' && (
               <div className="muted small">{mb(u.loaded)} / {mb(u.total)}{u.speed > 0 ? ` · ${mb(u.speed)}/s · còn ~${eta(left)}` : ''}</div>
             )}
+            {!compact && u.state === 'uploading' && u.current && u.files > 1 && <div className="muted small ellipsis">Đang tải {u.current}</div>}
+            {u.retry && <div className="small" style={{ color: 'var(--warn, #e0a030)' }}>{u.retry}</div>}
             {!compact && u.state === 'processing' && <div className="muted small">{mb(u.total)} đã lên server — đang giải nén / chuyển đổi, xem tab Jobs</div>}
             {u.error && <div className="error small">{u.error}</div>}
           </div>

@@ -124,11 +124,62 @@ app.put('/api/project', (req, res) => {
   res.json({ ok: true });
 });
 
-const upload = multer({ dest: path.join(CACHE_DIR, 'uploads'), limits: { fileSize: 8 * 1024 ** 3 } });
+const UPLOAD_DIR = path.join(CACHE_DIR, 'uploads');
+const upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: 8 * 1024 ** 3 } });
 app.post('/api/upload', upload.array('files'), (req, res) => {
   const raw = (req.files || []).map((f) => ({ path: f.path, name: Buffer.from(f.originalname, 'latin1').toString('utf8') }));
   if (!raw.length) return res.status(400).json({ error: 'Không có file' });
-  const asLogo = req.query.logo === '1';
+  res.json({ job: startImport(raw, req.query.logo === '1') });
+});
+
+// Chunked upload: proxies such as Cloudflare buffer whole requests and reject bodies > 100 MB,
+// so the browser sends each file in small parts (resumable: the server reports how much it has).
+const partPath = (id) => {
+  if (!/^[a-z0-9_-]{8,64}$/i.test(id || '')) throw new Error('upload id không hợp lệ');
+  return path.join(UPLOAD_DIR, `${id}.part`);
+};
+const partSize = (p) => { try { return fs.statSync(p).size; } catch { return 0; } };
+app.get('/api/upload/part/:id', (req, res) => {
+  try { res.json({ size: partSize(partPath(req.params.id)) }); } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.put('/api/upload/part/:id', (req, res) => {
+  let p;
+  try { p = partPath(req.params.id); } catch (e) { return res.status(400).json({ error: e.message }); }
+  const offset = Number(req.query.offset) || 0;
+  const have = partSize(p);
+  if (offset !== have) { req.resume(); return res.status(409).json({ size: have }); } // client resumes from `size`
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  const out = fs.createWriteStream(p, { flags: 'a' });
+  let failed = false;
+  const fail = (e) => {
+    if (failed) return; failed = true;
+    out.destroy();
+    try { fs.truncateSync(p, have); } catch { /* gone */ } // drop the partial chunk so a retry starts clean
+    if (!res.headersSent) res.status(500).json({ error: e?.message || 'upload bị ngắt' });
+  };
+  req.on('aborted', () => fail(new Error('aborted')));
+  req.on('error', fail);
+  out.on('error', fail);
+  out.on('finish', () => { if (!failed) res.json({ size: partSize(p) }); });
+  req.pipe(out);
+});
+app.delete('/api/upload/part/:id', (req, res) => {
+  try { fs.rmSync(partPath(req.params.id), { force: true }); res.json({ ok: true }); } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/upload/finish', (req, res) => {
+  const list = req.body?.files || [];
+  try {
+    const raw = list.map((f) => {
+      const p = partPath(f.id);
+      if (partSize(p) !== Number(f.size)) throw new Error(`${f.name}: chưa tải đủ (${partSize(p)}/${f.size} byte)`);
+      return { path: p, name: String(f.name || 'file').replace(/[/\\]/g, '_') };
+    });
+    if (!raw.length) return res.status(400).json({ error: 'Không có file' });
+    res.json({ job: startImport(raw, !!req.body.logo) });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+function startImport(raw, asLogo) {
   // Conversion (HEIC → JPG, HEVC → H.264…) can take minutes: run as a job, report progress over WS.
   const MEDIA_RE = /\.(jpe?g|png|webp|gif|heic|heif|avif|tiff?|bmp|mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|aac|ogg|flac)$/i;
   const job = startJob('import', `Nhập ${raw.length === 1 ? raw[0].name : `${raw.length} file`}`, async (update) => {
@@ -178,8 +229,8 @@ app.post('/api/upload', upload.array('files'), (req, res) => {
     if (!ok.length) throw new Error(failed.join('; '));
     return { label: `Đã nhập ${ok.length}/${files.length} file` };
   });
-  res.json({ job });
-});
+  return job;
+}
 
 app.post('/api/import-url', (req, res) => {
   const { url, audioOnly, section } = req.body || {};
