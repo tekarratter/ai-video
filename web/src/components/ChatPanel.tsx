@@ -5,6 +5,21 @@ import { currentTime } from '../player';
 import { Icon } from './Icon';
 import { openClaudeAuth, useClaudeAuth } from './Account';
 import { TerminalView } from './TerminalView';
+import { uploadParts } from '../upload';
+
+/** Resolve once a server job reaches done/error (job updates arrive over the websocket). */
+function waitJob(id: string) {
+  return new Promise<any>((resolve, reject) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    let unsub = () => {};
+    const check = (s: ReturnType<typeof useStore.getState>) => {
+      const j = s.jobs[id];
+      if (j?.stage === 'done') { unsub(); resolve(j); }
+      else if (j?.stage === 'error') { unsub(); reject(new Error(j.error || 'nhập file lỗi')); }
+    };
+    unsub = useStore.subscribe(check);
+    check(useStore.getState());
+  });
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -188,7 +203,7 @@ export const ChatPanel: React.FC = () => {
     }, 1000);
     return () => clearInterval(t);
   }, [pending, status.busy, status.running, text]);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
   const [view, setView] = useState<'chat' | 'term'>('chat');
   const [dragging, setDragging] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
@@ -230,15 +245,31 @@ export const ChatPanel: React.FC = () => {
     return () => window.removeEventListener('ask-claude', on);
   });
 
+  // Chunked upload (Cloudflare caps a request at 100 MB) + the same import job as the Assets tab,
+  // so .zip files are unpacked and HEIC/HEVC converted; the job reports the media paths it added.
   const attach = async (files: FileList | File[]) => {
-    const fd = new FormData();
-    for (const f of Array.from(files)) fd.append('files', f);
-    setUploading(true);
+    const list = Array.from(files);
+    if (!list.length) return;
+    const total = list.reduce((n, f) => n + f.size, 0) || 1;
+    let done = 0;
+    setUploading('0%');
     try {
-      const r = await fetch('/api/chat/attach', { method: 'POST', body: fd });
+      const parts: { id: string; name: string; size: number }[] = [];
+      for (const f of list) {
+        const id = await uploadParts(f, (loaded) => setUploading(`${Math.round(((done + loaded) / total) * 100)}%`));
+        done += f.size;
+        parts.push({ id, name: f.name, size: f.size });
+      }
+      setUploading(list.some((f) => /\.zip$/i.test(f.name)) ? 'giải nén…' : 'xử lý…');
+      const r = await fetch('/api/upload/finish', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ files: parts }) });
       const j = await r.json();
-      setAtts((a) => [...a, ...(j.paths || [])]);
-    } finally { setUploading(false); }
+      if (!r.ok) throw new Error(j.error || `Lỗi ${r.status}`);
+      const job = await waitJob(j.job.id);
+      const paths = (job as any).paths || []; // eslint-disable-line @typescript-eslint/no-explicit-any
+      if (paths.length) setAtts((a) => [...a, ...paths]);
+    } catch (e: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      useStore.getState().toast(`Đính kèm lỗi: ${e.message}`, 'error');
+    } finally { setUploading(null); }
   };
 
   const restart = async (mode: 'new' | 'continue') => {
@@ -352,9 +383,9 @@ export const ChatPanel: React.FC = () => {
             <div className="composer-bar">
               <label className="icon-btn" title="Đính kèm ảnh/video">
                 <Icon name="paperclip" />
-                <input type="file" multiple hidden accept="image/*,video/*,audio/*" onChange={(e) => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
+                <input type="file" multiple hidden accept="image/*,video/*,audio/*,.heic,.heif,.zip" onChange={(e) => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
               </label>
-              {uploading && <span className="small muted">đang tải…</span>}
+              {uploading && <span className="small muted">đang tải {uploading}</span>}
               <label className="ctx-toggle" title="Gửi kèm vị trí playhead và clip đang chọn">
                 <input type="checkbox" checked={withCtx} onChange={(e) => setWithCtx(e.target.checked)} /> kèm ngữ cảnh
               </label>

@@ -183,29 +183,49 @@ app.post('/api/upload/finish', (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+const MEDIA_RE = /\.(jpe?g|png|webp|gif|heic|heif|avif|tiff?|bmp|mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|aac|ogg|flac)$/i;
+/** Unpack a .zip (Google Drive / Takeout download, a folder zipped on the phone…) and list the media
+ *  inside, sub-folders and zips-inside-the-zip included. Folder structure is kept while unpacking so
+ *  same-named files in different folders don't overwrite each other; media/ dedupes names on import. */
+async function unpackZip(zipPath, dir, depth = 0) {
+  fs.mkdirSync(dir, { recursive: true });
+  // exit 1 = warnings only; unzip itself refuses entries escaping `dir` (../, absolute paths)
+  await new Promise((resolve) => execFile('unzip', ['-qq', '-o', zipPath, '-d', dir], { maxBuffer: 1 << 24 }, () => resolve()));
+  const out = [];
+  const walk = async (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))) {
+      if (e.name.startsWith('.') || e.name === '__MACOSX') continue;
+      const p = path.join(d, e.name);
+      if (e.isSymbolicLink()) continue; // never follow links planted in an archive
+      if (e.isDirectory()) await walk(p);
+      else if (e.isFile() && /\.zip$/i.test(e.name) && depth < 2) out.push(...(await unpackZip(p, `${p}-unzip`, depth + 1)));
+      else if (e.isFile() && MEDIA_RE.test(e.name)) out.push({ path: p, name: e.name, tmpDir: dir });
+    }
+  };
+  await walk(dir);
+  return out;
+}
+
 function startImport(raw, asLogo) {
   // Conversion (HEIC → JPG, HEVC → H.264…) can take minutes: run as a job, report progress over WS.
-  const MEDIA_RE = /\.(jpe?g|png|webp|gif|heic|heif|avif|tiff?|bmp|mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|aac|ogg|flac)$/i;
   const job = startJob('import', `Nhập ${raw.length === 1 ? raw[0].name : `${raw.length} file`}`, async (update) => {
-    // .zip (e.g. a Google Drive / Takeout download): unpack and import the media inside
+    // .zip: unpack and import the media inside
     const files = [];
     for (const f of raw) {
       if (!/\.zip$/i.test(f.name)) { files.push(f); continue; }
       update({ stage: `giải nén ${f.name}` });
       const dir = `${f.path}-unzip`;
-      fs.mkdirSync(dir, { recursive: true });
-      await new Promise((resolve) => execFile('unzip', ['-qq', '-o', '-j', f.path, '-d', dir], () => resolve())); // exit 1 = warnings only
+      const found = await unpackZip(f.path, dir);
       fs.rmSync(f.path, { force: true });
-      const names = fs.readdirSync(dir).filter((n) => !n.startsWith('.') && MEDIA_RE.test(n)).sort();
-      if (!names.length) {
+      if (!found.length) {
         fs.rmSync(dir, { recursive: true, force: true });
         broadcast({ type: 'toast', level: 'error', text: `${f.name}: không có ảnh/video/nhạc bên trong` });
       }
-      for (const name of names) files.push({ path: path.join(dir, name), name, tmpDir: dir });
+      for (const x of found) files.push({ ...x, tmpDir: dir });
     }
     if (!files.length) throw new Error('Không có file media nào để nhập');
     update({ label: `Nhập ${files.length} file` });
-    const ok = [], failed = [];
+    const ok = [], failed = [], paths = [];
     for (const [i, f] of files.entries()) {
       const base = i / files.length;
       update({ stage: `${i + 1}/${files.length} ${f.name}`, progress: base });
@@ -222,6 +242,7 @@ function startImport(raw, asLogo) {
         if (asLogo && asset.type === 'image') latest.logo = { ...LOGO_DEFAULTS, ...(latest.logo || {}), assetId: asset.id, enabled: true };
         saveProject(latest, 'ui');
         ok.push(asset.name);
+        paths.push(asset.path);
       } catch (e) {
         console.warn('[upload]', e.message);
         failed.push(e.message);
@@ -231,7 +252,7 @@ function startImport(raw, asLogo) {
     for (const d of new Set(files.map((f) => f.tmpDir).filter(Boolean))) fs.rmSync(d, { recursive: true, force: true });
     if (failed.length) broadcast({ type: 'toast', level: 'error', text: `Lỗi nhập: ${failed.join('; ')}` });
     if (!ok.length) throw new Error(failed.join('; '));
-    return { label: `Đã nhập ${ok.length}/${files.length} file` };
+    return { label: `Đã nhập ${ok.length}/${files.length} file`, paths };
   });
   return job;
 }
