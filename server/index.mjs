@@ -21,6 +21,7 @@ import * as youtube from './youtube.mjs';
 import * as auth from './auth.mjs';
 import * as projects from './projects.mjs';
 import * as cleanup from './cleanup.mjs';
+import * as telegram from './telegram.mjs';
 import * as claudeAuth from './claudeauth.mjs';
 
 const PORT = Number(process.env.PORT || 3001);
@@ -91,23 +92,39 @@ function persistJobs() {
   clearTimeout(persistTimer);
   persistTimer = setTimeout(() => fs.writeFileSync(JOBS_FILE, JSON.stringify([...jobs.values()].slice(-50), null, 1)), 500);
 }
-function startJob(type, label, fn) {
+// Estimated time left: progress rate since the current phase began, smoothed. Render phases that share
+// one progress scale (scenes → sound → join) count as one phase; bundling/queueing get no estimate.
+const etaState = new WeakMap();
+const etaPhase = (stage) => (['render', 'audio', 'join'].includes(stage) ? 'main' : stage);
+function trackEta(job) {
+  if (job.finishedAt || ['queued', 'bundle', 'browser', 'stopping'].includes(job.stage)) { job.eta = undefined; return; }
+  const now = Date.now(), k = etaPhase(job.stage), p = Number(job.progress) || 0;
+  const e = etaState.get(job);
+  if (!e || e.k !== k || p < e.p0) { etaState.set(job, { k, t0: now, p0: p }); job.eta = undefined; return; }
+  const dp = p - e.p0, dt = (now - e.t0) / 1000;
+  if (dp < 0.01 || dt < 5) return;
+  const raw = (dt * (1 - p)) / dp;
+  job.eta = Math.max(1, Math.round(job.eta ? job.eta * 0.8 + raw * 0.2 : raw));
+}
+function startJob(type, label, fn, { onFinish } = {}) {
   const job = { id: newId('job'), type, label, stage: 'queued', progress: 0, startedAt: Date.now() };
   Object.defineProperty(job, 'stopper', { writable: true, enumerable: false });
   jobs.set(job.id, job);
   const update = (patch) => {
     if (job.finishedAt && !('finishedAt' in patch)) return;
-    Object.assign(job, patch); broadcast({ type: 'job', job }); persistJobs();
+    Object.assign(job, patch); trackEta(job); broadcast({ type: 'job', job }); persistJobs();
   };
   update({});
+  const finished = () => { try { onFinish?.(job); } catch (e) { console.warn('[job finish]', e.message); } };
   Promise.resolve()
     .then(() => fn(update))
-    .then((res) => update({ stage: 'done', progress: 1, ...(res || {}), finishedAt: Date.now() }))
+    .then((res) => { update({ stage: 'done', progress: 1, ...(res || {}), finishedAt: Date.now() }); finished(); })
     .catch((e) => {
       console.error(`[job ${type}]`, e);
       const msg = String(e.message || e).split('\n')[0];
       const hint = /delayRender|timeout|Request closed|Target closed/i.test(msg) ? ' (thiếu RAM hoặc video nặng — thử Render nháp / đóng bớt ứng dụng)' : '';
       update({ stage: 'error', error: msg.slice(0, 400) + hint, finishedAt: Date.now() });
+      finished();
     });
   return job;
 }
@@ -117,6 +134,15 @@ app.use(express.json({ limit: '50mb' }));
 app.use(auth.requireAuth);
 auth.registerRoutes(app);
 app.use('/media', express.static(MEDIA_DIR, { fallthrough: false }));
+// /p/<project>/media/…: a render keeps reading its own project's media after the user opens another one
+const projectMedia = new Map();
+app.use('/p/:id/media', (req, res, next) => {
+  if (!auth.userOf(req)) return res.status(401).end();
+  const { id } = req.params;
+  if (!/^[\w.-]+$/.test(id) || id.startsWith('.')) return res.status(400).end();
+  if (!projectMedia.has(id)) projectMedia.set(id, express.static(path.join(projects.PROJECTS_DIR, id, 'media'), { fallthrough: false }));
+  projectMedia.get(id)(req, res, next);
+});
 app.use('/exports', express.static(EXPORT_DIR));
 app.use('/cache', express.static(CACHE_DIR));
 app.use('/library/music', express.static(LOCAL_MUSIC_DIR));
@@ -339,7 +365,7 @@ const busyJobs = () => [...jobs.values()].filter((j) => !['done', 'error'].inclu
 const projectsPayload = () => ({ active: projects.activeId(), projects: projects.list() });
 app.get('/api/projects', (req, res) => res.json(projectsPayload()));
 function openProject(id) {
-  const busy = busyJobs();
+  const busy = busyJobs().filter((j) => j.type !== 'render'); // renders work on a snapshot of their project
   if (busy.length) throw Object.assign(new Error(`Đang có tác vụ chạy (${busy.map((j) => j.label).join(', ')}) — đợi xong rồi chuyển project`), { status: 409 });
   const from = projects.activeId();
   if (from === id) return;
@@ -571,22 +597,59 @@ app.post('/api/music/add', (req, res) => {
   res.json({ job });
 });
 
+// Renders run one at a time; pressing Render while one runs queues the next (any project).
+let renderChain = Promise.resolve();
+const activeRenders = () => [...jobs.values()].filter((j) => j.type === 'render' && !['done', 'error'].includes(j.stage));
 app.post('/api/render', (req, res) => {
-  if (rendering && !['done', 'error'].includes(rendering.stage)) return res.status(409).json({ error: 'Đang render', job: rendering });
   const { quality, range, target, continuous } = req.body || {};
   const stopper = renderStopper();
   const projectId = projects.activeId();
-  const projectName = readProject().name || projectId;
+  const snapshot = readProject(); // the project as it is now (the browser saved its edits first)
+  const projectName = snapshot.name || projectId;
   const kind = target === 'facebook' ? 'Render Facebook di động' : quality === 'draft' ? 'Render nháp' : continuous ? 'Render liền một lượt' : 'Render video';
-  rendering = startJob('render', `${kind} · ${projectName}`, async (update) => {
-    update({ projectId, projectName });
-    const r = await renderProject({ mediaBase: MEDIA_BASE, quality, range, onProgress: (p) => update(p), stopper, projectId, target, continuous: !!continuous });
-    // link through the project id: /exports follows whichever project is open now
-    return { file: r.file, url: `/api/projects/${encodeURIComponent(projectId)}/exports/${encodeURIComponent(path.basename(r.file))}` };
-  });
-  rendering.stopper = stopper;
-  res.json({ job: rendering });
+  const ahead = activeRenders().length;
+  const prev = renderChain;
+  let release;
+  renderChain = new Promise((r) => { release = r; });
+  const user = req.user?.local ? null : req.user?.username || null;
+  const publicBase = (process.env.AIV_PUBLIC_URL || req.headers.origin || '').replace(/\/$/, '') || null;
+  const job = startJob('render', `${kind} · ${projectName}`, async (update) => {
+    try {
+      update({ projectId, projectName, user, current: ahead ? `chờ ${ahead} render trước` : undefined });
+      await prev;
+      stopper.check();
+      update({ renderStartedAt: Date.now(), current: undefined });
+      const r = await renderProject({
+        project: snapshot, projectDir: path.join(projects.PROJECTS_DIR, projectId),
+        mediaBase: `${MEDIA_BASE}/p/${encodeURIComponent(projectId)}`,
+        quality, range, onProgress: (p) => update(p), stopper, projectId, target, continuous: !!continuous,
+      });
+      // link through the project id: /exports follows whichever project is open now
+      return { file: r.file, url: `/api/projects/${encodeURIComponent(projectId)}/exports/${encodeURIComponent(path.basename(r.file))}` };
+    } finally { release(); }
+  }, { onFinish: (j) => telegram.notifyRender(j, { absFile: j.file ? path.join(WORKSPACE, j.file) : null, publicBase }) });
+  job.stopper = stopper;
+  rendering = job;
+  res.json({ job, queued: ahead });
 });
+/* ---- telegram ---- */
+telegram.start({ linked: (username) => broadcast({ type: 'telegram', username }) });
+const tg = (fn) => async (req, res) => {
+  if (req.user?.local) return res.status(400).json({ error: 'Cần đăng nhập tài khoản' });
+  try { res.json(await fn(req)); } catch (e) { res.status(400).json({ error: e.message }); }
+};
+app.get('/api/telegram', tg((req) => telegram.status(req.user.username)));
+app.post('/api/telegram/token', tg(async (req) => {
+  if (req.user.role !== 'admin') throw new Error('Chỉ admin');
+  await telegram.setToken(req.body?.token);
+  return telegram.status(req.user.username);
+}));
+app.post('/api/telegram/link', tg((req) => ({ url: telegram.linkUrl(req.user.username) })));
+app.post('/api/telegram/chat', tg((req) => { telegram.setChat(req.user.username, req.body?.chatId || null); return telegram.status(req.user.username); }));
+app.post('/api/telegram/test', tg(async (req) => {
+  if (!(await telegram.sendTo(req.user.username, '🔔 Thử thông báo từ <b>AI Video Studio</b> — bạn sẽ nhận tin ở đây khi render xong.'))) throw new Error('Chưa kết nối Telegram');
+  return telegram.status(req.user.username);
+}));
 /* ---- disk cleanup ---- */
 // a rendered file is "busy" while a render of its project that started before it was written, or a
 // YouTube upload of it, is still running
@@ -604,7 +667,8 @@ app.get('/api/projects/:id/exports/:name', (req, res) => {
   res.sendFile(path.join(projects.PROJECTS_DIR, id, 'exports', name), (e) => { if (e && !res.headersSent) res.status(404).end(); });
 });
 app.post('/api/render/stop', (req, res) => {
-  const job = rendering;
+  const job = (req.body?.id && jobs.get(req.body.id)) || activeRenders().find((j) => j.stage !== 'queued') || rendering;
+  if (job && job.type !== 'render') return res.status(400).json({ error: 'Không phải tác vụ render' });
   if (!job || ['done', 'error'].includes(job.stage)) return res.status(409).json({ error: 'Không có render nào đang chạy' });
   job.stopper.stop();
   Object.assign(job, { stage: 'stopping', cancelled: true });
@@ -640,7 +704,8 @@ app.get('/api/youtube/callback', async (req, res) => {
 app.post('/api/youtube/upload', (req, res) => {
   const { file, ...meta } = req.body || {};
   const abs = path.resolve(WORKSPACE, String(file || ''));
-  if (!abs.startsWith(EXPORT_DIR + path.sep) && !abs.startsWith(MEDIA_DIR + path.sep)) return res.status(400).json({ error: 'File phải nằm trong exports/ hoặc media/' });
+  const inProjectExports = /^projects\/[\w.-]+\/exports\/[^/]+$/.test(path.relative(WORKSPACE, abs).split(path.sep).join('/'));
+  if (!abs.startsWith(EXPORT_DIR + path.sep) && !abs.startsWith(MEDIA_DIR + path.sep) && !inProjectExports) return res.status(400).json({ error: 'File phải nằm trong exports/ hoặc media/' });
   if (!fs.existsSync(abs)) return res.status(404).json({ error: 'Không tìm thấy file' });
   if (!youtube.status().connected) return res.status(400).json({ error: 'Chưa kết nối YouTube' });
   const job = startJob('youtube', `YouTube: ${meta.title || path.basename(abs)}`, async (update) => {

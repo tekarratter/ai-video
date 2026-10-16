@@ -151,6 +151,7 @@ export const UserMenu: React.FC = () => {
         {open && (
           <div className="menu right" onMouseLeave={() => setOpen(false)}>
             <button onClick={() => { setOpen(false); openClaudeAuth(); }}>Tài khoản Claude Code</button>
+            <button onClick={() => { setOpen(false); window.dispatchEvent(new Event('open-telegram')); }}>Thông báo Telegram</button>
             <button onClick={() => { setOpen(false); setDialog('password'); }}>Đổi mật khẩu</button>
             {user.role === 'admin' && <button onClick={() => { setOpen(false); setDialog('users'); }}>Quản lý tài khoản</button>}
             <button onClick={logout}>Đăng xuất</button>

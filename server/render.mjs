@@ -57,9 +57,14 @@ export function renderStopper() {
 /**
  * @param {object} opts { mediaBase, quality: 'final'|'draft', range?: [startSec, endSec], onProgress(job), stopper? }
  */
-export async function renderProject({ mediaBase, quality = 'final', range, outName, onProgress, stopper, projectId, target, continuous }) {
+export async function renderProject({ mediaBase, quality = 'final', range, outName, onProgress, stopper, projectId, target, continuous, project: snapshot, projectDir }) {
+  // `snapshot`: the project as it was when Render was pressed, so the user can switch to another
+  // project meanwhile; output goes to that project's own exports/ (not the active-project symlink).
+  const src = snapshot || readProject();
+  const exportDir = projectDir ? path.join(projectDir, 'exports') : EXPORT_DIR;
+  assetRoot = projectDir || WORKSPACE;
   // target 'facebook' etc.: same timeline with overlays kept clear of that platform's mobile UI
-  const project = SAFE_ZONES[target] ? applySafeZone(readProject(), SAFE_ZONES[target]) : readProject();
+  const project = SAFE_ZONES[target] ? applySafeZone(src, SAFE_ZONES[target]) : src;
   const job = { stage: 'bundle', progress: 0 };
   const report = (patch) => { if (!stopper?.stopped) { Object.assign(job, patch); onProgress?.({ ...job }); } };
 
@@ -80,7 +85,8 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
 
   const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
   const base = (outName || project.name || 'export').replace(/[^\p{L}\p{N}_-]+/gu, '_');
-  const file = path.join(EXPORT_DIR, `${base}${SAFE_ZONES[target] ? `-${target}` : ''}-${stamp}.mp4`);
+  fs.mkdirSync(exportDir, { recursive: true });
+  const file = path.join(exportDir, `${base}${SAFE_ZONES[target] ? `-${target}` : ''}-${stamp}.mp4`);
 
   // Scene-by-scene render: every scene is rendered to its own (muted) file under .cache/render-parts,
   // named by a fingerprint of everything visible in it. A later render reuses unchanged scenes, and a
@@ -146,7 +152,7 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
         crf: quality === 'draft' ? 28 : 18,
         scale: quality === 'draft' ? 0.5 : 1,
         onProgress: ({ renderedFrames }) => report({ progress: Math.min(0.97, ((doneWork + renderedFrames) / totalWork) * 0.97), renderedFrames: doneWork + renderedFrames }),
-      }).catch((e) => { fs.rmSync(tmp, { force: true }); throw e; });
+      }).catch((e) => { fs.rmSync(tmp, { force: true }); stopper?.check(); throw e; });
       fs.renameSync(tmp, s.out); // only complete scenes ever get the final name
       doneWork += frames(s);
       scenes[segs.indexOf(s)].reused = false;
@@ -182,6 +188,7 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
 }
 
 const PARTS_DIR = path.join(CACHE_DIR, 'render-parts');
+let assetRoot = WORKSPACE; // folder that asset paths ("media/x.jpg") of the project being rendered are relative to
 const hashOf = (v) => crypto.createHash('sha1').update(JSON.stringify(v)).digest('hex').slice(0, 20);
 
 /** Cut points: each clip of the main sequence is a scene; long scenes are split into ≤ MAX_SCENE_SEC pieces. */
@@ -245,7 +252,7 @@ function soundOf(project) {
 function assetSig(a) {
   if (!a) return null;
   let st = null;
-  try { const s = fs.statSync(path.join(WORKSPACE, a.path)); st = [s.size, Math.round(s.mtimeMs)]; } catch { /* missing */ }
+  try { const s = fs.statSync(path.join(assetRoot, a.path)); st = [s.size, Math.round(s.mtimeMs)]; } catch { /* missing */ }
   return { id: a.id, path: a.path, st };
 }
 
