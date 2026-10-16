@@ -8,6 +8,7 @@ import { askClaude } from './ChatPanel';
 import { Icon } from './Icon';
 import { openYouTube } from './YouTubeDialog';
 import { openDub } from './DubDialog';
+import { stopRender } from './TopBar';
 import { VoiceSection } from './AudioLibrary';
 import { LOOK_OPTIONS, LOOKS } from '../../../remotion/looks';
 
@@ -476,6 +477,9 @@ const Jobs: React.FC = () => {
         <div key={j.id} className={`job ${j.stage}`}>
           <div className="row"><b>{j.label}</b><span className="spacer" /><span className="small muted">{j.stage}{!['done', 'error', 'queued'].includes(j.stage) && j.progress ? ` · ${Math.round(j.progress * 100)}%` : ''}</span></div>
           {!['done', 'error'].includes(j.stage) && <div className="bar"><div style={{ width: `${(j.progress || 0) * 100}%` }} /></div>}
+          {j.type === 'render' && !['done', 'error', 'stopping'].includes(j.stage) && (
+            <div className="row gap job-actions"><button className="btn small danger" onClick={stopRender}><Icon name="stop" /> Dừng render</button></div>
+          )}
           {j.error && <div className="error small">{j.error}</div>}
           {j.url && j.type === 'youtube' && <a href={j.url} target="_blank" rel="noreferrer">Xem trên YouTube: {j.url}</a>}
           {j.url && j.type !== 'youtube' && (

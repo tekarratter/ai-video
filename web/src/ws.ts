@@ -60,7 +60,10 @@ export function connect() {
         const prev = st.jobs[m.job.id];
         useStore.setState({ jobs: { ...st.jobs, [m.job.id]: m.job } });
         if (m.job.stage === 'done' && prev?.stage !== 'done') st.toast(m.job.label ? `✓ ${m.job.label}` : 'Hoàn tất');
-        if (m.job.stage === 'error' && prev?.stage !== 'error') st.toast(`Lỗi: ${m.job.error}`, 'error');
+        if (m.job.stage === 'error' && prev?.stage !== 'error') {
+          if (m.job.cancelled) st.toast('Đã dừng render');
+          else st.toast(`Lỗi: ${m.job.error}`, 'error');
+        }
         break;
       }
       case 'custom-changed':

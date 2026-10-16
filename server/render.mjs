@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { bundle } from '@remotion/bundler';
-import { ensureBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
+import { ensureBrowser, makeCancelSignal, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
 import { EXPORT_DIR, ROOT, WORKSPACE, readProject } from '../shared/store.mjs';
 
 const ENTRY = path.join(ROOT, 'remotion', 'index.ts');
@@ -39,21 +39,36 @@ async function getBundle(onProgress) {
   return url;
 }
 
+/** A stop handle for one render: stop() aborts it at the next step or kills the running renderMedia. */
+export function renderStopper() {
+  const { cancelSignal, cancel } = makeCancelSignal();
+  const s = {
+    stopped: false,
+    cancelSignal,
+    stop() { s.stopped = true; cancel(); },
+    check() { if (s.stopped) throw new Error('Đã dừng render'); },
+  };
+  return s;
+}
+
 /**
- * @param {object} opts { mediaBase, quality: 'final'|'draft', range?: [startSec, endSec], onProgress(job) }
+ * @param {object} opts { mediaBase, quality: 'final'|'draft', range?: [startSec, endSec], onProgress(job), stopper? }
  */
-export async function renderProject({ mediaBase, quality = 'final', range, outName, onProgress }) {
+export async function renderProject({ mediaBase, quality = 'final', range, outName, onProgress, stopper }) {
   const project = readProject();
   const job = { stage: 'bundle', progress: 0 };
-  const report = (patch) => { Object.assign(job, patch); onProgress?.({ ...job }); };
+  const report = (patch) => { if (!stopper?.stopped) { Object.assign(job, patch); onProgress?.({ ...job }); } };
 
   report({ stage: 'browser' });
   await ensureBrowser();
+  stopper?.check();
   report({ stage: 'bundle', progress: 0 });
   const serveUrl = await getBundle((p) => report({ stage: 'bundle', progress: p }));
+  stopper?.check();
 
   const inputProps = { project, mediaBase };
   const composition = await selectComposition({ serveUrl, id: 'Main', inputProps, timeoutInMilliseconds: 180000 });
+  stopper?.check();
   const fps = composition.fps;
   const frameRange = range ? [Math.round(range[0] * fps), Math.min(composition.durationInFrames - 1, Math.round(range[1] * fps) - 1)] : null;
 
@@ -61,7 +76,9 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
   const base = (outName || project.name || 'export').replace(/[^\p{L}\p{N}_-]+/gu, '_');
   const file = path.join(EXPORT_DIR, `${base}-${stamp}.mp4`);
   report({ stage: 'render', progress: 0 });
+  try {
   await renderMedia({
+    cancelSignal: stopper?.cancelSignal,
     serveUrl,
     composition,
     codec: 'h264',
@@ -78,6 +95,11 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
     offthreadVideoThreads: 2,
     onProgress: ({ progress, renderedFrames, encodedFrames }) => report({ stage: 'render', progress, renderedFrames, encodedFrames }),
   });
+  } catch (e) {
+    fs.rmSync(file, { force: true }); // don't leave a half-written mp4 in exports/
+    stopper?.check();
+    throw e;
+  }
   report({ stage: 'done', progress: 1, file: path.relative(WORKSPACE, file).split(path.sep).join('/') });
   return job;
 }

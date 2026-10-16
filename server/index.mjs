@@ -16,7 +16,7 @@ import { LOCAL_MUSIC_DIR, importTrack, musicFacets, searchMusic } from '../share
 import { listVoices, synthesize, ttsFileName } from '../shared/tts.mjs';
 import { LANGS, TTS_LANGS, dubAsset } from '../shared/dub.mjs';
 import { ClaudeBridge } from './claude.mjs';
-import { renderProject, renderTimelineStill } from './render.mjs';
+import { renderProject, renderStopper, renderTimelineStill } from './render.mjs';
 import * as youtube from './youtube.mjs';
 import * as auth from './auth.mjs';
 import * as projects from './projects.mjs';
@@ -92,6 +92,7 @@ function persistJobs() {
 }
 function startJob(type, label, fn) {
   const job = { id: newId('job'), type, label, stage: 'queued', progress: 0, startedAt: Date.now() };
+  Object.defineProperty(job, 'stopper', { writable: true, enumerable: false });
   jobs.set(job.id, job);
   const update = (patch) => {
     if (job.finishedAt && !('finishedAt' in patch)) return;
@@ -551,11 +552,27 @@ app.post('/api/music/add', (req, res) => {
 app.post('/api/render', (req, res) => {
   if (rendering && !['done', 'error'].includes(rendering.stage)) return res.status(409).json({ error: 'Đang render', job: rendering });
   const { quality, range } = req.body || {};
+  const stopper = renderStopper();
   rendering = startJob('render', quality === 'draft' ? 'Render nháp' : 'Render video', async (update) => {
-    const r = await renderProject({ mediaBase: MEDIA_BASE, quality, range, onProgress: (p) => update(p) });
+    const r = await renderProject({ mediaBase: MEDIA_BASE, quality, range, onProgress: (p) => update(p), stopper });
     return { file: r.file, url: `/${r.file.split('/').map(encodeURIComponent).join('/')}` };
   });
+  rendering.stopper = stopper;
   res.json({ job: rendering });
+});
+app.post('/api/render/stop', (req, res) => {
+  const job = rendering;
+  if (!job || ['done', 'error'].includes(job.stage)) return res.status(409).json({ error: 'Không có render nào đang chạy' });
+  job.stopper.stop();
+  Object.assign(job, { stage: 'stopping', cancelled: true });
+  broadcast({ type: 'job', job }); persistJobs();
+  // bundling/selectComposition can't be interrupted; give up waiting on it so the user can render again
+  setTimeout(() => {
+    if (job.finishedAt) return;
+    Object.assign(job, { stage: 'error', error: 'Đã dừng render', finishedAt: Date.now() });
+    broadcast({ type: 'job', job }); persistJobs();
+  }, 20000);
+  res.json({ ok: true });
 });
 /* ---------------- youtube ---------------- */
 // Desktop-app OAuth clients may redirect to any loopback port without registering it.

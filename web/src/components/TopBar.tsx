@@ -13,6 +13,12 @@ export async function startRender(quality: 'final' | 'draft') {
   else useStore.getState().toast(quality === 'draft' ? 'Bắt đầu render nháp…' : 'Bắt đầu render…');
 }
 
+export async function stopRender() {
+  if (!confirm('Dừng render đang chạy? Phần đã render sẽ bị bỏ.')) return;
+  const r = await fetch('/api/render/stop', { method: 'POST' });
+  if (!r.ok) useStore.getState().toast((await r.json().catch(() => ({}))).error || 'Không dừng được', 'error');
+}
+
 export const TopBar: React.FC = () => {
   const project = useStore((s) => s.project);
   const canUndo = useStore((s) => s.past.length > 0);
@@ -47,11 +53,14 @@ export const TopBar: React.FC = () => {
       <UploadProgress compact />
       {rendering && (
         <div className="render-progress" title={renderJob.stage}>
-          <span>{renderJob.stage === 'bundle' ? 'Đóng gói' : renderJob.stage === 'browser' ? 'Chuẩn bị' : 'Render'} {Math.round(renderJob.progress * 100)}%</span>
+          <span>{renderJob.stage === 'stopping' ? 'Đang dừng…' : renderJob.stage === 'bundle' ? 'Đóng gói' : renderJob.stage === 'browser' ? 'Chuẩn bị' : 'Render'} {renderJob.stage !== 'stopping' && `${Math.round(renderJob.progress * 100)}%`}</span>
           <div className="bar"><div style={{ width: `${renderJob.progress * 100}%` }} /></div>
         </div>
       )}
-      {renderJob?.stage === 'error' && (
+      {rendering && renderJob.stage !== 'stopping' && (
+        <button className="btn danger small" title="Dừng render" onClick={stopRender}><Icon name="stop" /> Dừng</button>
+      )}
+      {renderJob?.stage === 'error' && !renderJob.cancelled && (
         <span className="render-error" title={renderJob.error}>⚠ Render lỗi — xem tab Jobs</span>
       )}
       {renderJob?.stage === 'done' && renderJob.url && (
