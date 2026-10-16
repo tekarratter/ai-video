@@ -3,6 +3,7 @@ import { flushSave, rememberProject, useStore } from '../store';
 import { api } from './Account';
 import { Icon } from './Icon';
 import { uploadParts } from '../upload';
+import { openCleanup } from './Cleanup';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -78,6 +79,8 @@ export const ProjectsDialog: React.FC = () => {
       <div className="modal wide">
         <div className="modal-head">
           <b><Icon name="folder" /> Dự án</b>
+          <span className="spacer" />
+          <button className="btn small" title="Xem video render của mọi dự án, chọn file cũ để xoá" onClick={() => { setOpen(false); openCleanup(); }}><Icon name="trash" /> Dọn dẹp ổ cứng</button>
           <div className="spacer" />
           <button className="btn small" disabled={!!restoring} onClick={() => restoreRef.current?.click()} title="Tạo dự án mới từ file sao lưu .zip">
             <Icon name="upload" /> {restoring ? `Đang tải lên ${restoring}` : 'Khôi phục từ file…'}

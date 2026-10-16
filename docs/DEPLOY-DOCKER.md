@@ -128,9 +128,11 @@ Khôi phục: tạo lại volume rồi giải nén ngược với `tar xzf … -
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
 | `AIV_ADMIN_PASSWORD` | `Hoang2026` | Mật khẩu admin, chỉ dùng cho **lần chạy đầu** (sau đó đổi trong app) |
-| `RENDER_CONCURRENCY` | `1` | Số frame render song song. Đặt 2–4 nếu RAM từ 16 GB trở lên |
+| `RENDER_CONCURRENCY` | `1` | Số frame render song song. Mỗi luồng cần ~1–1,5 GB RAM và không nên vượt số nhân CPU: 8 GB → 1, 16 GB → 3–4, 32 GB → 6. Đây là cách chính để render nhanh hơn |
 | `RENDER_TIMEOUT_MS` | `600000` | Thời gian tối đa chờ một frame (máy thiếu RAM có thể rất chậm) |
 | `RENDER_VIDEO_CACHE_MB` | `256` | Bộ nhớ đệm frame video khi render. Tăng (512–1024) nếu nhiều RAM để render nhanh hơn |
+| `RENDER_MAX_SCENE_SEC` | `15` | Render theo từng cảnh (mỗi clip của track chính); cảnh dài hơn số giây này được chia nhỏ. Cảnh không đổi được dùng lại ở lần render sau, render bị dừng/lỗi làm tiếp phần còn lại |
+| `RENDER_PARTS_DAYS` | `14` | Cảnh đã render (trong `workspace/.cache/render-parts`) không dùng tới sau số ngày này thì tự xoá. Có thể xoá tay trong **Dọn dẹp ổ cứng** |
 | build arg `WITH_TTS` | `1` | Đặt `"0"` để bỏ giọng đọc AI, image nhẹ hơn khoảng 1,5 GB |
 | build arg `CLAUDE_CODE_VERSION` | `latest` | Ghim phiên bản Claude Code CLI |
 

@@ -9,7 +9,9 @@ export type ChatItem = {
   name?: string; input?: any; result?: string; error?: boolean; done?: boolean; id?: string; ts?: string;
 };
 export type ChatStatus = { running: boolean; busy: boolean; prompt: null | { question: string; context: string; options: { key: string; label: string }[] }; sessionId: string | null };
-export type Job = { id: string; type: string; label: string; stage: string; progress: number; error?: string; file?: string; url?: string; startedAt: number; cancelled?: boolean; projectId?: string; projectName?: string };
+export type Job = { id: string; type: string; label: string; stage: string; progress: number; error?: string; file?: string; url?: string; startedAt: number; cancelled?: boolean; projectId?: string; projectName?: string;
+  // scene-by-scene render
+  scenes?: { label: string; start: number; end: number; reused?: boolean; done?: boolean }[]; reused?: number; sceneCount?: number; current?: string };
 
 export const CLIENT_ID = Math.random().toString(36).slice(2);
 

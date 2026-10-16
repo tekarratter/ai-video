@@ -6,11 +6,11 @@ import { UserMenu } from './Account';
 import { openProjects } from './Projects';
 import { UploadProgress } from './LeftPanel';
 
-export async function startRender(quality: 'final' | 'draft', target?: 'facebook') {
+export async function startRender(quality: 'final' | 'draft', target?: 'facebook', continuous = false) {
   const st = useStore.getState();
   if (target === 'facebook' && st.project && st.project.settings.width > st.project.settings.height)
     st.toast('Dự án đang khung ngang — trên điện thoại Facebook sẽ hiện nhỏ. Nên đổi khung 9:16 (1080×1920) trước khi render.', 'error');
-  const r = await fetch('/api/render', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ quality, target }) });
+  const r = await fetch('/api/render', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ quality, target, continuous }) });
   const j = await r.json();
   if (!r.ok) st.toast(j.error || 'Render lỗi', 'error');
   else st.toast(target === 'facebook' ? 'Bắt đầu render bản Facebook di động…' : quality === 'draft' ? 'Bắt đầu render nháp…' : 'Bắt đầu render…');
@@ -58,7 +58,7 @@ export const TopBar: React.FC = () => {
       <UploadProgress compact />
       {rendering && (
         <div className="render-progress" title={renderJob.label}>
-          <span>{renderJob.stage === 'stopping' ? 'Đang dừng…' : renderJob.stage === 'bundle' ? 'Đóng gói' : renderJob.stage === 'browser' ? 'Chuẩn bị' : 'Render'} {renderJob.stage !== 'stopping' && `${Math.round(renderJob.progress * 100)}%`}</span>
+          <span>{renderJob.stage === 'stopping' ? 'Đang dừng…' : renderJob.stage === 'bundle' ? 'Đóng gói' : renderJob.stage === 'browser' ? 'Chuẩn bị' : renderJob.stage === 'audio' ? 'Âm thanh' : renderJob.stage === 'join' ? 'Ghép cảnh' : renderJob.current ? `Cảnh ${renderJob.current.split(' · ')[0]}` : 'Render'} {renderJob.stage !== 'stopping' && `${Math.round(renderJob.progress * 100)}%`}</span>
           <div className="bar"><div style={{ width: `${renderJob.progress * 100}%` }} /></div>
         </div>
       )}
@@ -79,7 +79,8 @@ export const TopBar: React.FC = () => {
         <button className="btn primary caret" onClick={() => setMenu(!menu)}>▾</button>
         {menu && (
           <div className="menu" onMouseLeave={() => setMenu(false)}>
-            <button onClick={() => { setMenu(false); startRender('final'); }}>Render MP4 (chất lượng cao)</button>
+            <button title="Render theo từng cảnh: cảnh không đổi được dùng lại, bị dừng thì lần sau làm tiếp" onClick={() => { setMenu(false); startRender('final'); }}>Render MP4 (chất lượng cao, theo cảnh)</button>
+            <button title="Render từ đầu đến cuối trong một lượt, không chia cảnh, không dùng lại phần cũ" onClick={() => { setMenu(false); startRender('final', undefined, true); }}>Render liền một lượt từ đầu (không chia cảnh)</button>
             <button onClick={() => { setMenu(false); startRender('draft'); }}>Render nháp (½ độ phân giải)</button>
             <button title="Logo, ảnh nhỏ, phụ đề được kéo vào vùng không bị giao diện Facebook trên điện thoại che" onClick={() => { setMenu(false); startRender('final', 'facebook'); }}>Render cho Facebook di động (dọc, tránh vùng bị che)</button>
             <button onClick={() => { setMenu(false); useStore.setState((s) => ({ safePreview: s.safePreview ? null : 'facebook' })); }}>{safePreview ? '✓ ' : ''}Xem trước như Facebook di động</button>

@@ -9,6 +9,7 @@ import { Icon } from './Icon';
 import { openYouTube } from './YouTubeDialog';
 import { openDub } from './DubDialog';
 import { stopRender } from './TopBar';
+import { openCleanup } from './Cleanup';
 import { VoiceSection } from './AudioLibrary';
 import { LOOK_OPTIONS, LOOKS } from '../../../remotion/looks';
 
@@ -463,6 +464,29 @@ const ProjectInspector: React.FC = () => {
   );
 };
 
+/** Scene-by-scene render: which scenes were reused from the cache, rendered now, or still to do. */
+const SceneList: React.FC<{ job: any }> = ({ job }) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const [open, setOpen] = useState(false);
+  const running = !['done', 'error'].includes(job.stage);
+  const sc = job.scenes || [];
+  const rendered = sc.filter((s: any) => s.done).length; // eslint-disable-line @typescript-eslint/no-explicit-any
+  return (
+    <div className="scene-list small">
+      <button className="link-btn" onClick={() => setOpen(!open)}>
+        {open ? '▾' : '▸'} {job.sceneCount} cảnh · dùng lại {job.reused || 0}{rendered ? ` · đã render ${rendered}` : ''}{running && job.current ? ` · đang làm: ${job.current}` : ''}
+      </button>
+      {open && sc.map((s: any, i: number) => ( // eslint-disable-line @typescript-eslint/no-explicit-any
+        <div key={i} className={`scene-row ${s.reused ? 'reused' : s.done ? 'done' : ''}`}>
+          <span>{s.reused ? '♻' : s.done ? '✓' : '…'}</span>
+          <span className="name">{s.label}</span>
+          <span className="muted">{s.start.toFixed(1)}–{s.end.toFixed(1)}s</span>
+        </div>
+      ))}
+      {job.stage === 'error' && !!(job.reused || rendered) && <div className="muted">Các cảnh đã xong được giữ lại — bấm Render lần nữa để làm tiếp phần còn lại.</div>}
+    </div>
+  );
+};
+
 const Jobs: React.FC = () => {
   const jobMap = useStore((s) => s.jobs);
   const jobs = Object.values(jobMap).sort((a, b) => b.startedAt - a.startedAt);
@@ -477,6 +501,7 @@ const Jobs: React.FC = () => {
         <div key={j.id} className={`job ${j.stage}`}>
           <div className="row"><b>{j.label}</b><span className="spacer" /><span className="small muted">{j.stage}{!['done', 'error', 'queued'].includes(j.stage) && j.progress ? ` · ${Math.round(j.progress * 100)}%` : ''}</span></div>
           {!['done', 'error'].includes(j.stage) && <div className="bar"><div style={{ width: `${(j.progress || 0) * 100}%` }} /></div>}
+          {j.type === 'render' && !!j.sceneCount && <SceneList job={j} />}
           {j.type === 'render' && !['done', 'error', 'stopping'].includes(j.stage) && (
             <div className="row gap job-actions"><button className="btn small danger" onClick={stopRender}><Icon name="stop" /> Dừng render</button></div>
           )}
@@ -505,6 +530,10 @@ const Exports: React.FC = () => {
   const doneCount = Object.values(jobs).filter((j) => j.stage === 'done').length;
   const load = () => fetch('/api/exports').then((r) => r.json()).then(setList).catch(() => setList([]));
   useEffect(() => { load(); }, [doneCount]);
+  useEffect(() => {
+    window.addEventListener('exports-changed', load);
+    return () => window.removeEventListener('exports-changed', load);
+  }, []);
   const del = async (e: any) => {
     if (!confirm(`Xoá file ${e.name}?`)) return;
     const r = await fetch(`/api/exports/${encodeURIComponent(e.name)}`, { method: 'DELETE' });
@@ -515,7 +544,11 @@ const Exports: React.FC = () => {
   const dur = (d?: number) => (d ? `${Math.floor(d / 60)}:${String(Math.round(d % 60)).padStart(2, '0')}` : '');
   return (
     <div className="inspector-body">
-      <div className="muted small" style={{ marginBottom: 6 }}>Video đã xuất của dự án <b>{projectName}</b></div>
+      <div className="row gap" style={{ marginBottom: 6 }}>
+        <span className="muted small">Video đã xuất của dự án <b>{projectName}</b></span>
+        <span className="spacer" />
+        <button className="btn small" title="Xem video render của mọi dự án, chọn file cũ để xoá" onClick={openCleanup}><Icon name="trash" /> Dọn dẹp ổ cứng</button>
+      </div>
       {list === null && <div className="muted small">Đang tải…</div>}
       {list?.length === 0 && <div className="empty">Chưa có video nào được xuất.<br />Bấm <b>Render</b> ở thanh trên.</div>}
       {list?.map((e) => (

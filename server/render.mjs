@@ -1,10 +1,12 @@
-// Export the timeline with Remotion (bundle -> selectComposition -> renderMedia).
+// Export the timeline with Remotion (bundle -> selectComposition -> renderMedia per scene -> ffmpeg join).
 import fs from 'node:fs';
 import path from 'node:path';
 import { bundle } from '@remotion/bundler';
-import { ensureBrowser, makeCancelSignal, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
-import { EXPORT_DIR, ROOT, WORKSPACE, readProject } from '../shared/store.mjs';
-import { SAFE_ZONES, applySafeZone } from '../shared/timeline.js';
+import crypto from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { ensureBrowser, makeCancelSignal, openBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
+import { CACHE_DIR, EXPORT_DIR, ROOT, WORKSPACE, readProject } from '../shared/store.mjs';
+import { SAFE_ZONES, applySafeZone, layoutTrack } from '../shared/timeline.js';
 
 const ENTRY = path.join(ROOT, 'remotion', 'index.ts');
 let cached = { url: null, stamp: 0 };
@@ -55,7 +57,7 @@ export function renderStopper() {
 /**
  * @param {object} opts { mediaBase, quality: 'final'|'draft', range?: [startSec, endSec], onProgress(job), stopper? }
  */
-export async function renderProject({ mediaBase, quality = 'final', range, outName, onProgress, stopper, projectId, target }) {
+export async function renderProject({ mediaBase, quality = 'final', range, outName, onProgress, stopper, projectId, target, continuous }) {
   // target 'facebook' etc.: same timeline with overlays kept clear of that platform's mobile UI
   const project = SAFE_ZONES[target] ? applySafeZone(readProject(), SAFE_ZONES[target]) : readProject();
   const job = { stage: 'bundle', progress: 0 };
@@ -74,38 +76,198 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
   const fps = composition.fps;
   const frameRange = range ? [Math.round(range[0] * fps), Math.min(composition.durationInFrames - 1, Math.round(range[1] * fps) - 1)] : null;
 
+  const [f0, f1] = frameRange || [0, composition.durationInFrames - 1];
+
   const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
   const base = (outName || project.name || 'export').replace(/[^\p{L}\p{N}_-]+/gu, '_');
   const file = path.join(EXPORT_DIR, `${base}${SAFE_ZONES[target] ? `-${target}` : ''}-${stamp}.mp4`);
-  report({ stage: 'render', progress: 0 });
-  try {
-  await renderMedia({
+
+  // Scene-by-scene render: every scene is rendered to its own (muted) file under .cache/render-parts,
+  // named by a fingerprint of everything visible in it. A later render reuses unchanged scenes, and a
+  // render that was stopped / crashed / interrupted by a restart continues where it left off.
+  // Sound is rendered once for the whole range (voice-over and music stay continuous across cuts) and
+  // also cached by its own fingerprint. Finally ffmpeg joins the scenes and adds the sound (no re-encode).
+  const common = {
+    serveUrl, composition, inputProps,
     cancelSignal: stopper?.cancelSignal,
-    // tag the mp4 so a downloaded file still says which project it came from
-    metadata: { title: project.name || projectId || 'export', comment: `AI Video Studio · dự án: ${project.name || ''} (${projectId || '?'})` },
-    serveUrl,
-    composition,
-    codec: 'h264',
-    outputLocation: file,
-    inputProps,
-    frameRange,
-    crf: quality === 'draft' ? 28 : 18,
-    scale: quality === 'draft' ? 0.5 : 1,
     // Conservative defaults: this box has little free RAM and OffthreadVideo extraction is memory hungry.
     concurrency: Number(process.env.RENDER_CONCURRENCY || 1),
     // generous timeout: when the machine swaps, extracting one video frame can take minutes
     timeoutInMilliseconds: Number(process.env.RENDER_TIMEOUT_MS || 600000),
     offthreadVideoCacheSizeInBytes: Number(process.env.RENDER_VIDEO_CACHE_MB || 256) * 1024 * 1024,
     offthreadVideoThreads: 2,
-    onProgress: ({ progress, renderedFrames, encodedFrames }) => report({ stage: 'render', progress, renderedFrames, encodedFrames }),
+  };
+  const meta = { title: project.name || projectId || 'export', comment: `AI Video Studio · dự án: ${project.name || ''} (${projectId || '?'})` };
+  if (continuous) {
+    // one pass from start to end straight into the mp4 (no scene cache): the classic, simplest path
+    report({ stage: 'render', progress: 0, current: 'liền một lượt' });
+    try {
+      await renderMedia({
+        ...common, metadata: meta, codec: 'h264', outputLocation: file, frameRange,
+        crf: quality === 'draft' ? 28 : 18,
+        scale: quality === 'draft' ? 0.5 : 1,
+        onProgress: ({ progress, renderedFrames, encodedFrames }) => report({ stage: 'render', progress, renderedFrames, encodedFrames }),
+      });
+    } catch (e) {
+      fs.rmSync(file, { force: true });
+      stopper?.check();
+      throw e;
+    }
+    report({ stage: 'done', progress: 1, current: undefined, file: path.relative(WORKSPACE, file).split(path.sep).join('/') });
+    return job;
+  }
+  const look = { quality, target: target || '', w: composition.width, h: composition.height, fps, bundle: cached.stamp };
+  const segs = sceneSegments(project, fps, f0, f1).map((s) => {
+    const key = hashOf({ ...look, a: s.a, b: s.b, content: visibleIn(project, fps, s.a, s.b) });
+    return { ...s, key, out: path.join(PARTS_DIR, `${key}.mp4`) };
   });
+  const audioKey = hashOf({ fps, f0, f1, sound: soundOf(project) });
+  const audioOut = path.join(PARTS_DIR, `${audioKey}.aac`);
+  fs.mkdirSync(PARTS_DIR, { recursive: true });
+
+  const todo = segs.filter((s) => !fs.existsSync(s.out));
+  const needAudio = !fs.existsSync(audioOut);
+  const frames = (s) => s.b - s.a + 1;
+  const totalWork = todo.reduce((n, s) => n + frames(s), 0) + (needAudio ? (f1 - f0 + 1) * 0.1 : 0) || 1;
+  let doneWork = 0;
+  const scenes = segs.map((s) => ({ label: s.label, start: s.a / fps, end: (s.b + 1) / fps, reused: !todo.includes(s) }));
+  report({ stage: 'render', progress: 0, scenes, reused: segs.length - todo.length, sceneCount: segs.length });
+
+  // one browser for all scenes instead of one per renderMedia call
+  const browser = todo.length || needAudio ? await openBrowser('chrome', { chromiumOptions: {} }) : null;
+  try {
+    for (const [i, s] of todo.entries()) {
+      stopper?.check();
+      const tmp = `${s.out}.tmp.mp4`;
+      report({ stage: 'render', current: `${segs.indexOf(s) + 1}/${segs.length} · ${s.label}` });
+      await renderMedia({
+        ...common, puppeteerInstance: browser,
+        codec: 'h264', muted: true, outputLocation: tmp, frameRange: [s.a, s.b],
+        crf: quality === 'draft' ? 28 : 18,
+        scale: quality === 'draft' ? 0.5 : 1,
+        onProgress: ({ renderedFrames }) => report({ progress: Math.min(0.97, ((doneWork + renderedFrames) / totalWork) * 0.97), renderedFrames: doneWork + renderedFrames }),
+      }).catch((e) => { fs.rmSync(tmp, { force: true }); throw e; });
+      fs.renameSync(tmp, s.out); // only complete scenes ever get the final name
+      doneWork += frames(s);
+      scenes[segs.indexOf(s)].reused = false;
+      scenes[segs.indexOf(s)].done = true;
+      report({ scenes, progress: Math.min(0.97, (doneWork / totalWork) * 0.97) });
+      void i;
+    }
+    if (needAudio) {
+      stopper?.check();
+      report({ stage: 'audio', current: 'âm thanh' });
+      const tmp = `${audioOut}.tmp.aac`;
+      await renderMedia({ ...common, puppeteerInstance: browser, codec: 'aac', enforceAudioTrack: true, outputLocation: tmp, frameRange: [f0, f1] })
+        .catch((e) => { fs.rmSync(tmp, { force: true }); throw e; });
+      fs.renameSync(tmp, audioOut);
+    }
+  } finally {
+    await browser?.close({ silent: true }).catch(() => {});
+  }
+  stopper?.check();
+
+  report({ stage: 'join', current: 'ghép cảnh', progress: 0.98 });
+  const now = new Date();
+  for (const p of [...segs.map((s) => s.out), audioOut]) fs.utimesSync(p, now, now); // "last used", for cache pruning
+  try {
+    await joinParts(segs.map((s) => s.out), audioOut, file, meta);
   } catch (e) {
     fs.rmSync(file, { force: true }); // don't leave a half-written mp4 in exports/
-    stopper?.check();
     throw e;
   }
-  report({ stage: 'done', progress: 1, file: path.relative(WORKSPACE, file).split(path.sep).join('/') });
+  pruneParts();
+  report({ stage: 'done', progress: 1, current: undefined, file: path.relative(WORKSPACE, file).split(path.sep).join('/') });
   return job;
+}
+
+const PARTS_DIR = path.join(CACHE_DIR, 'render-parts');
+const hashOf = (v) => crypto.createHash('sha1').update(JSON.stringify(v)).digest('hex').slice(0, 20);
+
+/** Cut points: each clip of the main sequence is a scene; long scenes are split into ≤ MAX_SCENE_SEC pieces. */
+function sceneSegments(project, fps, f0, f1) {
+  const MAX = Math.max(2, Number(process.env.RENDER_MAX_SCENE_SEC || 15)) * fps;
+  const MIN = Math.round(fps / 2);
+  const main = project.tracks.find((t) => t.type === 'sequence' && !t.hidden);
+  const cuts = new Map([[f0, 'Cảnh 1']]);
+  if (main) {
+    layoutTrack(main, project).forEach((l, i) => {
+      const f = Math.round(l.start * fps);
+      if (f > f0 && f <= f1) cuts.set(f, l.clip.name || l.clip.component || `Cảnh ${i + 1}`);
+      else if (f <= f0) cuts.set(f0, l.clip.name || l.clip.component || `Cảnh ${i + 1}`);
+    });
+  }
+  const starts = [...cuts.keys()].sort((a, b) => a - b);
+  const out = [];
+  starts.forEach((a, i) => {
+    const end = (starts[i + 1] ?? f1 + 1) - 1;
+    const label = cuts.get(a);
+    if (out.length && end - a + 1 < MIN) { out[out.length - 1].b = end; return; } // tiny scene: glue to previous
+    const n = Math.ceil((end - a + 1) / MAX);
+    for (let k = 0; k < n; k++) {
+      const sa = a + Math.round(((end - a + 1) * k) / n), sb = a + Math.round(((end - a + 1) * (k + 1)) / n) - 1;
+      out.push({ a: sa, b: sb, label: n > 1 ? `${label} (${k + 1}/${n})` : label });
+    }
+  });
+  return out;
+}
+
+/** Everything that can show up in frames a..b: clips overlapping them, subtitles, logo, look.
+ *  Compared in whole frames, the way Remotion places sequences (seconds carry float noise). */
+function visibleIn(project, fps, a, b) {
+  const F = (t) => Math.round(t * fps);
+  const hit = (s, e) => F(s) <= b && F(e) > a;
+  const assets = new Map(project.assets.map((x) => [x.id, x]));
+  const tracks = project.tracks.filter((t) => !t.hidden && t.type !== 'audio').map((t) => ({
+    ...t,
+    clips: layoutTrack(t, project).filter((l) => hit(l.start, l.end))
+      .map((l) => ({ s: l.start, d: l.duration, tr: l.transition, c: l.clip, a: assetSig(assets.get(l.clip.assetId)) })),
+  }));
+  const st = project.subtitles || {};
+  return {
+    settings: project.settings, logo: project.logo, logoAsset: assetSig(assets.get(project.logo?.assetId)), tracks,
+    subtitles: { enabled: st.enabled, style: st.style, cues: (st.cues || []).filter((c) => hit(c.start, c.end)) },
+  };
+}
+
+const SOUNDY = /\.(mp3|wav|m4a|aac|ogg|flac|mp4|mov|webm|mkv)\b|"(audio|voice|music|sound|src)"/i;
+/** What the soundtrack depends on: audio tracks and every clip that can carry sound, with its timing. */
+function soundOf(project) {
+  const assets = new Map(project.assets.map((a) => [a.id, a]));
+  return project.tracks.filter((t) => !t.hidden).map((t) => ({
+    id: t.id, type: t.type, muted: t.muted, volume: t.volume,
+    clips: layoutTrack(t, project).filter((l) => t.type === 'audio' || l.clip.kind === 'video' || l.clip.kind === 'audio' || (l.clip.kind === 'component' && SOUNDY.test(JSON.stringify(l.clip.props || {})) && /\.(mp3|wav|m4a|aac|ogg|flac|mp4|mov|webm|mkv)/i.test(JSON.stringify(l.clip.props || {}))) || (!l.clip.kind && l.clip.assetId))
+      .map((l) => ({ s: l.start, d: l.duration, c: l.clip, a: assetSig(assets.get(l.clip.assetId)) })),
+  }));
+}
+
+/** An asset's identity incl. its file's size/mtime, so replacing a media file invalidates the scenes using it. */
+function assetSig(a) {
+  if (!a) return null;
+  let st = null;
+  try { const s = fs.statSync(path.join(WORKSPACE, a.path)); st = [s.size, Math.round(s.mtimeMs)]; } catch { /* missing */ }
+  return { id: a.id, path: a.path, st };
+}
+
+function joinParts(videos, audio, out, meta) {
+  const list = `${out}.parts.txt`;
+  fs.writeFileSync(list, videos.map((v) => `file '${v.replace(/'/g, "'\\''")}'`).join('\n'));
+  const args = ['-hide_banner', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', list, '-i', audio,
+    '-map', '0:v:0', '-map', '1:a:0', '-c', 'copy', '-shortest', '-movflags', '+faststart',
+    '-metadata', `title=${meta.title}`, '-metadata', `comment=${meta.comment}`, out];
+  return new Promise((resolve, reject) => execFile('ffmpeg', args, { maxBuffer: 1 << 24 }, (err, _o, stderr) => {
+    fs.rmSync(list, { force: true });
+    if (err) reject(new Error(`ghép cảnh lỗi: ${String(stderr || err.message).trim().split('\n').pop()}`)); else resolve();
+  }));
+}
+
+/** Keep the scene cache bounded: drop parts unused for RENDER_PARTS_DAYS (default 14) days and leftovers. */
+function pruneParts() {
+  const maxAge = Number(process.env.RENDER_PARTS_DAYS || 14) * 86400e3;
+  for (const f of fs.readdirSync(PARTS_DIR)) {
+    const p = path.join(PARTS_DIR, f);
+    try { if (/\.tmp\./.test(f) || Date.now() - fs.statSync(p).mtimeMs > maxAge) fs.rmSync(p, { force: true }); } catch { /* gone */ }
+  }
 }
 
 /** Render one frame of the timeline to a PNG (used by `vedit still` so Claude can look at its work). */

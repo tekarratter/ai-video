@@ -10,6 +10,7 @@ import { TopBar } from './components/TopBar';
 import { YouTubeDialog } from './components/YouTubeDialog';
 import { ClaudeAuthDialog, LoginScreen } from './components/Account';
 import { ProjectsDialog } from './components/Projects';
+import { CleanupDialog } from './components/Cleanup';
 import { DubDialog } from './components/DubDialog';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { deleteSelection, duplicateSelection, fps, seek, currentTime, splitAtPlayhead, togglePlay } from './player';
@@ -99,6 +100,7 @@ const Editor: React.FC = () => {
       </div>
       <YouTubeDialog />
       <ProjectsDialog />
+      <CleanupDialog />
       <DubDialog />
       <ClaudeAuthDialog />
       <div className="toasts">

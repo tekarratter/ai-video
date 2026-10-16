@@ -19,6 +19,8 @@ services:
       # render trên máy ít RAM: chờ frame lâu hơn, bộ đệm video nhỏ hơn
       RENDER_TIMEOUT_MS: ${RENDER_TIMEOUT_MS:-600000}
       RENDER_VIDEO_CACHE_MB: ${RENDER_VIDEO_CACHE_MB:-256}
+      RENDER_MAX_SCENE_SEC: ${RENDER_MAX_SCENE_SEC:-15}
+      RENDER_PARTS_DAYS: ${RENDER_PARTS_DAYS:-14}
     volumes:
       - workspace:/app/workspace          # dự án, media, video xuất
       - home:/home/node                   # tài khoản app, đăng nhập Claude Code, lịch sử chat, cache model

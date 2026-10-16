@@ -20,6 +20,7 @@ import { renderProject, renderStopper, renderTimelineStill } from './render.mjs'
 import * as youtube from './youtube.mjs';
 import * as auth from './auth.mjs';
 import * as projects from './projects.mjs';
+import * as cleanup from './cleanup.mjs';
 import * as claudeAuth from './claudeauth.mjs';
 
 const PORT = Number(process.env.PORT || 3001);
@@ -572,19 +573,30 @@ app.post('/api/music/add', (req, res) => {
 
 app.post('/api/render', (req, res) => {
   if (rendering && !['done', 'error'].includes(rendering.stage)) return res.status(409).json({ error: 'Đang render', job: rendering });
-  const { quality, range, target } = req.body || {};
+  const { quality, range, target, continuous } = req.body || {};
   const stopper = renderStopper();
   const projectId = projects.activeId();
   const projectName = readProject().name || projectId;
-  const kind = target === 'facebook' ? 'Render Facebook di động' : quality === 'draft' ? 'Render nháp' : 'Render video';
+  const kind = target === 'facebook' ? 'Render Facebook di động' : quality === 'draft' ? 'Render nháp' : continuous ? 'Render liền một lượt' : 'Render video';
   rendering = startJob('render', `${kind} · ${projectName}`, async (update) => {
     update({ projectId, projectName });
-    const r = await renderProject({ mediaBase: MEDIA_BASE, quality, range, onProgress: (p) => update(p), stopper, projectId, target });
+    const r = await renderProject({ mediaBase: MEDIA_BASE, quality, range, onProgress: (p) => update(p), stopper, projectId, target, continuous: !!continuous });
     // link through the project id: /exports follows whichever project is open now
     return { file: r.file, url: `/api/projects/${encodeURIComponent(projectId)}/exports/${encodeURIComponent(path.basename(r.file))}` };
   });
   rendering.stopper = stopper;
   res.json({ job: rendering });
+});
+/* ---- disk cleanup ---- */
+// a rendered file is "busy" while a render of its project that started before it was written, or a
+// YouTube upload of it, is still running
+const exportBusy = (project, name, mtime) => [...jobs.values()].some((j) => !['done', 'error'].includes(j.stage)
+  && (String(j.file || '').endsWith(`/${name}`) || (j.type === 'render' && j.projectId === project && mtime >= j.startedAt - 1000)));
+app.get('/api/cleanup', (req, res) => res.json(cleanup.scan(exportBusy)));
+app.post('/api/cleanup', (req, res) => {
+  const r = cleanup.remove(req.body || {}, exportBusy);
+  broadcast({ type: 'projects', ...projectsPayload() }); // export counts changed
+  res.json({ ...r, ...cleanup.scan(exportBusy) });
 });
 app.get('/api/projects/:id/exports/:name', (req, res) => {
   const { id, name } = req.params;
@@ -632,7 +644,7 @@ app.post('/api/youtube/upload', (req, res) => {
   if (!fs.existsSync(abs)) return res.status(404).json({ error: 'Không tìm thấy file' });
   if (!youtube.status().connected) return res.status(400).json({ error: 'Chưa kết nối YouTube' });
   const job = startJob('youtube', `YouTube: ${meta.title || path.basename(abs)}`, async (update) => {
-    update({ stage: 'upload' });
+    update({ stage: 'upload', file: path.relative(WORKSPACE, abs) });
     const r = await youtube.upload(abs, meta, (p) => update({ progress: p }));
     return { url: r.url, studio: r.studio, videoId: r.id, label: `Đã đăng YouTube (${r.privacy})` };
   });
