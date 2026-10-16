@@ -123,50 +123,55 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
     return job;
   }
   const look = { quality, target: target || '', w: composition.width, h: composition.height, fps, bundle: cached.stamp };
+  // every scene has a picture part (<key>.mp4, muted) and a sound part (<akey>.wav, PCM so the parts
+  // join without gaps), each with its own fingerprint: changing only music/voice redoes only sound
   const segs = sceneSegments(project, fps, f0, f1).map((s) => {
-    const key = hashOf({ ...look, a: s.a, b: s.b, content: visibleIn(project, fps, s.a, s.b) });
-    return { ...s, key, out: path.join(PARTS_DIR, `${key}.mp4`) };
+    const key = hashOf({ v: 2, ...look, a: s.a, b: s.b, content: visibleIn(project, fps, s.a, s.b) });
+    const akey = hashOf({ v: 2, fps, a: s.a, b: s.b, sound: soundOf(project, fps, s.a, s.b) });
+    return { ...s, key, out: path.join(PARTS_DIR, `${key}.mp4`), aout: path.join(PARTS_DIR, `${akey}.wav`) };
   });
-  const audioKey = hashOf({ fps, f0, f1, sound: soundOf(project) });
-  const audioOut = path.join(PARTS_DIR, `${audioKey}.aac`);
   fs.mkdirSync(PARTS_DIR, { recursive: true });
 
-  const todo = segs.filter((s) => !fs.existsSync(s.out));
-  const needAudio = !fs.existsSync(audioOut);
+  const todo = segs.filter((s) => !fs.existsSync(s.out) || !fs.existsSync(s.aout));
   const frames = (s) => s.b - s.a + 1;
-  const totalWork = todo.reduce((n, s) => n + frames(s), 0) + (needAudio ? (f1 - f0 + 1) * 0.1 : 0) || 1;
+  // sound-only work (picture cached) walks the frames without screenshots: count it as ~1/3
+  const work = (s) => frames(s) * (fs.existsSync(s.out) ? 0.33 : 1);
+  const totalWork = todo.reduce((n, s) => n + work(s), 0) || 1;
   let doneWork = 0;
   const scenes = segs.map((s) => ({ label: s.label, start: s.a / fps, end: (s.b + 1) / fps, reused: !todo.includes(s) }));
   report({ stage: 'render', progress: 0, scenes, reused: segs.length - todo.length, sceneCount: segs.length });
 
   // one browser for all scenes instead of one per renderMedia call
-  const browser = todo.length || needAudio ? await openBrowser('chrome', { chromiumOptions: {} }) : null;
+  const browser = todo.length ? await openBrowser('chrome', { chromiumOptions: {} }) : null;
   try {
     for (const [i, s] of todo.entries()) {
       stopper?.check();
-      const tmp = `${s.out}.tmp.mp4`;
-      report({ stage: 'render', current: `${segs.indexOf(s) + 1}/${segs.length} · ${s.label}` });
-      await renderMedia({
-        ...common, puppeteerInstance: browser,
-        codec: 'h264', muted: true, outputLocation: tmp, frameRange: [s.a, s.b],
-        crf: quality === 'draft' ? 28 : 18,
-        scale: quality === 'draft' ? 0.5 : 1,
-        onProgress: ({ renderedFrames }) => report({ progress: Math.min(0.97, ((doneWork + renderedFrames) / totalWork) * 0.97), renderedFrames: doneWork + renderedFrames }),
-      }).catch((e) => { fs.rmSync(tmp, { force: true }); stopper?.check(); throw e; });
-      fs.renameSync(tmp, s.out); // only complete scenes ever get the final name
-      doneWork += frames(s);
+      const needPicture = !fs.existsSync(s.out), needSound = !fs.existsSync(s.aout);
+      const tmp = `${s.out}.tmp.mp4`, atmp = `${s.aout}.tmp.wav`;
+      const scale = needPicture ? 1 : 0.33;
+      report({ stage: 'render', current: `${segs.indexOf(s) + 1}/${segs.length} · ${s.label}${needPicture ? '' : ' (âm thanh)'}` });
+      const onProgress = ({ renderedFrames }) => report({ progress: Math.min(0.97, ((doneWork + renderedFrames * scale) / totalWork) * 0.97), renderedFrames: Math.round(doneWork + renderedFrames * scale) });
+      const drop = (e) => { fs.rmSync(tmp, { force: true }); fs.rmSync(atmp, { force: true }); stopper?.check(); throw e; };
+      if (needPicture) {
+        await renderMedia({
+          ...common, puppeteerInstance: browser, onProgress,
+          codec: 'h264', outputLocation: tmp, frameRange: [s.a, s.b],
+          // sound of the same pass goes to its own WAV (or nowhere when it is cached already)
+          ...(needSound ? { audioCodec: 'pcm-16', separateAudioTo: atmp, enforceAudioTrack: true } : { muted: true }),
+          crf: quality === 'draft' ? 28 : 18,
+          scale: quality === 'draft' ? 0.5 : 1,
+        }).catch(drop);
+      } else {
+        await renderMedia({ ...common, puppeteerInstance: browser, onProgress, codec: 'wav', enforceAudioTrack: true, outputLocation: atmp, frameRange: [s.a, s.b] }).catch(drop);
+      }
+      // only complete parts ever get their final name
+      if (needSound) fs.renameSync(atmp, s.aout);
+      if (needPicture) fs.renameSync(tmp, s.out);
+      doneWork += work(s);
       scenes[segs.indexOf(s)].reused = false;
       scenes[segs.indexOf(s)].done = true;
       report({ scenes, progress: Math.min(0.97, (doneWork / totalWork) * 0.97) });
       void i;
-    }
-    if (needAudio) {
-      stopper?.check();
-      report({ stage: 'audio', current: 'âm thanh' });
-      const tmp = `${audioOut}.tmp.aac`;
-      await renderMedia({ ...common, puppeteerInstance: browser, codec: 'aac', enforceAudioTrack: true, outputLocation: tmp, frameRange: [f0, f1] })
-        .catch((e) => { fs.rmSync(tmp, { force: true }); throw e; });
-      fs.renameSync(tmp, audioOut);
     }
   } finally {
     await browser?.close({ silent: true }).catch(() => {});
@@ -175,9 +180,9 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
 
   report({ stage: 'join', current: 'ghép cảnh', progress: 0.98 });
   const now = new Date();
-  for (const p of [...segs.map((s) => s.out), audioOut]) fs.utimesSync(p, now, now); // "last used", for cache pruning
+  for (const s of segs) for (const p of [s.out, s.aout]) fs.utimesSync(p, now, now); // "last used", for cache pruning
   try {
-    await joinParts(segs.map((s) => s.out), audioOut, file, meta);
+    await joinParts(segs.map((s) => s.out), segs.map((s) => s.aout), file, meta);
   } catch (e) {
     fs.rmSync(file, { force: true }); // don't leave a half-written mp4 in exports/
     throw e;
@@ -238,12 +243,13 @@ function visibleIn(project, fps, a, b) {
 }
 
 const SOUNDY = /\.(mp3|wav|m4a|aac|ogg|flac|mp4|mov|webm|mkv)\b|"(audio|voice|music|sound|src)"/i;
-/** What the soundtrack depends on: audio tracks and every clip that can carry sound, with its timing. */
-function soundOf(project) {
-  const assets = new Map(project.assets.map((a) => [a.id, a]));
+/** What the sound of frames a..b depends on: audio tracks and every clip that can carry sound there, with timing. */
+function soundOf(project, fps, a, b) {
+  const F = (t) => Math.round(t * fps);
+  const assets = new Map(project.assets.map((x) => [x.id, x]));
   return project.tracks.filter((t) => !t.hidden).map((t) => ({
     id: t.id, type: t.type, muted: t.muted, volume: t.volume,
-    clips: layoutTrack(t, project).filter((l) => t.type === 'audio' || l.clip.kind === 'video' || l.clip.kind === 'audio' || (l.clip.kind === 'component' && SOUNDY.test(JSON.stringify(l.clip.props || {})) && /\.(mp3|wav|m4a|aac|ogg|flac|mp4|mov|webm|mkv)/i.test(JSON.stringify(l.clip.props || {}))) || (!l.clip.kind && l.clip.assetId))
+    clips: layoutTrack(t, project).filter((l) => F(l.start) <= b && F(l.end) > a).filter((l) => t.type === 'audio' || l.clip.kind === 'video' || l.clip.kind === 'audio' || (l.clip.kind === 'component' && SOUNDY.test(JSON.stringify(l.clip.props || {})) && /\.(mp3|wav|m4a|aac|ogg|flac|mp4|mov|webm|mkv)/i.test(JSON.stringify(l.clip.props || {}))) || (!l.clip.kind && l.clip.assetId))
       .map((l) => ({ s: l.start, d: l.duration, c: l.clip, a: assetSig(assets.get(l.clip.assetId)) })),
   }));
 }
@@ -256,14 +262,19 @@ function assetSig(a) {
   return { id: a.id, path: a.path, st };
 }
 
-function joinParts(videos, audio, out, meta) {
-  const list = `${out}.parts.txt`;
-  fs.writeFileSync(list, videos.map((v) => `file '${v.replace(/'/g, "'\\''")}'`).join('\n'));
-  const args = ['-hide_banner', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', list, '-i', audio,
-    '-map', '0:v:0', '-map', '1:a:0', '-c', 'copy', '-shortest', '-movflags', '+faststart',
+/** Join picture parts (stream copy) and sound parts (PCM, encoded to AAC once) into the final mp4. */
+function joinParts(videos, audios, out, meta) {
+  const listOf = (files, name) => {
+    const p = `${out}.${name}.txt`;
+    fs.writeFileSync(p, files.map((v) => `file '${v.replace(/'/g, "'\\''")}'`).join('\n'));
+    return p;
+  };
+  const vl = listOf(videos, 'video'), al = listOf(audios, 'audio');
+  const args = ['-hide_banner', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', vl, '-f', 'concat', '-safe', '0', '-i', al,
+    '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '320k', '-shortest', '-movflags', '+faststart',
     '-metadata', `title=${meta.title}`, '-metadata', `comment=${meta.comment}`, out];
   return new Promise((resolve, reject) => execFile('ffmpeg', args, { maxBuffer: 1 << 24 }, (err, _o, stderr) => {
-    fs.rmSync(list, { force: true });
+    fs.rmSync(vl, { force: true }); fs.rmSync(al, { force: true });
     if (err) reject(new Error(`ghép cảnh lỗi: ${String(stderr || err.message).trim().split('\n').pop()}`)); else resolve();
   }));
 }
