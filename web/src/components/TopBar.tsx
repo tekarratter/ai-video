@@ -6,11 +6,14 @@ import { UserMenu } from './Account';
 import { openProjects } from './Projects';
 import { UploadProgress } from './LeftPanel';
 
-export async function startRender(quality: 'final' | 'draft') {
-  const r = await fetch('/api/render', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ quality }) });
+export async function startRender(quality: 'final' | 'draft', target?: 'facebook') {
+  const st = useStore.getState();
+  if (target === 'facebook' && st.project && st.project.settings.width > st.project.settings.height)
+    st.toast('Dự án đang khung ngang — trên điện thoại Facebook sẽ hiện nhỏ. Nên đổi khung 9:16 (1080×1920) trước khi render.', 'error');
+  const r = await fetch('/api/render', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ quality, target }) });
   const j = await r.json();
-  if (!r.ok) useStore.getState().toast(j.error || 'Render lỗi', 'error');
-  else useStore.getState().toast(quality === 'draft' ? 'Bắt đầu render nháp…' : 'Bắt đầu render…');
+  if (!r.ok) st.toast(j.error || 'Render lỗi', 'error');
+  else st.toast(target === 'facebook' ? 'Bắt đầu render bản Facebook di động…' : quality === 'draft' ? 'Bắt đầu render nháp…' : 'Bắt đầu render…');
 }
 
 export async function stopRender() {
@@ -28,6 +31,7 @@ export const TopBar: React.FC = () => {
   const renderJob = useStore((s) => Object.values(s.jobs).filter((j) => j.type === 'render' && (!j.projectId || j.projectId === s.activeProject || !['done', 'error'].includes(j.stage))).sort((a, b) => b.startedAt - a.startedAt)[0]);
   const [showFlash, setShowFlash] = useState(false);
   const [menu, setMenu] = useState(false);
+  const safePreview = useStore((s) => s.safePreview);
 
   useEffect(() => {
     if (!flash) return;
@@ -77,6 +81,8 @@ export const TopBar: React.FC = () => {
           <div className="menu" onMouseLeave={() => setMenu(false)}>
             <button onClick={() => { setMenu(false); startRender('final'); }}>Render MP4 (chất lượng cao)</button>
             <button onClick={() => { setMenu(false); startRender('draft'); }}>Render nháp (½ độ phân giải)</button>
+            <button title="Logo, ảnh nhỏ, phụ đề được kéo vào vùng không bị giao diện Facebook trên điện thoại che" onClick={() => { setMenu(false); startRender('final', 'facebook'); }}>Render cho Facebook di động (dọc, tránh vùng bị che)</button>
+            <button onClick={() => { setMenu(false); useStore.setState((s) => ({ safePreview: s.safePreview ? null : 'facebook' })); }}>{safePreview ? '✓ ' : ''}Xem trước như Facebook di động</button>
           </div>
         )}
       </div>

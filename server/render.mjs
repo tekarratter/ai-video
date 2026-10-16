@@ -4,6 +4,7 @@ import path from 'node:path';
 import { bundle } from '@remotion/bundler';
 import { ensureBrowser, makeCancelSignal, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
 import { EXPORT_DIR, ROOT, WORKSPACE, readProject } from '../shared/store.mjs';
+import { SAFE_ZONES, applySafeZone } from '../shared/timeline.js';
 
 const ENTRY = path.join(ROOT, 'remotion', 'index.ts');
 let cached = { url: null, stamp: 0 };
@@ -54,8 +55,9 @@ export function renderStopper() {
 /**
  * @param {object} opts { mediaBase, quality: 'final'|'draft', range?: [startSec, endSec], onProgress(job), stopper? }
  */
-export async function renderProject({ mediaBase, quality = 'final', range, outName, onProgress, stopper, projectId }) {
-  const project = readProject();
+export async function renderProject({ mediaBase, quality = 'final', range, outName, onProgress, stopper, projectId, target }) {
+  // target 'facebook' etc.: same timeline with overlays kept clear of that platform's mobile UI
+  const project = SAFE_ZONES[target] ? applySafeZone(readProject(), SAFE_ZONES[target]) : readProject();
   const job = { stage: 'bundle', progress: 0 };
   const report = (patch) => { if (!stopper?.stopped) { Object.assign(job, patch); onProgress?.({ ...job }); } };
 
@@ -74,7 +76,7 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
 
   const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
   const base = (outName || project.name || 'export').replace(/[^\p{L}\p{N}_-]+/gu, '_');
-  const file = path.join(EXPORT_DIR, `${base}-${stamp}.mp4`);
+  const file = path.join(EXPORT_DIR, `${base}${SAFE_ZONES[target] ? `-${target}` : ''}-${stamp}.mp4`);
   report({ stage: 'render', progress: 0 });
   try {
   await renderMedia({

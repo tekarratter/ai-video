@@ -56,6 +56,51 @@ export function normalizeProject(p) {
 export const LOGO_POSITIONS = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'];
 export const LOGO_DEFAULTS = { enabled: true, assetId: null, position: 'top-right', size: 0.18, margin: 0.04, opacity: 0.9 };
 
+/**
+ * Areas of a vertical video that a platform's mobile player covers with its own UI, as fractions of
+ * the frame (top: header icons, bottom: caption/name/comment bar, right: like/share column, plus the
+ * side crop when a 9:16 video fills a taller phone screen).
+ */
+export const SAFE_ZONES = {
+  facebook: { label: 'Facebook di động', top: 0.12, bottom: 0.25, left: 0.06, right: 0.12 },
+};
+
+/**
+ * Copy of `project` with small overlays (logo, image/video/text boxes, subtitles) pulled inside the
+ * safe area of `zone`. Full-frame clips and the main sequence are left alone.
+ */
+export function applySafeZone(project, zone) {
+  const p = normalizeProject(structuredClone(project));
+  if (!zone) return p;
+  const x0 = zone.left, x1 = 1 - zone.right, y0 = zone.top, y1 = 1 - zone.bottom;
+  const fit = (c, lo, hi, size) => {
+    if (size >= hi - lo) return (lo + hi) / 2;
+    return Math.min(hi - size / 2, Math.max(lo + size / 2, c));
+  };
+  for (const t of p.tracks) {
+    if (t.type !== 'overlay') continue;
+    for (const c of t.clips || []) {
+      if (c.kind === 'text') {
+        // anchor point only (text size unknown): keep it off the covered bands
+        c.y = fit(c.y ?? 0.5, y0 + 0.04, y1 - 0.04, 0);
+        if (c.width) c.x = fit(c.x ?? 0.5, x0, x1, c.width);
+        continue;
+      }
+      const w = c.width ?? 1, h = c.height ?? 1;
+      if (w >= 0.95 && h >= 0.95) continue; // full-frame overlay
+      let s = 1; // shrink boxes that don't fit at all
+      if (w > x1 - x0) s = Math.min(s, (x1 - x0) / w);
+      if (h > y1 - y0) s = Math.min(s, (y1 - y0) / h);
+      if (s < 1) { c.width = w * s; c.height = h * s; }
+      c.x = fit(c.x ?? 0.5, x0, x1, c.width ?? 1);
+      c.y = fit(c.y ?? 0.5, y0, y1, c.height ?? 1);
+    }
+  }
+  if (p.logo) p.logo = { ...p.logo, safe: { top: zone.top, bottom: zone.bottom, left: zone.left, right: zone.right } };
+  if (p.subtitles?.style) p.subtitles.style.position = Math.min(y1 - 0.04, Math.max(y0 + 0.04, p.subtitles.style.position ?? 0.85));
+  return p;
+}
+
 export function assetById(project, id) {
   return project.assets.find((a) => a.id === id);
 }

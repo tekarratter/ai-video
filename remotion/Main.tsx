@@ -16,7 +16,7 @@ import { lookFilter } from './looks';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Project = any;
 type Clip = any;
-export type MainProps = { project: Project; mediaBase?: string; hiddenTracks?: string[] };
+export type MainProps = { project: Project; mediaBase?: string; hiddenTracks?: string[]; safeGuide?: any };
 
 const Ctx = React.createContext<{ project: Project; mediaBase: string }>({ project: null, mediaBase: '' });
 
@@ -360,15 +360,31 @@ const Logo: React.FC = () => {
   const side = Math.min(width, height);
   const w = side * lg.size;
   const pad = side * lg.margin;
+  const sz = lg.safe || {}; // platform safe zone (see applySafeZone): keep clear of the player's UI
   const [v, hz] = String(lg.position).split('-');
-  const style: React.CSSProperties = { position: 'absolute', width: w, height: 'auto', opacity: lg.opacity, [v === 'bottom' ? 'bottom' : 'top']: pad };
-  if (hz === 'left') style.left = pad;
-  else if (hz === 'right') style.right = pad;
+  const style: React.CSSProperties = { position: 'absolute', width: w, height: 'auto', opacity: lg.opacity,
+    [v === 'bottom' ? 'bottom' : 'top']: Math.max(pad, (v === 'bottom' ? sz.bottom || 0 : sz.top || 0) * height) };
+  if (hz === 'left') style.left = Math.max(pad, (sz.left || 0) * width);
+  else if (hz === 'right') style.right = Math.max(pad, (sz.right || 0) * width);
   else { style.left = '50%'; style.transform = 'translateX(-50%)'; }
   return <AbsoluteFill style={{ pointerEvents: 'none' }}><Img src={m.src} style={style} /></AbsoluteFill>;
 };
 
-export const Main: React.FC<MainProps> = ({ project: raw, mediaBase = '', hiddenTracks = [] }) => {
+/** Preview-only: shade the bands a platform player covers. */
+const SafeGuide: React.FC<{ zone: any }> = ({ zone }) => {
+  const band = { position: 'absolute', background: 'rgba(239,68,68,0.28)' } as React.CSSProperties;
+  return (
+    <AbsoluteFill style={{ pointerEvents: 'none' }}>
+      <div style={{ ...band, left: 0, right: 0, top: 0, height: `${zone.top * 100}%` }} />
+      <div style={{ ...band, left: 0, right: 0, bottom: 0, height: `${zone.bottom * 100}%` }} />
+      <div style={{ ...band, left: 0, width: `${zone.left * 100}%`, top: `${zone.top * 100}%`, bottom: `${zone.bottom * 100}%` }} />
+      <div style={{ ...band, right: 0, width: `${zone.right * 100}%`, top: `${zone.top * 100}%`, bottom: `${zone.bottom * 100}%` }} />
+      <div style={{ position: 'absolute', left: `${zone.left * 100}%`, right: `${zone.right * 100}%`, top: `${zone.top * 100}%`, bottom: `${zone.bottom * 100}%`, border: '3px dashed rgba(255,255,255,0.7)' }} />
+    </AbsoluteFill>
+  );
+};
+
+export const Main: React.FC<MainProps> = ({ project: raw, mediaBase = '', hiddenTracks = [], safeGuide }) => {
   const project = React.useMemo(() => normalizeProject(structuredClone(raw)), [raw]);
   return (
     <Ctx.Provider value={{ project, mediaBase }}>
@@ -381,6 +397,7 @@ export const Main: React.FC<MainProps> = ({ project: raw, mediaBase = '', hidden
         })}
         <Subtitles />
         <Logo />
+        {safeGuide && <SafeGuide zone={safeGuide} />}
       </AbsoluteFill>
     </Ctx.Provider>
   );

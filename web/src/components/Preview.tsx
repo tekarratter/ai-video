@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Player, type PlayerRef } from '@remotion/player';
 import { components } from '@custom';
 import { Main } from '../../../remotion/Main';
-import { layoutTrack, projectDuration } from '../../../shared/timeline.js';
+import { applySafeZone, layoutTrack, projectDuration, SAFE_ZONES } from '../../../shared/timeline.js';
 import { useStore } from '../store';
 import { player, seek, togglePlay } from '../player';
 import { Icon } from './Icon';
@@ -144,7 +144,11 @@ export const Preview: React.FC = () => {
   const Custom = (components as Record<string, React.FC<any>>)[openComp]; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   const duration = isMain ? Math.max(1, Math.round(projectDuration(project) * fps)) : 150;
-  const inputProps = useMemo(() => ({ project, mediaBase: '', hiddenTracks }), [project, hiddenTracks]);
+  const safePreview = useStore((s) => s.safePreview);
+  const inputProps = useMemo(() => {
+    const zone = safePreview ? SAFE_ZONES[safePreview] : null;
+    return zone ? { project: applySafeZone(project, zone), mediaBase: '', hiddenTracks, safeGuide: zone } : { project, mediaBase: '', hiddenTracks };
+  }, [project, hiddenTracks, safePreview]);
 
   useEffect(() => {
     const p = ref.current;
@@ -212,6 +216,11 @@ export const Preview: React.FC = () => {
           />
         ) : (
           <div className="player-error">Không tìm thấy component “{openComp}”</div>
+        )}
+        {isMain && safePreview && (
+          <button className="safe-badge" title="Vùng đỏ: bị giao diện Facebook trên điện thoại che. Bấm để tắt" onClick={() => useStore.setState({ safePreview: null })}>
+            Xem như {SAFE_ZONES[safePreview]?.label} ✕
+          </button>
         )}
         <button className="fs-btn" onClick={toggleFull} title={isFull ? 'Thoát toàn màn hình (F / Esc)' : 'Xem toàn màn hình (F)'}>
           <Icon name={isFull ? 'fsexit' : 'fullscreen'} size={16} />

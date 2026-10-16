@@ -551,13 +551,14 @@ app.post('/api/music/add', (req, res) => {
 
 app.post('/api/render', (req, res) => {
   if (rendering && !['done', 'error'].includes(rendering.stage)) return res.status(409).json({ error: 'Đang render', job: rendering });
-  const { quality, range } = req.body || {};
+  const { quality, range, target } = req.body || {};
   const stopper = renderStopper();
   const projectId = projects.activeId();
   const projectName = readProject().name || projectId;
-  rendering = startJob('render', `${quality === 'draft' ? 'Render nháp' : 'Render video'} · ${projectName}`, async (update) => {
+  const kind = target === 'facebook' ? 'Render Facebook di động' : quality === 'draft' ? 'Render nháp' : 'Render video';
+  rendering = startJob('render', `${kind} · ${projectName}`, async (update) => {
     update({ projectId, projectName });
-    const r = await renderProject({ mediaBase: MEDIA_BASE, quality, range, onProgress: (p) => update(p), stopper, projectId });
+    const r = await renderProject({ mediaBase: MEDIA_BASE, quality, range, onProgress: (p) => update(p), stopper, projectId, target });
     // link through the project id: /exports follows whichever project is open now
     return { file: r.file, url: `/api/projects/${encodeURIComponent(projectId)}/exports/${encodeURIComponent(path.basename(r.file))}` };
   });

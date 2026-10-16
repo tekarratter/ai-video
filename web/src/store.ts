@@ -36,6 +36,7 @@ type State = {
   projects: ProjectInfo[];
   uploads: Record<string, Upload>;
   activeProject: string | null;
+  safePreview: string | null; // platform key of SAFE_ZONES shown in the preview
   layout: Layout;
   setProject: (p: Project, opts?: { record?: boolean; save?: boolean; from?: Project }) => void;
   update: (fn: (p: Project) => void, opts?: { record?: boolean; save?: boolean }) => void;
@@ -108,6 +109,7 @@ export const useStore = create<State>((set, get) => ({
   projects: [],
   uploads: {},
   activeProject: null,
+  safePreview: null,
   layout: { left: false, right: false, timeline: false, ...lsGet<Partial<Layout>>('aiv.layout', {}) },
 
   setProject: (p, opts: { record?: boolean; save?: boolean; from?: Project } = {}) => {
