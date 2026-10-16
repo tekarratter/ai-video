@@ -24,7 +24,8 @@ export const TopBar: React.FC = () => {
   const canUndo = useStore((s) => s.past.length > 0);
   const canRedo = useStore((s) => s.future.length > 0);
   const flash = useStore((s) => s.remoteFlash);
-  const renderJob = useStore((s) => Object.values(s.jobs).filter((j) => j.type === 'render').sort((a, b) => b.startedAt - a.startedAt)[0]);
+  // only the open project's render: the Download/YouTube buttons refer to this project's exports
+  const renderJob = useStore((s) => Object.values(s.jobs).filter((j) => j.type === 'render' && (!j.projectId || j.projectId === s.activeProject || !['done', 'error'].includes(j.stage))).sort((a, b) => b.startedAt - a.startedAt)[0]);
   const [showFlash, setShowFlash] = useState(false);
   const [menu, setMenu] = useState(false);
 
@@ -52,7 +53,7 @@ export const TopBar: React.FC = () => {
       <div className="spacer" />
       <UploadProgress compact />
       {rendering && (
-        <div className="render-progress" title={renderJob.stage}>
+        <div className="render-progress" title={renderJob.label}>
           <span>{renderJob.stage === 'stopping' ? 'Đang dừng…' : renderJob.stage === 'bundle' ? 'Đóng gói' : renderJob.stage === 'browser' ? 'Chuẩn bị' : 'Render'} {renderJob.stage !== 'stopping' && `${Math.round(renderJob.progress * 100)}%`}</span>
           <div className="bar"><div style={{ width: `${renderJob.progress * 100}%` }} /></div>
         </div>

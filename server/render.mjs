@@ -54,7 +54,7 @@ export function renderStopper() {
 /**
  * @param {object} opts { mediaBase, quality: 'final'|'draft', range?: [startSec, endSec], onProgress(job), stopper? }
  */
-export async function renderProject({ mediaBase, quality = 'final', range, outName, onProgress, stopper }) {
+export async function renderProject({ mediaBase, quality = 'final', range, outName, onProgress, stopper, projectId }) {
   const project = readProject();
   const job = { stage: 'bundle', progress: 0 };
   const report = (patch) => { if (!stopper?.stopped) { Object.assign(job, patch); onProgress?.({ ...job }); } };
@@ -79,6 +79,8 @@ export async function renderProject({ mediaBase, quality = 'final', range, outNa
   try {
   await renderMedia({
     cancelSignal: stopper?.cancelSignal,
+    // tag the mp4 so a downloaded file still says which project it came from
+    metadata: { title: project.name || projectId || 'export', comment: `AI Video Studio · dự án: ${project.name || ''} (${projectId || '?'})` },
     serveUrl,
     composition,
     codec: 'h264',

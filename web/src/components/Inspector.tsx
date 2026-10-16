@@ -499,6 +499,7 @@ const Jobs: React.FC = () => {
 
 const Exports: React.FC = () => {
   const jobs = useStore((s) => s.jobs);
+  const projectName = useStore((s) => s.project?.name);
   const [list, setList] = useState<any[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const doneCount = Object.values(jobs).filter((j) => j.stage === 'done').length;
@@ -514,6 +515,7 @@ const Exports: React.FC = () => {
   const dur = (d?: number) => (d ? `${Math.floor(d / 60)}:${String(Math.round(d % 60)).padStart(2, '0')}` : '');
   return (
     <div className="inspector-body">
+      <div className="muted small" style={{ marginBottom: 6 }}>Video đã xuất của dự án <b>{projectName}</b></div>
       {list === null && <div className="muted small">Đang tải…</div>}
       {list?.length === 0 && <div className="empty">Chưa có video nào được xuất.<br />Bấm <b>Render</b> ở thanh trên.</div>}
       {list?.map((e) => (

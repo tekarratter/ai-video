@@ -553,12 +553,21 @@ app.post('/api/render', (req, res) => {
   if (rendering && !['done', 'error'].includes(rendering.stage)) return res.status(409).json({ error: 'Đang render', job: rendering });
   const { quality, range } = req.body || {};
   const stopper = renderStopper();
-  rendering = startJob('render', quality === 'draft' ? 'Render nháp' : 'Render video', async (update) => {
-    const r = await renderProject({ mediaBase: MEDIA_BASE, quality, range, onProgress: (p) => update(p), stopper });
-    return { file: r.file, url: `/${r.file.split('/').map(encodeURIComponent).join('/')}` };
+  const projectId = projects.activeId();
+  const projectName = readProject().name || projectId;
+  rendering = startJob('render', `${quality === 'draft' ? 'Render nháp' : 'Render video'} · ${projectName}`, async (update) => {
+    update({ projectId, projectName });
+    const r = await renderProject({ mediaBase: MEDIA_BASE, quality, range, onProgress: (p) => update(p), stopper, projectId });
+    // link through the project id: /exports follows whichever project is open now
+    return { file: r.file, url: `/api/projects/${encodeURIComponent(projectId)}/exports/${encodeURIComponent(path.basename(r.file))}` };
   });
   rendering.stopper = stopper;
   res.json({ job: rendering });
+});
+app.get('/api/projects/:id/exports/:name', (req, res) => {
+  const { id, name } = req.params;
+  if (!/^[\w.-]+$/.test(id) || id.startsWith('.') || name !== path.basename(name)) return res.status(400).end();
+  res.sendFile(path.join(projects.PROJECTS_DIR, id, 'exports', name), (e) => { if (e && !res.headersSent) res.status(404).end(); });
 });
 app.post('/api/render/stop', (req, res) => {
   const job = rendering;
