@@ -647,8 +647,17 @@ app.post('/api/telegram/token', tg(async (req) => {
 app.post('/api/telegram/link', tg((req) => ({ url: telegram.linkUrl(req.user.username) })));
 app.post('/api/telegram/chat', tg((req) => { telegram.setChat(req.user.username, req.body?.chatId || null); return telegram.status(req.user.username); }));
 app.post('/api/telegram/test', tg(async (req) => {
-  if (!(await telegram.sendTo(req.user.username, '🔔 Thử thông báo từ <b>AI Video Studio</b> — bạn sẽ nhận tin ở đây khi render xong.'))) throw new Error('Chưa kết nối Telegram');
+  if (!(await telegram.sendTo(req.user.username))) throw new Error('Chưa kết nối Telegram');
   return telegram.status(req.user.username);
+}));
+// admin: bot token + every user's link
+const tgAdmin = (fn) => tg((req) => { if (req.user.role !== 'admin') throw new Error('Chỉ admin'); return fn(req); });
+app.get('/api/telegram/admin', tgAdmin(() => telegram.adminStatus()));
+app.post('/api/telegram/admin/token', tgAdmin(async (req) => { await telegram.setToken(req.body?.token); return telegram.adminStatus(); }));
+app.post('/api/telegram/admin/unlink', tgAdmin((req) => { telegram.setChat(String(req.body?.username || ''), null); return telegram.adminStatus(); }));
+app.post('/api/telegram/admin/test', tgAdmin(async (req) => {
+  if (!(await telegram.sendTo(String(req.body?.username || '')))) throw new Error('User này chưa kết nối Telegram');
+  return telegram.adminStatus();
 }));
 /* ---- disk cleanup ---- */
 // a rendered file is "busy" while a render of its project that started before it was written, or a

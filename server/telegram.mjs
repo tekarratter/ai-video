@@ -21,6 +21,8 @@ function writeConf(c) {
 let conf = readConf(); // { token, bot: { username, name }, chats: { [username]: { chatId, name } }, offset }
 const token = () => process.env.TELEGRAM_BOT_TOKEN || conf.token || '';
 const pending = new Map(); // link code → { username, expires }
+const fp = (tok) => crypto.createHash('sha256').update(tok).digest('hex').slice(0, 12);
+let pollState = { ok: null, error: null, at: 0 }; // last getUpdates result, shown to the admin
 
 async function call(method, body, tok = token()) {
   const r = await fetch(`${API}/bot${tok}/${method}`, {
@@ -40,14 +42,38 @@ export function status(username) {
   };
 }
 
+/** Admin view: which bot, where the token comes from (masked), polling health, who is linked. */
+export function adminStatus() {
+  const tok = token();
+  return {
+    configured: !!tok, fromEnv: !!process.env.TELEGRAM_BOT_TOKEN, bot: conf.bot || null,
+    tokenHint: tok ? `${tok.split(':')[0]}:…${tok.slice(-4)}` : null,
+    polling: tok ? pollState : null,
+    users: Object.entries(conf.chats || {}).map(([username, c]) => ({ username, chatId: c.chatId, chatName: c.name || null })),
+  };
+}
+
 /** Admin: set (or clear) the bot token. Validates it with getMe. */
 export async function setToken(tok) {
+  if (process.env.TELEGRAM_BOT_TOKEN) throw new Error('Token đang lấy từ biến môi trường TELEGRAM_BOT_TOKEN — sửa ở đó rồi khởi động lại');
   tok = String(tok || '').trim();
-  if (!tok) { conf = { ...conf, token: '', bot: null }; writeConf(conf); return; }
-  const me = await call('getMe', {}, tok);
-  conf = { ...conf, token: tok, bot: { username: me.username, name: me.first_name }, offset: 0 };
+  if (!tok) { conf = { ...conf, token: '', bot: null, botFor: null }; writeConf(conf); restartPolling(); return; }
+  if (!/^\d+:[\w-]{20,}$/.test(tok)) throw new Error('Token không đúng dạng (vd 123456789:AAH…)');
+  const me = await call('getMe', {}, tok).catch((e) => { throw new Error(e.code === 401 || e.code === 404 ? 'Token sai hoặc đã bị thu hồi' : e.message); });
+  conf = { ...conf, token: tok, bot: { username: me.username, name: me.first_name }, botFor: fp(tok), offset: 0 };
   writeConf(conf);
   restartPolling();
+}
+
+/** Bot name for a token set through the environment (or after the token changed outside the app). */
+async function ensureBot() {
+  const tok = token();
+  if (!tok || (conf.bot && conf.botFor === fp(tok))) return;
+  try {
+    const me = await call('getMe', {}, tok);
+    conf = { ...conf, bot: { username: me.username, name: me.first_name }, botFor: fp(tok), offset: conf.botFor ? 0 : conf.offset };
+    writeConf(conf);
+  } catch (e) { pollState = { ok: false, error: e.message, at: Date.now() }; }
 }
 
 /** A one-time deep link that ties the user's Telegram chat to their app account. */
@@ -70,6 +96,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<'
 export async function sendTo(username, html) {
   const c = conf.chats?.[username];
   if (!token() || !c) return false;
+  if (!html) html = '🔔 Thử thông báo từ <b>AI Video Studio</b> — bạn sẽ nhận tin ở đây khi render xong.';
   await call('sendMessage', { chat_id: c.chatId, text: html, parse_mode: 'HTML', disable_web_page_preview: true });
   return true;
 }
@@ -155,6 +182,7 @@ async function poll(gen) {
   while (gen === pollGen && token()) {
     try {
       const ups = await call('getUpdates', { offset: conf.offset || 0, timeout: 50, allowed_updates: ['message'] });
+      pollState = { ok: true, error: null, at: Date.now() };
       for (const u of ups) {
         conf.offset = u.update_id + 1;
         if (u.message) await handle(u.message).catch((e) => console.warn('[telegram]', e.message));
@@ -163,11 +191,16 @@ async function poll(gen) {
     } catch (e) {
       // 409: another getUpdates / webhook uses this token; 401: bad token
       if (gen !== pollGen) return;
+      pollState = { ok: false, at: Date.now(), error: e.code === 401 ? 'Token không hợp lệ (đã bị thu hồi?)' : e.code === 409 ? 'Token đang được dùng ở nơi khác (một app/bot khác cũng đọc tin của bot này)' : e.message };
       if (e.code === 401) { console.warn('[telegram] token không hợp lệ'); return; }
       await new Promise((r) => setTimeout(r, e.code === 409 ? 30_000 : 5_000));
     }
   }
 }
 let onLinked = null;
-export function restartPolling() { pollGen++; if (token()) poll(pollGen); }
+export function restartPolling() {
+  const gen = ++pollGen;
+  pollState = { ok: null, error: null, at: 0 };
+  if (token()) ensureBot().then(() => { if (gen === pollGen) poll(gen); });
+}
 export function start({ linked } = {}) { onLinked = linked; restartPolling(); }

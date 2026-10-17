@@ -154,6 +154,7 @@ export const UserMenu: React.FC = () => {
             <button onClick={() => { setOpen(false); window.dispatchEvent(new Event('open-telegram')); }}>Thông báo Telegram</button>
             <button onClick={() => { setOpen(false); setDialog('password'); }}>Đổi mật khẩu</button>
             {user.role === 'admin' && <button onClick={() => { setOpen(false); setDialog('users'); }}>Quản lý tài khoản</button>}
+            {user.role === 'admin' && <button onClick={() => { setOpen(false); window.dispatchEvent(new Event('open-telegram-admin')); }}>Bot Telegram (admin)</button>}
             <button onClick={logout}>Đăng xuất</button>
           </div>
         )}

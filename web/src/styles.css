@@ -519,3 +519,10 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 .preview:fullscreen { background: #000; }
 .preview:fullscreen .tabbar { display: none; }
 .preview:fullscreen .stage { padding: 0; }
+.link-btn { background: none; border: 0; color: var(--accent, #93c5fd); cursor: pointer; padding: 0; font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.tg-status { display: grid; gap: 4px; background: #0002; border: 1px solid var(--border, #333); border-radius: 6px; padding: 8px 10px; }
+.tg-status .row > span:first-child { width: 78px; color: var(--muted); flex: none; }
+.tg-status a { color: inherit; }
+.tg-steps { margin: 0; padding-left: 18px; display: grid; gap: 2px; color: var(--muted); }
+.tg-steps a { color: inherit; }
+.tg-user { padding: 3px 0; border-bottom: 1px solid #ffffff10; }
