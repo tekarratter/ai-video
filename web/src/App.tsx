@@ -65,14 +65,27 @@ const Editor: React.FC = () => {
   const toasts = useStore((s) => s.toasts);
   const [chatW, setChatW] = useState(400);
   const [tlH, setTlH] = useState(300);
+  const [vp, setVp] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
+  const [chatOpen, setChatOpen] = useState(false);
+  const [portraitOk, setPortraitOk] = useState(() => { try { return sessionStorage.getItem('aiv.portraitOk') === '1'; } catch { return false; } });
   useShortcuts();
+  useEffect(() => {
+    const on = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    const tog = () => setChatOpen((o) => !o);
+    window.addEventListener('resize', on);
+    window.addEventListener('toggle-chat', tog);
+    return () => { window.removeEventListener('resize', on); window.removeEventListener('toggle-chat', tog); };
+  }, []);
+  // phones / small tablets: chat becomes a drawer, timeline shrinks so the preview keeps some room
+  const compact = vp.w < 1200 || vp.h < 520;
+  const tl = compact ? Math.min(tlH, Math.max(110, Math.round(vp.h * 0.38))) : Math.min(tlH, Math.max(160, vp.h - 250));
 
   const drag = (axis: 'x' | 'y') => (e: React.PointerEvent) => {
     const start = axis === 'x' ? e.clientX : e.clientY;
-    const init = axis === 'x' ? chatW : tlH;
+    const init = axis === 'x' ? chatW : tl;
     const move = (ev: PointerEvent) => {
       if (axis === 'x') setChatW(Math.min(700, Math.max(300, init + ev.clientX - start)));
-      else setTlH(Math.min(window.innerHeight - 250, Math.max(160, init - (ev.clientY - start))));
+      else setTlH(Math.min(window.innerHeight - 150, Math.max(110, init - (ev.clientY - start))));
     };
     const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
     window.addEventListener('pointermove', move);
@@ -80,10 +93,13 @@ const Editor: React.FC = () => {
   };
 
   return (
-    <div className="app" style={{ gridTemplateColumns: `${chatW}px 4px 1fr` }}>
-      <ErrorBoundary label="chat"><ChatPanel /></ErrorBoundary>
-      <div className="splitter-x" onPointerDown={drag('x')} />
-      <div className="editor" style={{ gridTemplateRows: layout.timeline ? 'auto 1fr 0px 39px' : `auto 1fr 4px ${tlH}px` }}>
+    <div className={`app ${compact ? 'compact' : ''}`} style={{ gridTemplateColumns: compact ? 'minmax(0, 1fr)' : `${chatW}px 4px minmax(0, 1fr)` }}>
+      <div className={compact ? `chat-drawer ${chatOpen ? 'open' : ''}` : 'chat-slot'}>
+        <ErrorBoundary label="chat"><ChatPanel /></ErrorBoundary>
+      </div>
+      {compact && chatOpen && <div className="chat-scrim" onClick={() => setChatOpen(false)} />}
+      {!compact && <div className="splitter-x" onPointerDown={drag('x')} />}
+      <div className="editor" style={{ gridTemplateRows: layout.timeline ? 'auto minmax(0, 1fr) 0px 39px' : `auto minmax(0, 1fr) 4px ${tl}px` }}>
         <TopBar />
         {project ? (
           <div className="editor-main" style={{ ...(layout.left ? { '--lw': '30px' } : {}), ...(layout.right ? { '--rw': '30px' } : {}) } as React.CSSProperties}>
@@ -106,6 +122,14 @@ const Editor: React.FC = () => {
       <TelegramAdminDialog />
       <DubDialog />
       <ClaudeAuthDialog />
+      {vp.h > vp.w && vp.w < 760 && !portraitOk && (
+        <div className="rotate-hint">
+          <div className="rotate-icon">📱</div>
+          <b>Xoay ngang điện thoại</b>
+          <div className="muted">Màn hình dọc quá hẹp để dựng phim. Xoay ngang để xem đủ khung xem trước, timeline và các bảng.</div>
+          <button className="btn ghost" onClick={() => { setPortraitOk(true); try { sessionStorage.setItem('aiv.portraitOk', '1'); } catch { /* private mode */ } }}>Vẫn dùng màn dọc</button>
+        </div>
+      )}
       <div className="toasts">
         {toasts.map((t) => (
           <div key={t.id} className={`toast ${t.level || ''}`}>{t.text}</div>

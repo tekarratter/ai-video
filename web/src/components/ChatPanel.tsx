@@ -296,6 +296,7 @@ export const ChatPanel: React.FC = () => {
           <button className={view === 'term' ? 'active' : ''} onClick={() => setView('term')} title="Terminal CLI (dùng chung)"><Icon name="terminal" /></button>
         </div>
         <button className="icon-btn" title="Phiên mới" onClick={() => restart('new')}><Icon name="plus" /></button>
+        <button className="icon-btn chat-close" title="Đóng chat" onClick={() => window.dispatchEvent(new Event('toggle-chat'))}><Icon name="x" /></button>
       </div>
 
       {view === 'term' ? (
