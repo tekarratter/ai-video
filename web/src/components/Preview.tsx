@@ -138,7 +138,12 @@ export const Preview: React.FC = () => {
   const ref = useRef<PlayerRef>(null);
   const box = useRef<HTMLDivElement>(null);
   const activeProject = useStore((s) => s.activeProject);
-  const [isFull, setFull] = useState(false);
+  const [nativeFull, setFull] = useState(false);
+  // iPhone Safari can't put an element in full screen (only a bare <video>): fill the window instead
+  const [pseudoFull, setPseudoFull] = useState(false);
+  const pseudoRef = useRef(false);
+  pseudoRef.current = pseudoFull;
+  const isFull = nativeFull || pseudoFull;
   const { width, height, fps } = project.settings;
   const isMain = openComp === 'Main';
   const Custom = (components as Record<string, React.FC<any>>)[openComp]; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -173,19 +178,38 @@ export const Preview: React.FC = () => {
 
   // full screen = the whole preview (frame + seek bar), so playback controls stay usable
   const toggleFull = () => {
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    else box.current?.requestFullscreen().catch(() => useStore.getState().toast('Trình duyệt không cho phép toàn màn hình', 'error'));
+    const d = document as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const el = box.current as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (pseudoRef.current) { setPseudoFull(false); return; }
+    if (d.fullscreenElement || d.webkitFullscreenElement) {
+      Promise.resolve((d.exitFullscreen || d.webkitExitFullscreen)?.call(d)).catch(() => {});
+      return;
+    }
+    const req = el?.requestFullscreen || el?.webkitRequestFullscreen;
+    if (!req) { setPseudoFull(true); return; }
+    try { Promise.resolve(req.call(el)).catch(() => setPseudoFull(true)); } catch { setPseudoFull(true); }
   };
   useEffect(() => {
-    const onChange = () => setFull(!!box.current && document.fullscreenElement === box.current);
+    const onChange = () => {
+      const d = document as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+      setFull(!!box.current && (d.fullscreenElement || d.webkitFullscreenElement) === box.current);
+    };
     const onKey = () => toggleFull();
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape' && pseudoRef.current) setPseudoFull(false); };
     document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
     window.addEventListener('preview-fullscreen', onKey);
-    return () => { document.removeEventListener('fullscreenchange', onChange); window.removeEventListener('preview-fullscreen', onKey); };
+    window.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('fullscreenchange', onChange);
+      document.removeEventListener('webkitfullscreenchange', onChange);
+      window.removeEventListener('preview-fullscreen', onKey);
+      window.removeEventListener('keydown', onEsc);
+    };
   }, []);
 
   return (
-    <div className="preview" ref={box}>
+    <div className={`preview ${pseudoFull ? 'pseudo-full' : ''}`} ref={box}>
       <div className="tabbar">
         <div className="tab active"><Icon name="comp" /> {isMain ? project.name || 'Main' : openComp}</div>
         {!isMain && (

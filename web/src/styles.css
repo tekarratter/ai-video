@@ -519,6 +519,9 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 .preview:fullscreen { background: #000; }
 .preview:fullscreen .tabbar { display: none; }
 .preview:fullscreen .stage { padding: 0; }
+.preview.pseudo-full { position: fixed; inset: 0; z-index: 85; background: #000; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.preview.pseudo-full .tabbar { display: none; }
+.preview.pseudo-full .stage { padding: 0; }
 .link-btn { background: none; border: 0; color: var(--accent, #93c5fd); cursor: pointer; padding: 0; font: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .tg-status { display: grid; gap: 4px; background: #0002; border: 1px solid var(--border, #333); border-radius: 6px; padding: 8px 10px; }
 .tg-status .row > span:first-child { width: 78px; color: var(--muted); flex: none; }
