@@ -136,6 +136,7 @@ Khôi phục: tạo lại volume rồi giải nén ngược với `tar xzf … -
 | `TELEGRAM_SEND_VIDEO` | `1` | Gửi kèm file video vào Telegram khi dưới 50 MB (giới hạn của bot). `0` = chỉ gửi link |
 | `AIV_PUBLIC_URL` | *(trống)* | Địa chỉ người dùng mở app (vd `https://video.congty.vn`), dùng cho link tải trong tin Telegram. Trống = lấy theo trình duyệt lúc bấm Render |
 | `RENDER_PARTS_DAYS` | `14` | Cảnh đã render (trong `workspace/.cache/render-parts`) không dùng tới sau số ngày này thì tự xoá. Có thể xoá tay trong **Dọn dẹp ổ cứng** |
+| `PREVIEW_PROXY` | `1` | Tự tạo bản xem trước nhẹ (≤960 px, 30 fps, ~1 Mbps, trong `workspace/.cache/proxy`) cho video nặng của dự án đang mở, để xem trước mượt trên điện thoại / mạng chậm. Chạy nền ưu tiên thấp, tạm dừng khi đang render. Video xuất ra luôn dùng file gốc. `0` = tắt |
 | build arg `WITH_TTS` | `1` | Đặt `"0"` để bỏ giọng đọc AI, image nhẹ hơn khoảng 1,5 GB |
 | build arg `CLAUDE_CODE_VERSION` | `latest` | Ghim phiên bản Claude Code CLI |
 

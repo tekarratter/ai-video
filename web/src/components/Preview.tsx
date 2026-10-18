@@ -6,6 +6,24 @@ import { applySafeZone, layoutTrack, projectDuration, SAFE_ZONES } from '../../.
 import { useStore } from '../store';
 import { player, seek, togglePlay } from '../player';
 import { Icon } from './Icon';
+import { api } from './Account';
+
+/* Light preview: heavy videos play from small copies the server makes in the background (≤960 px,
+ * 30 fps). Default on when the app is opened from another device (phone, over the tunnel). */
+type ProxyInfo = { enabled?: boolean; running?: boolean; current?: string | null; progress?: number; left?: number; proxies?: Record<string, string> };
+const remote = !/^(localhost|127\.|\[::1\])/.test(location.hostname);
+const lsGetBool = (k: string, d: boolean) => { try { const v = localStorage.getItem(k); return v == null ? d : v === '1'; } catch { return d; } };
+function useProxies(activeProject?: string | null) {
+  const [info, setInfo] = useState<ProxyInfo>({});
+  useEffect(() => {
+    let alive = true;
+    api('/api/proxies').then((r) => { if (alive) setInfo(r); }).catch(() => {});
+    const on = (e: Event) => setInfo((old) => ({ ...old, ...(e as CustomEvent).detail }));
+    window.addEventListener('proxies', on);
+    return () => { alive = false; window.removeEventListener('proxies', on); };
+  }, [activeProject]);
+  return info;
+}
 
 const fmt = (t: number) => {
   const m = Math.floor(t / 60), s = t - m * 60;
@@ -150,10 +168,16 @@ export const Preview: React.FC = () => {
 
   const duration = isMain ? Math.max(1, Math.round(projectDuration(project) * fps)) : 150;
   const safePreview = useStore((s) => s.safePreview);
+  const px = useProxies(activeProject);
+  const [light, setLight] = useState(() => lsGetBool('aiv.lightPreview', remote));
+  const proxies = useMemo<Record<string, string>>(() => (light && px.proxies) || {}, [light, px.proxies]);
   const inputProps = useMemo(() => {
     const zone = safePreview ? SAFE_ZONES[safePreview] : null;
-    return zone ? { project: applySafeZone(project, zone), mediaBase: '', hiddenTracks, safeGuide: zone } : { project, mediaBase: '', hiddenTracks };
-  }, [project, hiddenTracks, safePreview]);
+    // swap heavy videos for their light copies (served from /cache/proxy); the render never sees this
+    const ids = Object.keys(proxies);
+    const p = ids.length ? { ...project, assets: project.assets.map((a: any) => (proxies[a.id] ? { ...a, path: proxies[a.id].replace(/^\//, '') } : a)) } : project; // eslint-disable-line @typescript-eslint/no-explicit-any
+    return zone ? { project: applySafeZone(p, zone), mediaBase: '', hiddenTracks, safeGuide: zone } : { project: p, mediaBase: '', hiddenTracks };
+  }, [project, hiddenTracks, safePreview, proxies]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const p = ref.current;
@@ -216,6 +240,14 @@ export const Preview: React.FC = () => {
           <button className="tab-close" onClick={() => useStore.setState({ openComp: 'Main' })} title="Đóng, về timeline chính"><Icon name="x" size={12} /></button>
         )}
         <div className="spacer" />
+        {isMain && px.enabled && (
+          <div className="seg light-toggle" title={px.running ? `Đang tạo bản xem trước nhẹ: ${px.current} (${Math.round((px.progress || 0) * 100)}%, còn ${px.left} video)` : 'Xem trước bằng bản nhẹ (mượt trên điện thoại / mạng chậm) hoặc file gốc. Video xuất ra luôn dùng file gốc.'}>
+            <button className={light ? 'active' : ''} onClick={() => { setLight(true); try { localStorage.setItem('aiv.lightPreview', '1'); } catch { /* */ } }}>
+              Nhẹ{px.running ? ` ${Math.round((px.progress || 0) * 100)}%` : ''}
+            </button>
+            <button className={!light ? 'active' : ''} onClick={() => { setLight(false); try { localStorage.setItem('aiv.lightPreview', '0'); } catch { /* */ } }}>Gốc</button>
+          </div>
+        )}
         {isMain ? <FormatPicker /> : <span className="muted small">{width}×{height} · {fps}fps</span>}
       </div>
       <div className="stage">

@@ -28,6 +28,7 @@ const EXTRAS = {
   uploads: { label: 'File tải lên dở dang (quá 1 ngày)', paths: staleUploads },
   trash: { label: 'Dự án đã xoá (thùng rác)', paths: () => children(TRASH_DIR) },
   parts: { label: 'Cảnh đã render sẵn (giúp lần render sau chỉ làm lại cảnh thay đổi)', paths: () => children(path.join(CACHE_DIR, 'render-parts')) },
+  proxy: { label: 'Bản xem trước nhẹ của video (tự tạo lại cho dự án đang mở)', paths: () => children(path.join(CACHE_DIR, 'proxy')) },
 };
 
 /**

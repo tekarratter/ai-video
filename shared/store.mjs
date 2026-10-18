@@ -106,9 +106,10 @@ function replaceExt(file, ext) {
   return out;
 }
 
-function runFfmpeg(args, durationSec, onProgress) {
+function runFfmpeg(args, durationSec, onProgress, { nice = 0 } = {}) {
   return new Promise((resolve, reject) => {
-    const p = spawn('ffmpeg', ['-v', 'error', '-y', '-progress', 'pipe:1', '-nostats', ...args]);
+    const ff = ['ffmpeg', '-v', 'error', '-y', '-progress', 'pipe:1', '-nostats', ...args];
+    const p = nice ? spawn('nice', ['-n', String(nice), ...ff]) : spawn(ff[0], ff.slice(1));
     let err = '';
     p.stdout.on('data', (d) => {
       const m = [...d.toString().matchAll(/out_time_ms=(\d+)/g)].pop();
@@ -168,6 +169,50 @@ export async function normalizeMedia(file, { onProgress, onStage } = {}) {
     return out;
   }
   return file;
+}
+
+/* Light preview copies ("proxies") of heavy videos: ≤960 px, 30 fps, ~1 Mbps, a keyframe every second.
+ * Only the browser preview uses them (phones / slow links can't stream 1080p60 originals); the renderer
+ * always reads the original. Named by the source file's identity, so a replaced file gets a new one. */
+export const PROXY_DIR = path.join(CACHE_DIR, 'proxy');
+const PROXY_SIDE = 960;
+
+export function proxyFile(asset) {
+  if (asset?.type !== 'video' || !asset.path) return null;
+  const src = path.join(WORKSPACE, asset.path);
+  try {
+    const st = fs.statSync(src);
+    return path.join(PROXY_DIR, `${hash(`${fs.realpathSync(src)}|${st.size}|${st.mtimeMs}`).slice(0, 24)}.mp4`);
+  } catch { return null; }
+}
+
+/** Worth a proxy: big frame, high frame rate or high bitrate. */
+export function needsProxy(asset) {
+  if (asset?.type !== 'video') return false;
+  let bytesPerSec = 0;
+  try { bytesPerSec = fs.statSync(path.join(WORKSPACE, asset.path)).size / Math.max(1, asset.duration || 1); } catch { return false; }
+  return Math.max(asset.width || 0, asset.height || 0) > PROXY_SIDE || (asset.fps || 0) > 31 || bytesPerSec > 300_000;
+}
+
+export async function makeProxy(asset, onProgress) {
+  const out = proxyFile(asset);
+  if (!out || fs.existsSync(out)) return out;
+  await fsp.mkdir(PROXY_DIR, { recursive: true });
+  const tmp = out.replace(/\.mp4$/, '.part.mp4');
+  const s = PROXY_SIDE;
+  try {
+    await runFfmpeg([
+      '-i', path.join(WORKSPACE, asset.path), '-map', '0:v:0', '-map', '0:a:0?',
+      '-vf', `scale='if(gte(iw,ih),min(${s},iw),-2)':'if(gte(iw,ih),-2,min(${s},ih))',fps=30,format=yuv420p`,
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28', '-g', '30', '-threads', String(Number(process.env.PROXY_THREADS || 0)),
+      '-c:a', 'aac', '-b:a', '96k', '-ac', '2', '-movflags', '+faststart', tmp,
+    ], asset.duration, onProgress, { nice: 15 });
+    await fsp.rename(tmp, out);
+  } catch (e) {
+    await fsp.unlink(tmp).catch(() => {});
+    throw e;
+  }
+  return out;
 }
 
 /** Copy/move a file into workspace/media and register it as an asset. Mutates `project`. */

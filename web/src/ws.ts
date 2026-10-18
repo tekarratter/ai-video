@@ -47,6 +47,11 @@ export function connect() {
       case 'telegram':
         window.dispatchEvent(new Event('telegram-linked'));
         break;
+      case 'proxies': {
+        const { type, ...detail } = m; // eslint-disable-line @typescript-eslint/no-unused-vars
+        window.dispatchEvent(new CustomEvent('proxies', { detail }));
+        break;
+      }
       case 'projects':
         useStore.setState({ projects: m.projects, activeProject: m.active });
         break;

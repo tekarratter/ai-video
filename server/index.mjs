@@ -8,7 +8,7 @@ import chokidar from 'chokidar';
 import { WebSocketServer } from 'ws';
 import {
   CACHE_DIR, EXPORT_DIR, MEDIA_DIR, PROJECT_FILE, ROOT, WORKSPACE,
-  hash, importMedia, readProject, writeProject,
+  hash, importMedia, readProject, writeProject, makeProxy, needsProxy, proxyFile,
 } from '../shared/store.mjs';
 import { downloadUrl } from '../shared/download.mjs';
 import { LOGO_DEFAULTS, addAudioClip, findClip, layoutTrack, newId } from '../shared/timeline.js';
@@ -279,6 +279,7 @@ function startImport(raw, asLogo) {
     for (const d of new Set(files.map((f) => f.tmpDir).filter(Boolean))) fs.rmSync(d, { recursive: true, force: true });
     if (failed.length) broadcast({ type: 'toast', level: 'error', text: `Lỗi nhập: ${failed.join('; ')}` });
     if (!ok.length) throw new Error(failed.join('; '));
+    setTimeout(proxySweep, 500);
     return { label: `Đã nhập ${ok.length}/${files.length} file`, paths };
   });
   return job;
@@ -372,6 +373,7 @@ function openProject(id) {
   if (claude.status.busy) throw Object.assign(new Error('Claude đang làm việc — đợi xong (hoặc bấm Dừng) rồi chuyển dự án'), { status: 409 });
   if (from && claude.status.sessionId) projects.setClaudeSession(from, claude.status.sessionId);
   projects.open(id);
+  setTimeout(proxySweep, 1000);
   const text = fs.readFileSync(PROJECT_FILE, 'utf8');
   lastHash = hash(text);
   broadcast({ type: 'project-switched', project: readProject(), ...projectsPayload() });
@@ -627,7 +629,7 @@ app.post('/api/render', (req, res) => {
       // link through the project id: /exports follows whichever project is open now
       return { file: r.file, url: `/api/projects/${encodeURIComponent(projectId)}/exports/${encodeURIComponent(path.basename(r.file))}` };
     } finally { release(); }
-  }, { onFinish: (j) => telegram.notifyRender(j, { absFile: j.file ? path.join(WORKSPACE, j.file) : null, publicBase }) });
+  }, { onFinish: (j) => { telegram.notifyRender(j, { absFile: j.file ? path.join(WORKSPACE, j.file) : null, publicBase }); setTimeout(proxySweep, 2000); } });
   job.stopper = stopper;
   rendering = job;
   res.json({ job, queued: ahead });
@@ -826,6 +828,55 @@ if (fs.existsSync(dist)) {
   app.use(express.static(dist));
   app.get(/^\/(?!api|media|exports|cache|library|ws).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
 }
+
+/* ---- light preview copies of heavy videos (see makeProxy) ----
+ * Made in the background for the open project, one at a time at low priority, never while a render runs.
+ * Not a job: it must not block switching projects or count as "busy". */
+const proxyState = { running: false, current: null, progress: 0, left: 0 };
+const proxyFailed = new Set();
+const proxyOn = process.env.PREVIEW_PROXY !== '0';
+function proxyMap() {
+  const out = {};
+  for (const a of readProject().assets || []) {
+    const f = proxyFile(a);
+    if (f && fs.existsSync(f)) out[a.id] = `/cache/proxy/${path.basename(f)}`;
+  }
+  return out;
+}
+const proxyPayload = () => ({ ...proxyState, enabled: proxyOn, proxies: proxyMap() });
+app.get('/api/proxies', (req, res) => res.json(proxyPayload()));
+async function proxySweep() {
+  if (!proxyOn || proxyState.running) return;
+  proxyState.running = true;
+  let lastSent = 0;
+  try {
+    for (;;) {
+      if (activeRenders().length) break; // the render gets the CPU; its onFinish starts the sweep again
+      const todo = (readProject().assets || []).filter((a) => needsProxy(a) && !proxyFailed.has(proxyFile(a)) && !fs.existsSync(proxyFile(a) || ''));
+      if (!todo.length) break;
+      const a = todo[0];
+      Object.assign(proxyState, { current: a.name, progress: 0, left: todo.length });
+      broadcast({ type: 'proxies', ...proxyPayload() });
+      try {
+        await makeProxy(a, (p) => {
+          proxyState.progress = p;
+          if (Date.now() - lastSent > 2000) { lastSent = Date.now(); broadcast({ type: 'proxies', ...proxyState, enabled: proxyOn }); }
+        });
+      } catch (e) {
+        console.warn('[proxy]', a.name, e.message);
+        proxyFailed.add(proxyFile(a));
+      }
+    }
+  } catch (e) {
+    console.warn('[proxy]', e.message);
+  } finally {
+    Object.assign(proxyState, { running: false, current: null, progress: 0, left: 0 });
+    broadcast({ type: 'proxies', ...proxyPayload() });
+  }
+}
+// Claude may add videos by editing project.json directly: check now and then
+setTimeout(proxySweep, 15_000);
+setInterval(proxySweep, 120_000);
 
 server.listen(PORT, () => {
   console.log(`[ai-video] server http://localhost:${PORT}  workspace=${WORKSPACE}`);

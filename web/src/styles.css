@@ -552,3 +552,5 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 .rotate-hint .muted { max-width: 300px; font-size: 13px; }
 .rotate-icon { font-size: 48px; animation: rotate-hint 2.4s ease-in-out infinite; }
 @keyframes rotate-hint { 0%, 25% { transform: rotate(0); } 50%, 75% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+.light-toggle { margin-right: 6px; flex: none; }
+.light-toggle button { padding: 2px 8px; font-size: 11.5px; white-space: nowrap; }
