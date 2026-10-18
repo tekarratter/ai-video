@@ -38,6 +38,8 @@ Run `node ../tools/vedit.mjs help` for all options. Most used:
 - `render [--draft] [--range 0-10]` — export MP4 with Remotion (slow; only when the user asks).
 - `logo <assetId|file> [--position top-left|top-center|top-right|bottom-left|bottom-center|bottom-right] [--size 0.18] [--margin 0.04] [--opacity 0.9]`
   — logo/watermark shown over the **whole** video. `--off` hides, `--remove` deletes, no args prints the current setting.
+- `article <url> [--import]` — read a news/blog/forum article (text + photos in order); `--import` adds its photos.
+- `images <english words> [--orientation landscape|portrait] [--import 1,3]` — free CC illustration photos (credits kept).
 - `validate` — check project.json after hand edits.
 - `youtube <exports/x.mp4> --title "…" [--description "…"] [--tags a,b] [--privacy private|unlisted|public] [--shorts]` —
   publish to the user's YouTube channel. **Only when the user explicitly asks to upload**, confirm title/privacy first,
@@ -63,6 +65,42 @@ point at the **open** project. `vedit projects` lists them. Only switch (`projec
 - `music search <words> [--genre G] [--feel F] [--max 60]` (Incompetech, CC BY 4.0 + the user's `library/music`),
   `music add <trackId> [--start 0] [--volume 0.35]` → track `music`, trimmed to the video and faded.
   CC BY credits are appended to the YouTube description automatically.
+
+## Video từ bài viết (article → narrated video)
+
+Requested from the editor's "Từ bài viết" dialog (link, voice language/voice, length, frame size, options). Goal: a video
+for people who don't like reading — clear narration, the article's own photos, subtitles. Steps:
+
+1. `vedit article <url>` — title, site, date, text and `[IMG #n]` markers in reading order. If it fails (403, login,
+   JavaScript-only page) tell the user to paste the text / upload the photos instead, and stop.
+2. New project if asked: `vedit projects new "<short title>" --size WxH`, then `vedit article <url> --import` (adds the
+   photos as assets, `[IMG #n img_xxx WxH]`; credits go to `asset.attribution`). **Read** the imported image files
+   (`media/…`) to see them; skip ads, logos, avatars, unrelated banners.
+3. Script, in the requested voice language (translate when the article is in another language): a hook sentence, then
+   one scene per idea, 1–3 short spoken sentences each, ending with the source ("Theo VnExpress." / "Source: BBC.").
+   Faithful to the article — no invented facts, numbers or quotes; names and numbers exactly as written; spell out
+   abbreviations the TTS can't read. Length targets: ~2.5 words/s Vietnamese, ~2.6 words/s English
+   (1 min ≈ 150 words). Show the user the scene list in one short message, then continue without waiting.
+4. Visuals per scene: the article photo that matches best (a photo may be reused with a different Ken Burns move).
+   If photos run out and illustrations are allowed: `vedit images "<english keywords>" --orientation landscape|portrait`
+   → look at the thumbnails (download + Read) → `--import <n>`. Use stock photos only for general concepts (a city,
+   a school, money, trees…), never as if they showed the real people/event, and put a small text overlay
+   "Ảnh minh họa" / "Illustration" (fontSize ~26, bottom-left, background rgba(0,0,0,.45)) on those scenes.
+   Otherwise use motion graphics: `TitleCard` (opening), `StatCounter` (a key number), `QuoteCard` (a quote),
+   `KineticText` (the main takeaway).
+5. Voice: `vedit tts "<scene text>" --voice "<voice>" --speed <s> --start <t>` one call per scene, in order: scene 1 at
+   0.4 s, each next one 0.35 s after the previous clip ends (check lengths with `vedit info`).
+6. Main track: one image (or component) clip per scene, `fit: "cover"`, varied `kenBurns` presets (amount 0.12–0.2;
+   on 9:16 with landscape photos prefer `pan-left`/`pan-right` so more of the photo is seen), `transition` fade 0.5.
+   A transition shortens the timeline, so make clip `duration` = scene length + its transition duration (scene length
+   = time from this voice clip's start to the next one's start); the first clip also covers the 0.4 s lead-in, the last
+   one runs ~1.5 s past the final voice clip.
+7. Headline as a text overlay on the first scene (or `TitleCard`), and "Nguồn: <site>" / "Source: <site>" small on the
+   last scene. Subtitles (if asked): `subtitles.cues` from the script — split each scene into lines ≤ 42 chars, timed
+   proportionally to their length inside that scene's voice clip. Music (if asked): `vedit music search news calm`
+   (or a mood that fits) → `music add <id> --volume 0.15`.
+8. `vedit validate`, look at 2–3 `vedit still <t>` frames (title, a middle scene, the end), fix, then report the scenes
+   in a few lines. Don't render unless asked.
 
 ## project.json schema (all times in SECONDS)
 

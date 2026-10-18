@@ -13,6 +13,7 @@ import { ProjectsDialog } from './components/Projects';
 import { CleanupDialog } from './components/Cleanup';
 import { TelegramAdminDialog, TelegramDialog } from './components/Telegram';
 import { DubDialog } from './components/DubDialog';
+import { ArticleDialog } from './components/ArticleDialog';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { deleteSelection, duplicateSelection, fps, seek, currentTime, splitAtPlayhead, togglePlay } from './player';
 
@@ -121,6 +122,7 @@ const Editor: React.FC = () => {
       <TelegramDialog />
       <TelegramAdminDialog />
       <DubDialog />
+      <ArticleDialog />
       <ClaudeAuthDialog />
       {vp.h > vp.w && vp.w < 760 && !portraitOk && (
         <div className="rotate-hint">

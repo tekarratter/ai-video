@@ -4,6 +4,7 @@ import { api } from './Account';
 import { Icon } from './Icon';
 import { uploadParts } from '../upload';
 import { openCleanup } from './Cleanup';
+import { openArticle } from './ArticleDialog';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -86,6 +87,7 @@ export const ProjectsDialog: React.FC = () => {
             <Icon name="upload" /> {restoring ? `Đang tải lên ${restoring}` : 'Khôi phục từ file…'}
           </button>
           <input ref={restoreRef} type="file" hidden accept=".zip,application/zip" onChange={(e) => { const f = e.target.files?.[0]; if (f) restore(f); e.target.value = ''; }} />
+          <button className="btn small" title="Dán link bài báo / diễn đàn → dự án mới có video đọc bài, ảnh trong bài, phụ đề" onClick={() => { setOpen(false); openArticle({ newProject: true }); }}><Icon name="text" /> Tạo từ link bài viết</button>
           <button className="btn primary small" onClick={() => setCreating(!creating)}><Icon name="plus" /> Dự án mới</button>
           <button className="icon-btn" onClick={() => setOpen(false)}><Icon name="x" /></button>
         </div>

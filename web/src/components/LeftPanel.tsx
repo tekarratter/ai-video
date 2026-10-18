@@ -7,6 +7,7 @@ import { currentTime } from '../player';
 import { Icon } from './Icon';
 import { MusicPanel, VoicePanel } from './AudioLibrary';
 import { openDub } from './DubDialog';
+import { openArticle } from './ArticleDialog';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -419,9 +420,10 @@ export const LeftPanel: React.FC = () => {
         >
           <input className="search" placeholder="Tìm…" value={q} onChange={(e) => setQ(e.target.value)} />
           <UploadProgress />
-          <div className="row gap">
+          <div className="row gap" style={{ flexWrap: 'wrap' }}>
             <button className="btn small" onClick={() => fileRef.current?.click()}><Icon name="upload" /> Tải file</button>
             <button className="btn small" onClick={() => openDub()} title="Dịch lời thoại của video/link YouTube và đọc lại bằng giọng AI"><Icon name="mic" /> Thuyết minh</button>
+            <button className="btn small" onClick={() => openArticle()} title="Dán link bài báo / diễn đàn → video có giọng đọc, ảnh trong bài và ảnh minh họa"><Icon name="text" /> Từ bài viết</button>
             <input ref={fileRef} type="file" multiple hidden accept="video/*,image/*,audio/*,.heic,.heif,.zip" onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ''; }} />
           </div>
           <form className="url-import" onSubmit={(e) => { e.preventDefault(); if (url.trim()) { importUrl(url.trim()); setUrl(''); } }}>

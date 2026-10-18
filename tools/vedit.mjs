@@ -10,6 +10,7 @@ import {
 import { downloadUrl } from '../shared/download.mjs';
 import { importTrack, musicFacets, searchMusic } from '../shared/library.mjs';
 import { listVoices, synthesize, ttsFileName } from '../shared/tts.mjs';
+import { articleKey, downloadImage, extractArticle, searchImages } from './article.mjs';
 import {
   addAudioClip, assetById, clipDuration, creditsFor, fmtTime, layoutTrack, LOGO_DEFAULTS, LOGO_POSITIONS, newId, projectDuration, sourceToTimeline,
 } from '../shared/timeline.js';
@@ -352,6 +353,91 @@ const commands = {
     if (j.file) console.log(path.join(WORKSPACE, j.file));
   },
 
+  /** Article (news / blog / forum) → text + its images, for "video from an article". */
+  async article() {
+    const url = pos[0];
+    if (!/^https?:\/\//.test(url || '')) die('usage: article <url> [--import [all|1,3,5]] [--max 20] [--refresh] [--json]');
+    const cacheFile = path.join(CACHE_DIR, 'articles', `${articleKey(url)}.json`);
+    let a = !opt.refresh && fs.existsSync(cacheFile) ? JSON.parse(fs.readFileSync(cacheFile, 'utf8')) : null;
+    if (!a) {
+      console.error(`Đang đọc ${url} …`);
+      a = await extractArticle(url).catch((e) => die(/HTTP 40[13]/.test(e.message) ? `${e.message} — trang chặn tải tự động (Cloudflare/đăng nhập). Hãy copy nội dung + lưu ảnh rồi tải lên thay thế.` : e.message));
+      fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+      fs.writeFileSync(cacheFile, JSON.stringify(a, null, 1));
+    }
+    const imgs = a.blocks.filter((b) => b.type === 'img');
+    imgs.forEach((b, i) => { b.n = i + 1; });
+    if (opt.import) {
+      const want = opt.import === true || opt.import === 'all' ? null : new Set(String(opt.import).split(',').map(Number));
+      const max = Number(opt.max || 24);
+      const p = readProject();
+      const tmp = path.join(CACHE_DIR, 'articles', 'dl', articleKey(url));
+      let added = 0;
+      for (const b of imgs) {
+        if ((want && !want.has(b.n)) || added >= max) continue;
+        const have = p.assets.find((x) => x.source === b.url);
+        if (have) { b.assetId = have.id; continue; }
+        try {
+          const f = await downloadImage(b.url, tmp, { referer: a.url });
+          const info = await probe(f);
+          if (info.type !== 'image' || Math.min(info.width || 0, info.height || 0) < 250) { fs.rmSync(f, { force: true }); b.skip = 'quá nhỏ'; continue; }
+          const asset = await importMedia(p, f, { move: true });
+          Object.assign(asset, { source: b.url, attribution: `Ảnh: ${a.site}` + (b.caption ? ` — ${b.caption.slice(0, 80)}` : '') });
+          b.assetId = asset.id; added++;
+          writeProject(p); // after each image so the editor shows them as they arrive
+          console.error(`  #${b.n} → ${asset.id} ${asset.width}x${asset.height}`);
+        } catch (e) { b.skip = e.message; console.error(`  #${b.n} bỏ qua: ${e.message}`); }
+      }
+      fs.rmSync(tmp, { recursive: true, force: true });
+      for (const b of imgs) { const x = p.assets.find((y) => y.id === b.assetId); if (x) Object.assign(b, { width: x.width, height: x.height }); }
+      fs.writeFileSync(cacheFile, JSON.stringify(a, null, 1));
+    }
+    if (opt.json) { console.log(JSON.stringify(a, null, 1)); return; }
+    console.log(`TITLE: ${a.title}`);
+    console.log(`SITE: ${a.site}${a.published ? ` | ${a.published}` : ''}${a.author ? ` | ${a.author}` : ''}\nURL: ${a.url}`);
+    if (a.excerpt) console.log(`SAPO: ${a.excerpt}`);
+    console.log(`WORDS: ${a.words}  IMAGES: ${imgs.length}${imgs.some((b) => b.assetId) ? ` (imported: ${imgs.filter((b) => b.assetId).length})` : ' (not imported yet — add --import)'}\n---`);
+    for (const b of a.blocks) {
+      if (b.type === 'img') console.log(`[IMG #${b.n}${b.assetId ? ` ${b.assetId}` : ''}${b.width ? ` ${b.width}x${b.height}` : ''}${b.skip ? ` (bỏ qua: ${b.skip})` : ''}] ${b.caption || ''}`);
+      else console.log(`${b.type === 'h' ? '## ' : b.type === 'quote' ? '> ' : b.type === 'li' ? '- ' : ''}${b.text}`);
+    }
+  },
+
+  /** Free CC-licensed illustration photos (Openverse → Wikimedia Commons). */
+  async images() {
+    const q = pos.join(' ');
+    if (!q) die('usage: images <english keywords> [--count 8] [--orientation landscape|portrait] [--import 1,3|all]');
+    const cacheFile = path.join(CACHE_DIR, 'imgsearch', `${articleKey(`${q}|${opt.orientation || ''}|${opt.count || 8}`)}.json`);
+    let list = fs.existsSync(cacheFile) ? JSON.parse(fs.readFileSync(cacheFile, 'utf8')) : null;
+    if (!list) {
+      list = await searchImages(q, { count: Number(opt.count || 8), orientation: opt.orientation });
+      fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+      fs.writeFileSync(cacheFile, JSON.stringify(list));
+    }
+    if (!list.length) die(`không tìm thấy ảnh cho "${q}" — thử từ khoá tiếng Anh khác, ngắn hơn`);
+    const p = opt.import ? readProject() : null;
+    const want = opt.import && opt.import !== true && opt.import !== 'all' ? new Set(String(opt.import).split(',').map(Number)) : null;
+    for (const [i, x] of list.entries()) {
+      let id = '';
+      if (p && (!want || want.has(i + 1))) {
+        const have = p.assets.find((a) => a.source === x.url);
+        if (have) id = have.id;
+        else {
+          try {
+            const tmp = path.join(CACHE_DIR, 'imgsearch', 'dl');
+            const f = await downloadImage(x.url, tmp);
+            const asset = await importMedia(p, f, { move: true });
+            Object.assign(asset, { source: x.url, attribution: `Ảnh: ${x.attribution}` });
+            writeProject(p);
+            id = asset.id;
+          } catch (e) { id = `(lỗi: ${e.message})`; }
+        }
+      }
+      console.log(`#${i + 1} ${id ? `${id} ` : ''}${x.width}x${x.height}  ${x.title.slice(0, 70)}  [${x.source}]\n    ${x.thumb || x.url}`);
+    }
+    if (!p) console.log('\nXem thử: tải thumbnail rồi Read, hoặc import luôn: --import 1,3');
+  },
+
   async logo() {
     const p = readProject();
     if (opt.remove) { delete p.logo; writeProject(p); return console.log('logo removed'); }
@@ -417,6 +503,10 @@ const commands = {
   scenes <assetId> [--threshold 0.3]     scene-change timestamps
   render [--draft] [--range 0-10]        export MP4 via Remotion (needs server)
   youtube <exports/x.mp4> --title t [--description d] [--tags a,b] [--privacy private] [--shorts]   upload to YouTube
+  article <url> [--import [all|1,3]] [--max 24] [--refresh] [--json]
+                                         read a news/blog/forum article: title, text, images in order; --import adds its images as assets
+  images <english words> [--count 8] [--orientation landscape|portrait] [--import 1,3|all]
+                                         free CC illustration photos (Openverse / Wikimedia), credits kept in asset.attribution
   music search <words> [--genre G] [--feel F] [--max 60]   search the background-music library (Incompetech CC BY + library/music)
   music genres                           list genres / feels
   music add <trackId> [--start s] [--volume 0.35] [--no-add]   import a track, put it on the music track (trimmed + faded)

@@ -11,6 +11,7 @@
     "serve": "concurrently -k -n server,web -c blue,green \"node server/index.mjs\" \"vite\""
   },
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
     "@remotion/bundler": "^4.0.535",
     "@remotion/cli": "^4.0.535",
     "@remotion/player": "^4.0.535",
@@ -19,6 +20,7 @@
     "@xterm/xterm": "^5.5.0",
     "chokidar": "^4.0.3",
     "express": "^5.1.0",
+    "linkedom": "^0.18.13",
     "multer": "^2.0.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
