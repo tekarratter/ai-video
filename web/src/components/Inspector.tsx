@@ -3,7 +3,7 @@ import { componentDefaults } from '@custom';
 import { assetById, clipDuration, findClip, layoutTrack, KEN_BURNS_PRESETS, LOGO_DEFAULTS, LOGO_POSITIONS, LOOP_ANIMATIONS, projectDuration, TEXT_ANIMATIONS, TRANSITIONS } from '../../../shared/timeline.js';
 import { toggleLayout, useStore } from '../store';
 import { currentTime, seek } from '../player';
-import { addComponentClip, addSolidClip, addTextClip, uploadFiles, UploadProgress } from './LeftPanel';
+import { addComponentClip, addSolidClip, addTextClip, assetUrl, uploadFiles, UploadProgress } from './LeftPanel';
 import { askClaude } from './ChatPanel';
 import { Icon } from './Icon';
 import { openYouTube } from './YouTubeDialog';
@@ -329,6 +329,7 @@ const AssetInspector: React.FC<{ asset: any }> = ({ asset }) => (
     </div>
     {asset.tts && <AssetVoice asset={asset} />}
     <div className="actions">
+      <a href={assetUrl(asset)} download={asset.name}><Icon name="download" /> Tải file gốc</a>
       {(asset.type === 'video' || (asset.type === 'audio' && !asset.tts && !asset.dubOf)) && <button onClick={() => openDub(asset.id)}><Icon name="mic" /> Thuyết minh / lồng tiếng…</button>}
       {asset.type === 'video' && <button onClick={() => askClaude(`Xem video ${asset.id} và tìm các đoạn hay nhất để dựng highlight.`, true)}><Icon name="sparkle" /> Tìm highlight</button>}
       {asset.type === 'image' && <button onClick={() => { setLogo({ assetId: asset.id, enabled: true }); useStore.getState().toast('Đã đặt làm logo — chỉnh vị trí ở Inspector của project'); }}><Icon name="image" /> Dùng làm logo</button>}

@@ -254,6 +254,17 @@ const typeIcon = (a: any) => (a.type === 'video' ? 'film' : a.type === 'image' ?
 const fmtDur = (d?: number) => (d ? (d >= 60 ? `${Math.floor(d / 60)}:${String(Math.round(d % 60)).padStart(2, '0')}` : `${d.toFixed(1)}s`) : '');
 const hideBroken = (e: React.SyntheticEvent<HTMLImageElement>) => ((e.target as HTMLImageElement).style.visibility = 'hidden');
 
+/** URL of the original file (media/… of the open project). */
+export const assetUrl = (a: any) => '/' + String(a.path).split('/').map(encodeURIComponent).join('/');
+const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+/** Download button for one asset — doesn't select / add / drag the asset. */
+const AssetDownload: React.FC<{ asset: any; className?: string }> = ({ asset, className = '' }) => (
+  <a className={`asset-dl ${className}`} href={assetUrl(asset)} download={asset.name} title={`Tải về ${asset.name}`}
+    draggable={false} onClick={stop} onDoubleClick={stop} onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+    <Icon name="download" size={12} />
+  </a>
+);
+
 /** Shared drag/select/add behaviour of every asset view. */
 function assetProps(asset: any, sel: boolean, cls: string) {
   return {
@@ -275,6 +286,7 @@ const AssetCard: React.FC<{ asset: any; used: boolean }> = ({ asset, used }) => 
         <span className="asset-badge"><Icon name={typeIcon(asset)} size={11} /></span>
         {used && <span className="asset-used" title="Đang dùng trên timeline" />}
         {asset.duration ? <span className="asset-dur">{fmtDur(asset.duration)}</span> : null}
+        <AssetDownload asset={asset} className="over" />
       </div>
       <div className="asset-name">{asset.name}</div>
     </div>
@@ -290,6 +302,7 @@ const AssetRow: React.FC<{ asset: any; used: boolean }> = ({ asset, used }) => {
         <div className="asset-row-name">{used && <span className="asset-used inline" title="Đang dùng trên timeline" />}{asset.name}</div>
         <div className="muted small">{[asset.type, fmtDur(asset.duration), asset.width && `${asset.width}×${asset.height}`].filter(Boolean).join(' · ')}</div>
       </div>
+      <AssetDownload asset={asset} />
     </div>
   );
 };
@@ -304,7 +317,7 @@ const AssetDetails: React.FC<{ assets: any[]; used: Set<string> }> = ({ assets, 
   );
   return (
     <table className="asset-table">
-      <thead><tr>{th('name', 'Tên')}{th('type', '')}{th('dur', 'Dài')}{th('res', 'Cỡ')}</tr></thead>
+      <thead><tr>{th('name', 'Tên')}{th('type', '')}{th('dur', 'Dài')}{th('res', 'Cỡ')}<th /></tr></thead>
       <tbody>
         {rows.map((a) => {
           const p = assetProps(a, selection === a.id, '');
@@ -314,6 +327,7 @@ const AssetDetails: React.FC<{ assets: any[]; used: Set<string> }> = ({ assets, 
               <td title={a.type}><Icon name={typeIcon(a)} size={11} /></td>
               <td className="num">{fmtDur(a.duration)}</td>
               <td className="num">{a.width ? `${a.width}×${a.height}` : ''}</td>
+              <td><AssetDownload asset={a} /></td>
             </tr>
           );
         })}

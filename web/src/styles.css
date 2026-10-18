@@ -112,7 +112,7 @@ input[type='range'] { accent-color: var(--accent); flex: 1; }
 .asset-used { position: absolute; right: 4px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 2px #0008; }
 .asset-used.inline { position: static; display: inline-block; margin-right: 4px; vertical-align: middle; box-shadow: none; }
 .asset-list { display: flex; flex-direction: column; margin-top: 6px; }
-.asset-row { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; align-items: center; padding: 3px; border-radius: 5px; cursor: grab; border: 1px solid transparent; }
+.asset-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 3px; border-radius: 5px; cursor: grab; border: 1px solid transparent; }
 .asset-row:hover { background: var(--panel2); }
 .asset-row.selected { border-color: var(--accent); background: var(--accent-soft); }
 .asset-mini { width: 44px; height: 32px; border-radius: 3px; overflow: hidden; background: #0b0d10; }
@@ -164,8 +164,8 @@ input[type='range'] { accent-color: var(--accent); flex: 1; }
 .field.textarea { grid-template-columns: 1fr; }
 .field.checkbox input { justify-self: start; }
 .actions { display: flex; flex-direction: column; gap: 2px; }
-.actions button { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 6px 4px; text-align: left; cursor: pointer; color: var(--text); border-radius: 5px; }
-.actions button:hover { background: #ffffff0a; color: #fff; }
+.actions button, .actions > a { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 6px 4px; text-align: left; cursor: pointer; color: var(--text); border-radius: 5px; text-decoration: none; }
+.actions button:hover, .actions > a:hover { background: #ffffff0a; color: #fff; }
 .asset-preview { width: 100%; border-radius: 6px; }
 .json-editor textarea { font-family: 'JetBrains Mono', monospace; font-size: 11px; margin: 6px 0; }
 .job { border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
@@ -554,3 +554,11 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 @keyframes rotate-hint { 0%, 25% { transform: rotate(0); } 50%, 75% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
 .light-toggle { margin-right: 6px; flex: none; }
 .light-toggle button { padding: 2px 8px; font-size: 11.5px; white-space: nowrap; }
+
+/* asset download button: on hover over thumbnails, always visible in list/table and on touch screens */
+.asset-dl { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; color: var(--muted); cursor: pointer; }
+.asset-dl:hover { color: var(--text, #fff); background: #ffffff1a; }
+.asset-dl.over { position: absolute; left: 3px; bottom: 3px; background: #000b; color: #fff; opacity: 0; transition: opacity .12s; }
+.asset:hover .asset-dl.over, .asset.selected .asset-dl.over { opacity: 1; }
+@media (hover: none) { .asset-dl.over { opacity: .85; } }
+.asset-table td:last-child { width: 24px; padding: 0; }
