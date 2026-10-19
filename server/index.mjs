@@ -8,7 +8,7 @@ import chokidar from 'chokidar';
 import { WebSocketServer } from 'ws';
 import {
   CACHE_DIR, EXPORT_DIR, MEDIA_DIR, PROJECT_FILE, ROOT, WORKSPACE,
-  hash, importMedia, readProject, writeProject, makeProxy, needsProxy, proxyFile,
+  hash, importMedia, readProject, writeProject, makeProxy, needsProxy, proxyFile, makePreviews,
 } from '../shared/store.mjs';
 import { downloadUrl } from '../shared/download.mjs';
 import { LOGO_DEFAULTS, addAudioClip, findClip, layoutTrack, newId } from '../shared/timeline.js';
@@ -430,6 +430,16 @@ app.post('/api/projects/restore', (req, res) => {
   });
   res.json({ job });
 });
+// "Dùng mẫu này" in the template gallery: copy demos/<id> into a new project and open it
+app.post('/api/demos/:id/use', handle((req) => {
+  const dir = path.join(ROOT, 'demos', String(req.params.id));
+  if (!/^[\w-]+$/.test(req.params.id) || !fs.existsSync(path.join(dir, 'project.json'))) throw Object.assign(new Error('Không có mẫu này'), { status: 404 });
+  const nid = projects.fromDemo(dir);
+  openProject(nid);
+  // thumbnails / waveforms for the asset panel, once the project's media is the open one
+  (async () => { for (const a of readProject().assets) if (!fs.existsSync(path.join(CACHE_DIR, 'thumbs', `${a.id}.jpg`)) && !fs.existsSync(path.join(CACHE_DIR, 'thumbs', `${a.id}.wave.png`))) await makePreviews(a); })()
+    .catch((e) => console.warn('[demo] previews', e.message));
+}));
 app.post('/api/projects/:id/duplicate', handle((req) => { projects.duplicate(req.params.id); broadcast({ type: 'projects', ...projectsPayload() }); }));
 app.patch('/api/projects/:id', handle((req) => {
   projects.rename(req.params.id, req.body?.name);

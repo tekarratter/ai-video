@@ -1,0 +1,212 @@
+{
+ "name": "Demo · Phóng sự cắt giấy",
+ "settings": {
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "aud_c3c2269183",
+   "name": "v_c3c2269183.m4a",
+   "path": "media/v_c3c2269183.m4a",
+   "type": "audio",
+   "duration": 2.56,
+   "tts": {
+    "text": "Vì sao một ổ bánh mì lại nổi tiếng khắp thế giới?",
+    "voice": "vi:Thiện Minh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_7a05427d1e",
+   "name": "v_7a05427d1e.m4a",
+   "path": "media/v_7a05427d1e.m4a",
+   "type": "audio",
+   "duration": 4.819,
+   "tts": {
+    "text": "Câu chuyện bắt đầu từ ổ bánh mì Pháp, được người Việt kẹp thêm pa tê, rau thơm và đồ chua.",
+    "voice": "vi:Thiện Minh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_f4dc4c23be",
+   "name": "v_f4dc4c23be.m4a",
+   "path": "media/v_f4dc4c23be.m4a",
+   "type": "audio",
+   "duration": 4.564,
+   "tts": {
+    "text": "Đến năm 2011, bánh mì chính thức có mặt trong từ điển tiếng Anh Oxford.",
+    "voice": "vi:Thiện Minh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "img_banhmi2",
+   "name": "banhmi2.jpg",
+   "path": "media/banhmi2.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/35034346243@N01/152788004",
+   "attribution": "Ảnh: \"banh mi\" by stu_spivack is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "img_banhmi1",
+   "name": "banhmi1.jpg",
+   "path": "media/banhmi1.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 684,
+   "source": "https://www.flickr.com/photos/41942551@N02/7506599742",
+   "attribution": "Ảnh: \"Day186: KBBQ meets Banh Mi\" by SodanieChea is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_banhmi3",
+   "name": "banhmi3.jpg",
+   "path": "media/banhmi3.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 680,
+   "source": "https://www.flickr.com/photos/7927684@N03/4927299660",
+   "attribution": "Ảnh: \"Mmm...meatball banh mi\" by jeffreyw is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "aud_m368f13831d",
+   "name": "music_368f13831d_15.m4a",
+   "path": "media/music_368f13831d_15.m4a",
+   "type": "audio",
+   "duration": 14.64,
+   "libraryId": "inc:Hitman.mp3",
+   "attribution": "\"Hitman\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_vox004",
+     "kind": "component",
+     "component": "PaperCutout",
+     "duration": 3.81,
+     "props": {
+      "image": "/media/banhmi2.jpg",
+      "kicker": "CÂU HỎI",
+      "title": "Vì sao bánh mì *nổi tiếng*?",
+      "note": "",
+      "paper": "#efe6d2",
+      "seed": 3
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.5
+     }
+    },
+    {
+     "id": "c_vox005",
+     "kind": "component",
+     "component": "PaperCutout",
+     "duration": 5.67,
+     "props": {
+      "image": "/media/banhmi1.jpg",
+      "kicker": "BỐI CẢNH",
+      "title": "Từ ổ bánh Pháp đến *món Việt*",
+      "note": "thời Pháp thuộc",
+      "paper": "#e9eef2",
+      "seed": 10
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.5
+     }
+    },
+    {
+     "id": "c_vox006",
+     "kind": "component",
+     "component": "PaperCutout",
+     "duration": 6.16,
+     "props": {
+      "image": "/media/banhmi3.jpg",
+      "kicker": "CỘT MỐC",
+      "title": "Có mặt trong *từ điển Oxford*",
+      "note": "năm 2011 ✓",
+      "paper": "#efe6d2",
+      "seed": 17
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": []
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_vox007",
+     "name": "Hitman",
+     "assetId": "aud_m368f13831d",
+     "start": 0,
+     "in": 0,
+     "out": 14.64,
+     "volume": 0.12
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_vox001",
+     "name": "v_c3c2269183.m4a",
+     "assetId": "aud_c3c2269183",
+     "start": 0.4,
+     "in": 0,
+     "out": 2.56,
+     "volume": 1
+    },
+    {
+     "id": "c_vox002",
+     "name": "v_7a05427d1e.m4a",
+     "assetId": "aud_7a05427d1e",
+     "start": 3.31,
+     "in": 0,
+     "out": 4.819,
+     "volume": 1
+    },
+    {
+     "id": "c_vox003",
+     "name": "v_f4dc4c23be.m4a",
+     "assetId": "aud_f4dc4c23be",
+     "start": 8.48,
+     "in": 0,
+     "out": 4.564,
+     "volume": 1
+    }
+   ]
+  }
+ ],
+ "subtitles": {
+  "enabled": false,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.86
+  },
+  "cues": []
+ },
+ "demo": "vox"
+}

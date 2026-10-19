@@ -1,0 +1,357 @@
+{
+ "name": "Demo · Tin nóng 60s",
+ "settings": {
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "aud_a9ff8b714d",
+   "name": "v_a9ff8b714d.m4a",
+   "path": "media/v_a9ff8b714d.m4a",
+   "type": "audio",
+   "duration": 4.299,
+   "tts": {
+    "text": "Vịnh Hạ Long ở Quảng Ninh là di sản thiên nhiên thế giới đầu tiên của Việt Nam.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_20dc5f5dc0",
+   "name": "v_20dc5f5dc0.m4a",
+   "path": "media/v_20dc5f5dc0.m4a",
+   "type": "audio",
+   "duration": 5.255,
+   "tts": {
+    "text": "Năm 1994, UNESCO ghi danh vịnh vì vẻ đẹp cảnh quan ngoại hạng.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_46dfcb0d24",
+   "name": "v_46dfcb0d24.m4a",
+   "path": "media/v_46dfcb0d24.m4a",
+   "type": "audio",
+   "duration": 4.365,
+   "tts": {
+    "text": "Đến năm 2000, vịnh được công nhận lần thứ hai nhờ giá trị địa chất, địa mạo.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_30d1b5ed58",
+   "name": "v_30d1b5ed58.m4a",
+   "path": "media/v_30d1b5ed58.m4a",
+   "type": "audio",
+   "duration": 4.102,
+   "tts": {
+    "text": "Vịnh có gần hai nghìn hòn đảo đá vôi lớn nhỏ, phần lớn chưa có người ở.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_f0896ae431",
+   "name": "v_f0896ae431.m4a",
+   "path": "media/v_f0896ae431.m4a",
+   "type": "audio",
+   "duration": 1,
+   "tts": {
+    "text": "Theo UNESCO.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "img_halong1",
+   "name": "halong1.jpg",
+   "path": "media/halong1.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 680,
+   "source": "https://www.flickr.com/photos/22490717@N02/3541377575",
+   "attribution": "Ảnh: \"Vietnam-1960 - Ha Long Bay (UNESCO World Heritage Site)\" by archer10 (Dennis) is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "img_halong3",
+   "name": "halong3.jpg",
+   "path": "media/halong3.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/20729701@N00/535885837",
+   "attribution": "Ảnh: \"HaLong Bay - Boat Ride\" by MadeByMark is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_halong2",
+   "name": "halong2.jpg",
+   "path": "media/halong2.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/45409431@N00/2681122468",
+   "attribution": "Ảnh: \"viet nam - ha long bay ( #cc )\" by marfis75 is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_halong4",
+   "name": "halong4.jpg",
+   "path": "media/halong4.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/47886506@N00/449823343",
+   "attribution": "Ảnh: \"Vietnam - Halong Bay boats\" by Viator.com is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "aud_m368f13831d",
+   "name": "music_368f13831d_22.m4a",
+   "path": "media/music_368f13831d_22.m4a",
+   "type": "audio",
+   "duration": 22.02,
+   "libraryId": "inc:Hitman.mp3",
+   "attribution": "\"Hitman\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_news60006",
+     "kind": "component",
+     "component": "BreakingIntro",
+     "duration": 5.45,
+     "props": {
+      "label": "TIN DU LỊCH",
+      "headline": "Vịnh Hạ Long: *di sản thế giới* của Việt Nam",
+      "date": "Bản tin mẫu",
+      "image": "/media/halong1.jpg",
+      "channel": "AI VIDEO NEWS"
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.4
+     }
+    },
+    {
+     "id": "c_news60007",
+     "kind": "image",
+     "assetId": "img_halong3",
+     "duration": 6,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "pan-left",
+      "amount": 0.16
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.4
+     }
+    },
+    {
+     "id": "c_news60009",
+     "kind": "image",
+     "assetId": "img_halong2",
+     "duration": 5.12,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "zoom-out",
+      "amount": 0.16
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.4
+     }
+    },
+    {
+     "id": "c_news60011",
+     "kind": "image",
+     "assetId": "img_halong4",
+     "duration": 4.85,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "pan-right",
+      "amount": 0.16
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.4
+     }
+    },
+    {
+     "id": "c_news60013",
+     "kind": "image",
+     "assetId": "img_halong1",
+     "duration": 2.2,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "zoom-in-left",
+      "amount": 0.16
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": [
+    {
+     "id": "c_news60008",
+     "kind": "component",
+     "component": "NewsGradient",
+     "start": 5.05,
+     "duration": 5.55,
+     "props": {
+      "kicker": "DI SẢN",
+      "headline": "UNESCO ghi danh *năm 1994*",
+      "accent": "#facc15",
+      "bottom": 0.2
+     }
+    },
+    {
+     "id": "c_news60010",
+     "kind": "component",
+     "component": "NewsGradient",
+     "start": 10.65,
+     "duration": 4.67,
+     "props": {
+      "kicker": "ĐỊA CHẤT",
+      "headline": "Công nhận *lần hai* năm 2000",
+      "accent": "#facc15",
+      "bottom": 0.2
+     }
+    },
+    {
+     "id": "c_news60012",
+     "kind": "component",
+     "component": "NewsGradient",
+     "start": 15.37,
+     "duration": 4.4,
+     "props": {
+      "kicker": "CON SỐ",
+      "headline": "Gần *2.000* đảo đá vôi",
+      "accent": "#facc15",
+      "bottom": 0.2
+     }
+    },
+    {
+     "id": "c_news60014",
+     "kind": "component",
+     "component": "NewsGradient",
+     "start": 19.82,
+     "duration": 1.3,
+     "props": {
+      "kicker": "NGUỒN",
+      "headline": "Theo *UNESCO*",
+      "accent": "#facc15",
+      "bottom": 0.2
+     }
+    },
+    {
+     "id": "c_news60015",
+     "kind": "component",
+     "component": "NewsTicker",
+     "start": 0,
+     "duration": 22.019999999999996,
+     "props": {
+      "label": "TIN NÓNG",
+      "items": [
+       "Vịnh Hạ Long được UNESCO ghi danh năm 1994",
+       "Công nhận lần hai năm 2000",
+       "Gần 2.000 đảo đá vôi",
+       "Bản tin mẫu của AI Video Studio"
+      ],
+      "clock": "24H"
+     }
+    }
+   ]
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_news60016",
+     "name": "Hitman",
+     "assetId": "aud_m368f13831d",
+     "start": 0,
+     "in": 0,
+     "out": 22.02,
+     "volume": 0.14
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_news60001",
+     "name": "v_a9ff8b714d.m4a",
+     "assetId": "aud_a9ff8b714d",
+     "start": 0.4,
+     "in": 0,
+     "out": 4.299,
+     "volume": 1
+    },
+    {
+     "id": "c_news60002",
+     "name": "v_20dc5f5dc0.m4a",
+     "assetId": "aud_20dc5f5dc0",
+     "start": 5.05,
+     "in": 0,
+     "out": 5.255,
+     "volume": 1
+    },
+    {
+     "id": "c_news60003",
+     "name": "v_46dfcb0d24.m4a",
+     "assetId": "aud_46dfcb0d24",
+     "start": 10.65,
+     "in": 0,
+     "out": 4.365,
+     "volume": 1
+    },
+    {
+     "id": "c_news60004",
+     "name": "v_30d1b5ed58.m4a",
+     "assetId": "aud_30d1b5ed58",
+     "start": 15.37,
+     "in": 0,
+     "out": 4.102,
+     "volume": 1
+    },
+    {
+     "id": "c_news60005",
+     "name": "v_f0896ae431.m4a",
+     "assetId": "aud_f0896ae431",
+     "start": 19.82,
+     "in": 0,
+     "out": 1,
+     "volume": 1
+    }
+   ]
+  }
+ ],
+ "subtitles": {
+  "enabled": false,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.86
+  },
+  "cues": []
+ },
+ "demo": "news-60s"
+}

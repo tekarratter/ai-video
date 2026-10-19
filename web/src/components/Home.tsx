@@ -18,6 +18,34 @@ export const showHome = () => window.dispatchEvent(new Event('show-home'));
 export const showEditor = () => window.dispatchEvent(new Event('show-editor'));
 
 const dims = (s: string) => s.split('x').map(Number) as [number, number];
+
+/** Demo videos built by tools/demos/build.mjs (web/public/demos/<id>.mp4 + .jpg, index.json). */
+type DemoInfo = { name: string; duration: number; size: string; video: boolean };
+let demosCache: Promise<Record<string, DemoInfo>> | null = null;
+function useDemos() {
+  const [demos, setDemos] = useState<Record<string, DemoInfo>>({});
+  useEffect(() => {
+    demosCache ??= fetch('/demos/index.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+    demosCache.then(setDemos);
+  }, []);
+  return demos;
+}
+
+/** Demo video of a template: poster, plays muted on hover (card) or with sound + controls (dialog). */
+const DemoVideo: React.FC<{ id: string; info: DemoInfo; play: boolean; controls?: boolean }> = ({ id, info, play, controls }) => {
+  const [w, h] = dims(info.size);
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v || controls) return;
+    if (play) { v.currentTime = 0; v.play().catch(() => {}); } else v.pause();
+  }, [play, controls]);
+  return (
+    <video ref={ref} className="demo-video" src={`/demos/${id}.mp4`} poster={`/demos/${id}.jpg`} muted={!controls} loop playsInline preload={controls ? 'auto' : 'none'}
+      controls={controls} autoPlay={controls} style={{ aspectRatio: `${w} / ${h}` }} />
+  );
+};
+
 const timeAgo = (t?: number) => {
   if (!t) return '';
   const m = Math.round((Date.now() - t) / 60000);
@@ -42,14 +70,17 @@ const TemplatePreview: React.FC<{ t: Template; play: boolean }> = ({ t, play }) 
     : <Thumbnail {...common} frameToDisplay={t.preview.frame ?? 60} errorFallback={() => <div className="tpl-thumb-empty">{t.icon}</div>} />;
 };
 
-const TemplateCard: React.FC<{ t: Template; onPick: (t: Template) => void }> = ({ t, onPick }) => {
+const TemplateCard: React.FC<{ t: Template; demo?: DemoInfo; onPick: (t: Template) => void }> = ({ t, demo, onPick }) => {
   const [hover, setHover] = useState(false);
+  const size = demo?.size || t.sizes[0];
   return (
     <button className="tpl-card" onClick={() => onPick(t)} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <div className="tpl-thumb">
-        <TemplatePreview t={t} play={hover} />
+        {demo?.video && <div className="tpl-thumb-bg" style={{ backgroundImage: `url(/demos/${t.id}.jpg)` }} />}
+        {demo?.video ? <DemoVideo id={t.id} info={demo} play={hover} /> : <TemplatePreview t={t} play={hover} />}
         {t.hot && <span className="tpl-hot">HOT</span>}
-        <span className="tpl-size">{t.sizes[0] === '1080x1920' ? '9:16' : t.sizes[0] === '1080x1080' ? '1:1' : '16:9'}</span>
+        {demo?.video && <span className="tpl-demo">▶ Video mẫu</span>}
+        <span className="tpl-size">{size === '1080x1920' ? '9:16' : size === '1080x1080' ? '1:1' : '16:9'}{demo ? ` · ${Math.round(demo.duration)}s` : ''}</span>
       </div>
       <div className="tpl-meta">
         <b>{t.icon} {t.name}</b>
@@ -66,6 +97,7 @@ export const Home: React.FC = () => {
   const [cat, setCat] = useState('all');
   const [q, setQ] = useState('');
   const [pick, setPick] = useState<Template | null>(null);
+  const demos = useDemos();
   const galleryRef = useRef<HTMLDivElement>(null);
   useEffect(() => { api('/api/projects').then((r) => useStore.setState({ projects: r.projects, activeProject: r.active })).catch(() => {}); }, []);
 
@@ -141,11 +173,11 @@ export const Home: React.FC = () => {
           ))}
         </div>
         <div className="tpl-grid">
-          {list.map((t) => <TemplateCard key={t.id} t={t} onPick={choose} />)}
+          {list.map((t) => <TemplateCard key={t.id} t={t} demo={demos[t.id]} onPick={choose} />)}
           {!list.length && <div className="muted">Không có template phù hợp.</div>}
         </div>
       </div>
-      {pick && <TemplateDialog t={pick} onClose={() => setPick(null)} />}
+      {pick && <TemplateDialog t={pick} demo={demos[pick.id]} onClose={() => setPick(null)} />}
     </div>
   );
 };
@@ -155,7 +187,7 @@ const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } ca
 const SOURCE_LABEL = { link: 'Link', text: 'Văn bản', topic: 'Chủ đề' } as const;
 
 /** Form for one template: creates the project, uploads the files, then hands Claude the brief. */
-const TemplateDialog: React.FC<{ t: Template; onClose: () => void }> = ({ t, onClose }) => {
+const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => void }> = ({ t, demo, onClose }) => {
   const { voices } = useVoices();
   const [vals, setVals] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<Record<string, File[]>>({});
@@ -187,6 +219,17 @@ const TemplateDialog: React.FC<{ t: Template; onClose: () => void }> = ({ t, onC
     if (f.type === 'text' || f.type === 'textarea') return !!f.required && !(vals[f.k] || '').trim();
     return false;
   });
+
+  const openDemo = async () => {
+    setErr(''); setBusy('Đang mở bản mẫu…');
+    try {
+      await flushSave(); rememberProject();
+      const r = await api(`/api/demos/${t.id}/use`, 'POST');
+      if (r?.projects) useStore.setState({ projects: r.projects, activeProject: r.active });
+      useStore.getState().toast('Đã mở bản mẫu — sửa thoải mái, bản gốc không đổi');
+      onClose(); showEditor();
+    } catch (e: any) { setErr(e.message); } finally { setBusy(''); }
+  };
 
   const submit = async () => {
     setErr('');
@@ -241,7 +284,15 @@ const TemplateDialog: React.FC<{ t: Template; onClose: () => void }> = ({ t, onC
           <button className="icon-btn" onClick={onClose} disabled={!!busy}><Icon name="x" /></button>
         </div>
         <div className="tpl-modal-body">
-          <div className="tpl-modal-preview"><TemplatePreview t={{ ...t, sizes: [size] }} play /></div>
+          <div className="tpl-modal-side">
+            <div className="tpl-modal-preview">{demo?.video ? <DemoVideo id={t.id} info={demo} play controls /> : <TemplatePreview t={{ ...t, sizes: [size] }} play />}</div>
+            {demo && (
+              <>
+                <button className="btn" disabled={!!busy} onClick={openDemo}><Icon name="copy" /> Dùng mẫu này để sửa</button>
+                <div className="muted small">Mở bản demo thành dự án mới: thay ảnh, sửa chữ ở bảng Cảnh &amp; Lời thoại, hoặc nhờ Claude sửa.</div>
+              </>
+            )}
+          </div>
           <div className="form">
             <div className="muted small">{t.desc}</div>
             {t.fields.map((f) => {

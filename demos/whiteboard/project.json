@@ -1,0 +1,187 @@
+{
+ "name": "Demo · Whiteboard giải thích",
+ "settings": {
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "aud_3a9e6cb5b0",
+   "name": "v_3a9e6cb5b0.m4a",
+   "path": "media/v_3a9e6cb5b0.m4a",
+   "type": "audio",
+   "duration": 3.76,
+   "tts": {
+    "text": "Lãi kép là khi tiền lãi được cộng vào gốc, rồi lại tiếp tục sinh lãi.",
+    "voice": "vi:Thiện Minh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_15d54a21e2",
+   "name": "v_15d54a21e2.m4a",
+   "path": "media/v_15d54a21e2.m4a",
+   "type": "audio",
+   "duration": 7.898,
+   "tts": {
+    "text": "Ví dụ, gửi một trăm triệu với lãi suất sáu phần trăm một năm. Sau năm đầu bạn có một trăm lẻ sáu triệu, sang năm thứ hai là hơn một trăm mười hai triệu.",
+    "voice": "vi:Thiện Minh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "img_coins1",
+   "name": "coins1.jpg",
+   "path": "media/coins1.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 802,
+   "source": "https://www.flickr.com/photos/23307937@N04/5638958705",
+   "attribution": "Ảnh: \"dip into savings\" by frankieleon is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "aud_mfcae86f319",
+   "name": "music_fcae86f319_14.m4a",
+   "path": "media/music_fcae86f319_14.m4a",
+   "type": "audio",
+   "duration": 13.91,
+   "libraryId": "inc:Wholesome.mp3",
+   "attribution": "\"Wholesome\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_whiteb003",
+     "kind": "component",
+     "component": "WhiteboardScene",
+     "duration": 5.01,
+     "transition": {
+      "type": "fade",
+      "duration": 0.5
+     },
+     "props": {
+      "title": "Lãi kép là gì?",
+      "lines": [
+       "Lãi sinh ra *lãi*",
+       "Tiền lớn dần theo thời gian"
+      ],
+      "image": "/media/coins1.jpg",
+      "lineSeconds": 1.4
+     }
+    },
+    {
+     "id": "c_whiteb004",
+     "kind": "component",
+     "component": "WhiteboardScene",
+     "duration": 9.4,
+     "props": {
+      "title": "Ví dụ",
+      "lines": [
+       "Gửi 100 triệu, lãi 6%/năm",
+       "Sau 1 năm: *106 triệu*",
+       "Sau 2 năm: *112,36 triệu*"
+      ],
+      "lineSeconds": 2.2
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": []
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_whiteb005",
+     "name": "Wholesome",
+     "assetId": "aud_mfcae86f319",
+     "start": 0,
+     "in": 0,
+     "out": 13.91,
+     "volume": 0.1
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_whiteb001",
+     "name": "v_3a9e6cb5b0.m4a",
+     "assetId": "aud_3a9e6cb5b0",
+     "start": 0.4,
+     "in": 0,
+     "out": 3.76,
+     "volume": 1
+    },
+    {
+     "id": "c_whiteb002",
+     "name": "v_15d54a21e2.m4a",
+     "assetId": "aud_15d54a21e2",
+     "start": 4.51,
+     "in": 0,
+     "out": 7.898,
+     "volume": 1
+    }
+   ]
+  }
+ ],
+ "subtitles": {
+  "enabled": true,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.86
+  },
+  "cues": [
+   {
+    "start": 0.4,
+    "end": 2.72,
+    "text": "Lãi kép là khi tiền lãi được cộng vào gốc,"
+   },
+   {
+    "start": 2.72,
+    "end": 4.16,
+    "text": "rồi lại tiếp tục sinh lãi."
+   },
+   {
+    "start": 4.51,
+    "end": 6.74,
+    "text": "Ví dụ, gửi một trăm triệu với lãi suất sáu"
+   },
+   {
+    "start": 6.74,
+    "end": 8.91,
+    "text": "phần trăm một năm. Sau năm đầu bạn có một"
+   },
+   {
+    "start": 8.91,
+    "end": 11.14,
+    "text": "trăm lẻ sáu triệu, sang năm thứ hai là hơn"
+   },
+   {
+    "start": 11.14,
+    "end": 12.41,
+    "text": "một trăm mười hai triệu."
+   }
+  ]
+ },
+ "demo": "whiteboard",
+ "demoPoster": 0.22
+}

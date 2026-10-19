@@ -642,12 +642,19 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 .tpl-meta .small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tpl-modal { width: min(960px, 100%); }
 .tpl-modal-body { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
-.tpl-modal-preview { background: #05070a; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 420px; position: sticky; top: 0; }
+.tpl-modal-side { display: flex; flex-direction: column; gap: 8px; position: sticky; top: 0; }
+.tpl-modal-preview { background: #05070a; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 420px; }
+.demo-video { height: 100%; max-width: 100%; object-fit: contain; background: #000; display: block; }
+.tpl-demo { position: absolute; left: 8px; bottom: 8px; background: #000b; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 5px; }
 .tpl-modal .form textarea { width: 100%; font: inherit; background: var(--bg2); color: var(--text); border: 1px solid var(--line2); border-radius: 6px; padding: 6px 8px; resize: vertical; }
 @media (max-width: 900px) {
   .quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tpl-modal-body { grid-template-columns: minmax(0, 1fr); }
-  .tpl-modal-preview { height: 220px; position: static; }
+  .tpl-modal-preview { height: 260px; }
+  .tpl-modal-side { position: static; }
   .home-inner { padding: 18px 16px 40px; }
   .home-hero h1 { font-size: 26px; }
 }
+
+.tpl-thumb-bg { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(18px) brightness(.45); }
+.tpl-thumb .demo-video { position: relative; }

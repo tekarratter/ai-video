@@ -1,0 +1,202 @@
+{
+ "name": "Demo · Podcast 2 người",
+ "settings": {
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "aud_d4de638854",
+   "name": "v_d4de638854.m4a",
+   "path": "media/v_d4de638854.m4a",
+   "type": "audio",
+   "duration": 4.442,
+   "tts": {
+    "text": "Xin chào, mình là Thu Hà. Hôm nay mình cùng anh Minh Quân nói về chuyện uống nước.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_d471a6b187",
+   "name": "v_d471a6b187.m4a",
+   "path": "media/v_d471a6b187.m4a",
+   "type": "audio",
+   "duration": 4.267,
+   "tts": {
+    "text": "Chào Hà. Nước chiếm hơn một nửa trọng lượng cơ thể, nên thiếu nước là mình thấy mệt ngay.",
+    "voice": "vi:Thiện Minh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_9412f7a23c",
+   "name": "v_9412f7a23c.m4a",
+   "path": "media/v_9412f7a23c.m4a",
+   "type": "audio",
+   "duration": 2.13,
+   "tts": {
+    "text": "Vậy làm sao biết mình uống đủ chưa anh?",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_400caaa5e9",
+   "name": "v_400caaa5e9.m4a",
+   "path": "media/v_400caaa5e9.m4a",
+   "type": "audio",
+   "duration": 3.183,
+   "tts": {
+    "text": "Mẹo đơn giản là uống rải rác cả ngày, đừng đợi khát mới uống.",
+    "voice": "vi:Thiện Minh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_m28a1f53f57",
+   "name": "music_28a1f53f57_17.m4a",
+   "path": "media/music_28a1f53f57_17.m4a",
+   "type": "audio",
+   "duration": 16.52,
+   "libraryId": "inc:Airport Lounge.mp3",
+   "attribution": "\"Airport Lounge\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_podcas005",
+     "kind": "component",
+     "component": "PodcastStudio",
+     "duration": 16.52,
+     "props": {
+      "title": "SỐNG KHỎE MỖI NGÀY",
+      "episode": "Tập mẫu · Uống nước sao cho đủ",
+      "hosts": [
+       {
+        "name": "Thu Hà",
+        "role": "Dẫn chương trình",
+        "color": "#38bdf8"
+       },
+       {
+        "name": "Minh Quân",
+        "role": "Khách mời",
+        "color": "#f59e0b"
+       }
+      ],
+      "turns": [
+       {
+        "speaker": 0,
+        "start": 0.4,
+        "end": 4.84,
+        "text": "Xin chào, mình là Thu Hà. Hôm nay mình cùng anh Minh Quân nói về chuyện uống nước."
+       },
+       {
+        "speaker": 1,
+        "start": 5.14,
+        "end": 9.41,
+        "text": "Chào Hà. Nước chiếm hơn một nửa trọng lượng cơ thể, nên thiếu nước là mình thấy mệt ngay."
+       },
+       {
+        "speaker": 0,
+        "start": 9.71,
+        "end": 11.84,
+        "text": "Vậy làm sao biết mình uống đủ chưa anh?"
+       },
+       {
+        "speaker": 1,
+        "start": 12.14,
+        "end": 15.32,
+        "text": "Mẹo đơn giản là uống rải rác cả ngày, đừng đợi khát mới uống."
+       }
+      ],
+      "caption": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": []
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_podcas006",
+     "name": "Airport Lounge",
+     "assetId": "aud_m28a1f53f57",
+     "start": 0,
+     "in": 0,
+     "out": 16.52,
+     "volume": 0.1
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_podcas001",
+     "name": "v_d4de638854.m4a",
+     "assetId": "aud_d4de638854",
+     "start": 0.4,
+     "in": 0,
+     "out": 4.442,
+     "volume": 1
+    },
+    {
+     "id": "c_podcas002",
+     "name": "v_d471a6b187.m4a",
+     "assetId": "aud_d471a6b187",
+     "start": 5.14,
+     "in": 0,
+     "out": 4.267,
+     "volume": 1
+    },
+    {
+     "id": "c_podcas003",
+     "name": "v_9412f7a23c.m4a",
+     "assetId": "aud_9412f7a23c",
+     "start": 9.71,
+     "in": 0,
+     "out": 2.13,
+     "volume": 1
+    },
+    {
+     "id": "c_podcas004",
+     "name": "v_400caaa5e9.m4a",
+     "assetId": "aud_400caaa5e9",
+     "start": 12.14,
+     "in": 0,
+     "out": 3.183,
+     "volume": 1
+    }
+   ]
+  }
+ ],
+ "subtitles": {
+  "enabled": false,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.86
+  },
+  "cues": []
+ },
+ "demo": "podcast"
+}

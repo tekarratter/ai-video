@@ -1,0 +1,193 @@
+{
+ "name": "Demo · Strobe Teaser",
+ "settings": {
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "img_halong1",
+   "name": "halong1.jpg",
+   "path": "media/halong1.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 680,
+   "source": "https://www.flickr.com/photos/22490717@N02/3541377575",
+   "attribution": "Ảnh: \"Vietnam-1960 - Ha Long Bay (UNESCO World Heritage Site)\" by archer10 (Dennis) is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "img_lantern1",
+   "name": "lantern1.jpg",
+   "path": "media/lantern1.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 684,
+   "source": "https://www.flickr.com/photos/129176831@N06/16860069039",
+   "attribution": "Ảnh: \"Hoi An - Lanterns\" by teflsearch is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_pho2",
+   "name": "pho2.jpg",
+   "path": "media/pho2.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 686,
+   "source": "https://www.flickr.com/photos/10559879@N00/4881626737",
+   "attribution": "Ảnh: \"Pho Bo Ga - Pho Dzung AUD8.50 small\" by avlxyz is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "img_terrace1",
+   "name": "terrace1.jpg",
+   "path": "media/terrace1.jpg",
+   "type": "image",
+   "width": 1023,
+   "height": 680,
+   "source": "https://www.flickr.com/photos/13818951@N08/11150467934",
+   "attribution": "Ảnh: \"Sa Pa Rice Terraces, Vietnam\" by Andrew and Annemarie is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "img_street1",
+   "name": "street1.jpg",
+   "path": "media/street1.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/64607715@N05/44446202421",
+   "attribution": "Ảnh: \"Hanoi Street\" by Rod Waddington is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "img_halong3",
+   "name": "halong3.jpg",
+   "path": "media/halong3.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/20729701@N00/535885837",
+   "attribution": "Ảnh: \"HaLong Bay - Boat Ride\" by MadeByMark is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_coffee2",
+   "name": "coffee2.jpg",
+   "path": "media/coffee2.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/35034347371@N01/204209415",
+   "attribution": "Ảnh: \"Vietnamese iced coffee - Roland in Vancouver (271)\" by roland is marked with CC0 1.0. To view the terms, visit https://creativecommons.org/publicdomain/zero/1.0/."
+  },
+  {
+   "id": "img_lantern3",
+   "name": "lantern3.jpg",
+   "path": "media/lantern3.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/35314767@N00/8072329867",
+   "attribution": "Ảnh: \"Hoi An Lanterns\" by Mike Hauser is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_market1",
+   "name": "market1.jpg",
+   "path": "media/market1.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/21485255@N00/2098274262",
+   "attribution": "Ảnh: \"Vietnamese Market\" by Greg Walters is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_halong4",
+   "name": "halong4.jpg",
+   "path": "media/halong4.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/47886506@N00/449823343",
+   "attribution": "Ảnh: \"Vietnam - Halong Bay boats\" by Viator.com is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "aud_mafb1cd974d",
+   "name": "music_afb1cd974d_12.m4a",
+   "path": "media/music_afb1cd974d_12.m4a",
+   "type": "audio",
+   "duration": 12,
+   "libraryId": "inc:Volatile Reaction.mp3",
+   "attribution": "\"Volatile Reaction\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_strobe001",
+     "kind": "component",
+     "component": "StrobeTeaser",
+     "duration": 12,
+     "props": {
+      "images": [
+       "/media/halong1.jpg",
+       "/media/lantern1.jpg",
+       "/media/pho2.jpg",
+       "/media/terrace1.jpg",
+       "/media/street1.jpg",
+       "/media/halong3.jpg",
+       "/media/coffee2.jpg",
+       "/media/lantern3.jpg",
+       "/media/market1.jpg",
+       "/media/halong4.jpg"
+      ],
+      "title": "KHÁM PHÁ *VIỆT NAM*",
+      "subtitle": "TOUR MẪU · 2026",
+      "beat": 8,
+      "revealSeconds": 3
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": []
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_strobe002",
+     "name": "Volatile Reaction",
+     "assetId": "aud_mafb1cd974d",
+     "start": 0,
+     "in": 0,
+     "out": 12,
+     "volume": 0.8
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": []
+  }
+ ],
+ "subtitles": {
+  "enabled": false,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.86
+  },
+  "cues": []
+ },
+ "demo": "strobe",
+ "demoPoster": 0.9
+}

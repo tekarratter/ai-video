@@ -1,0 +1,201 @@
+{
+ "name": "Demo · Doodle màu nước",
+ "settings": {
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "aud_d2ee645712",
+   "name": "v_d2ee645712.m4a",
+   "path": "media/v_d2ee645712.m4a",
+   "type": "audio",
+   "duration": 1.933,
+   "tts": {
+    "text": "Buổi sáng bắt đầu bằng một bát phở nóng hổi.",
+    "voice": "vi:Trúc Ly",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_af7f0cce53",
+   "name": "v_af7f0cce53.m4a",
+   "path": "media/v_af7f0cce53.m4a",
+   "type": "audio",
+   "duration": 2.797,
+   "tts": {
+    "text": "Buổi trưa nhâm nhi ly cà phê phin, nhìn phố xá qua lại.",
+    "voice": "vi:Trúc Ly",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_4b5d770525",
+   "name": "v_4b5d770525.m4a",
+   "path": "media/v_4b5d770525.m4a",
+   "type": "audio",
+   "duration": 2.408,
+   "tts": {
+    "text": "Và buổi tối dạo bước dưới những chiếc đèn lồng lung linh.",
+    "voice": "vi:Trúc Ly",
+    "speed": 1
+   }
+  },
+  {
+   "id": "img_pho1",
+   "name": "pho1.jpg",
+   "path": "media/pho1.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 682,
+   "source": "https://www.flickr.com/photos/46635911@N00/726927729",
+   "attribution": "Ảnh: \"Pho Bo at Pahm Ngu Lao, Hanoi\" by jonolist is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "img_coffee1",
+   "name": "coffee1.jpg",
+   "path": "media/coffee1.jpg",
+   "type": "image",
+   "width": 768,
+   "height": 1024,
+   "source": "https://www.flickr.com/photos/29350288@N06/9576222945",
+   "attribution": "Ảnh: \"Vietnamese Iced Coffee Ba Chi Canteen\" by Infrogmation is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_lantern2",
+   "name": "lantern2.jpg",
+   "path": "media/lantern2.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/23486717@N06/16872033581",
+   "attribution": "Ảnh: \"hoi an lantern\" by shootlah! is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "aud_m2a92ba9573",
+   "name": "music_2a92ba9573_10.m4a",
+   "path": "media/music_2a92ba9573_10.m4a",
+   "type": "audio",
+   "duration": 9.84,
+   "libraryId": "inc:Carefree.mp3",
+   "attribution": "\"Carefree\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_doodle004",
+     "kind": "component",
+     "component": "DoodleImage",
+     "duration": 3.28,
+     "props": {
+      "image": "/media/pho1.jpg",
+      "caption": "Sáng: bát phở nóng"
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.6
+     }
+    },
+    {
+     "id": "c_doodle005",
+     "kind": "component",
+     "component": "DoodleImage",
+     "duration": 3.75,
+     "props": {
+      "image": "/media/coffee1.jpg",
+      "caption": "Trưa: ly cà phê phin"
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.6
+     }
+    },
+    {
+     "id": "c_doodle006",
+     "kind": "component",
+     "component": "DoodleImage",
+     "duration": 4.01,
+     "props": {
+      "image": "/media/lantern2.jpg",
+      "caption": "Tối: phố đèn lồng"
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": []
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_doodle007",
+     "name": "Carefree",
+     "assetId": "aud_m2a92ba9573",
+     "start": 0,
+     "in": 0,
+     "out": 9.84,
+     "volume": 0.14
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_doodle001",
+     "name": "v_d2ee645712.m4a",
+     "assetId": "aud_d2ee645712",
+     "start": 0.4,
+     "in": 0,
+     "out": 1.933,
+     "volume": 1
+    },
+    {
+     "id": "c_doodle002",
+     "name": "v_af7f0cce53.m4a",
+     "assetId": "aud_af7f0cce53",
+     "start": 2.68,
+     "in": 0,
+     "out": 2.797,
+     "volume": 1
+    },
+    {
+     "id": "c_doodle003",
+     "name": "v_4b5d770525.m4a",
+     "assetId": "aud_4b5d770525",
+     "start": 5.83,
+     "in": 0,
+     "out": 2.408,
+     "volume": 1
+    }
+   ]
+  }
+ ],
+ "subtitles": {
+  "enabled": false,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.86
+  },
+  "cues": []
+ },
+ "demo": "doodle",
+ "demoPoster": 0.3
+}

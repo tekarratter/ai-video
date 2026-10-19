@@ -6,6 +6,7 @@ Hướng dẫn cài app lên **máy chủ triển khai** (không phải máy dev
 - Remotion + Chrome để render, ffmpeg
 - Whisper (phụ đề), yt-dlp (tải link YouTube…), gdown (tải thư mục Google Drive)
 - Đọc bài viết từ link (Readability + linkedom, cài qua `npm ci`) và tìm ảnh minh họa miễn phí: máy chủ cần ra được Internet tới trang báo, `api.openverse.org` và `commons.wikimedia.org`
+- 12 video mẫu + dự án mẫu cho thư viện template (thư mục `demos/` và `web/public/demos/`, có sẵn trong repo, không cần build). Dựng lại bằng `node tools/demos/build.mjs` (cần giọng đọc AI và mạng)
 - **Claude Code CLI**: mỗi nơi triển khai đăng nhập bằng tài khoản Claude của riêng mình
 - Giọng đọc AI: VieNeu-TTS (tiếng Việt) và Kokoro (tiếng Anh), có thể tắt
 

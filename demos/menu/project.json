@@ -1,0 +1,158 @@
+{
+ "name": "Demo · Menu F&B",
+ "settings": {
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "img_pho2",
+   "name": "pho2.jpg",
+   "path": "media/pho2.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 686,
+   "source": "https://www.flickr.com/photos/10559879@N00/4881626737",
+   "attribution": "Ảnh: \"Pho Bo Ga - Pho Dzung AUD8.50 small\" by avlxyz is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "img_banhmi3",
+   "name": "banhmi3.jpg",
+   "path": "media/banhmi3.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 680,
+   "source": "https://www.flickr.com/photos/7927684@N03/4927299660",
+   "attribution": "Ảnh: \"Mmm...meatball banh mi\" by jeffreyw is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_coffee2",
+   "name": "coffee2.jpg",
+   "path": "media/coffee2.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/35034347371@N01/204209415",
+   "attribution": "Ảnh: \"Vietnamese iced coffee - Roland in Vancouver (271)\" by roland is marked with CC0 1.0. To view the terms, visit https://creativecommons.org/publicdomain/zero/1.0/."
+  },
+  {
+   "id": "img_pho3",
+   "name": "pho3.jpg",
+   "path": "media/pho3.jpg",
+   "type": "image",
+   "width": 768,
+   "height": 1024,
+   "source": "https://www.flickr.com/photos/12955651@N07/4168002054",
+   "attribution": "Ảnh: \"Pho Bo - hanoi, vietnam\" by dane brian is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "aud_m2a92ba9573",
+   "name": "music_2a92ba9573_13.m4a",
+   "path": "media/music_2a92ba9573_13.m4a",
+   "type": "audio",
+   "duration": 13,
+   "libraryId": "inc:Carefree.mp3",
+   "attribution": "\"Carefree\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_menu001",
+     "kind": "component",
+     "component": "MenuShowcase",
+     "duration": 13,
+     "props": {
+      "brand": "BẾP NHÀ MỘC · MẪU",
+      "accent": "#f59e0b",
+      "items": [
+       {
+        "image": "/media/pho2.jpg",
+        "name": "Phở bò tái",
+        "price": "65K",
+        "desc": "Nước dùng ninh xương 12 giờ"
+       },
+       {
+        "image": "/media/banhmi3.jpg",
+        "name": "Bánh mì thịt",
+        "price": "30K",
+        "desc": "Vỏ giòn, pa tê nhà làm"
+       },
+       {
+        "image": "/media/coffee2.jpg",
+        "name": "Cà phê phin",
+        "price": "29K",
+        "desc": "Pha phin, đá xay mịn"
+       },
+       {
+        "image": "/media/pho3.jpg",
+        "name": "Phở gà",
+        "price": "60K",
+        "desc": "Gà ta, hành lá, chanh ớt"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": [
+    {
+     "id": "c_menu002",
+     "kind": "component",
+     "component": "CallToAction",
+     "start": 10.5,
+     "duration": 2.5,
+     "props": {
+      "label": "ĐẶT NGAY",
+      "doneLabel": "ĐÃ ĐẶT",
+      "color": "#ef4444",
+      "icon": "🛵"
+     }
+    }
+   ]
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_menu003",
+     "name": "Carefree",
+     "assetId": "aud_m2a92ba9573",
+     "start": 0,
+     "in": 0,
+     "out": 13,
+     "volume": 0.5
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": []
+  }
+ ],
+ "subtitles": {
+  "enabled": false,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.86
+  },
+  "cues": []
+ },
+ "demo": "menu"
+}

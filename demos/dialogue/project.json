@@ -1,0 +1,320 @@
+{
+ "name": "Demo · Hội thoại tình huống",
+ "settings": {
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "aud_10c102c629",
+   "name": "v_10c102c629.m4a",
+   "path": "media/v_10c102c629.m4a",
+   "type": "audio",
+   "duration": 2.794,
+   "tts": {
+    "text": "Excuse me, is this the check-in counter for Hanoi?",
+    "voice": "en:af_heart",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_a6a7c1fc6c",
+   "name": "v_a6a7c1fc6c.m4a",
+   "path": "media/v_a6a7c1fc6c.m4a",
+   "type": "audio",
+   "duration": 2.933,
+   "tts": {
+    "text": "Yes, it is. May I see your passport, please?",
+    "voice": "en:am_michael",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_9f40b1ed6d",
+   "name": "v_9f40b1ed6d.m4a",
+   "path": "media/v_9f40b1ed6d.m4a",
+   "type": "audio",
+   "duration": 2.089,
+   "tts": {
+    "text": "Here you are. Can I have a window seat?",
+    "voice": "en:af_heart",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_5a3d3726ca",
+   "name": "v_5a3d3726ca.m4a",
+   "path": "media/v_5a3d3726ca.m4a",
+   "type": "audio",
+   "duration": 3.127,
+   "tts": {
+    "text": "Sure. Here is your boarding pass. Have a nice flight!",
+    "voice": "en:am_michael",
+    "speed": 1
+   }
+  },
+  {
+   "id": "img_airport1",
+   "name": "airport1.jpg",
+   "path": "media/airport1.jpg",
+   "type": "image",
+   "width": 1600,
+   "height": 1200,
+   "source": "https://commons.wikimedia.org/w/index.php?curid=7617532",
+   "attribution": "Ảnh: \"File:Paphos International Airport Check-in Hall.jpg\" by TomasNY at English Wikipedia is licensed under CC BY-SA 3.0. To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/3.0/."
+  },
+  {
+   "id": "img_airport2",
+   "name": "airport2.jpg",
+   "path": "media/airport2.jpg",
+   "type": "image",
+   "width": 1600,
+   "height": 1200,
+   "source": "https://commons.wikimedia.org/w/index.php?curid=1815447",
+   "attribution": "Ảnh: \"Suvarnabhumi Airport Departures Hall Bangkok Thailand\" by Khaosaming is licensed under CC BY-SA 3.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/3.0/."
+  },
+  {
+   "id": "aud_m2a92ba9573",
+   "name": "music_2a92ba9573_14.m4a",
+   "path": "media/music_2a92ba9573_14.m4a",
+   "type": "audio",
+   "duration": 14.14,
+   "libraryId": "inc:Carefree.mp3",
+   "attribution": "\"Carefree\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_dialog005",
+     "kind": "image",
+     "assetId": "img_airport1",
+     "duration": 7.63,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "zoom-in",
+      "amount": 0.12
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.5
+     }
+    },
+    {
+     "id": "c_dialog006",
+     "kind": "image",
+     "assetId": "img_airport2",
+     "duration": 7.01,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "pan-right",
+      "amount": 0.12
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": [
+    {
+     "id": "c_dialog007",
+     "kind": "component",
+     "component": "ChatBubble",
+     "start": 0.4,
+     "duration": 3.19,
+     "props": {
+      "text": "Excuse me, is this the check-in counter for Hanoi?",
+      "name": "Lan",
+      "side": "left",
+      "x": 0.5,
+      "y": 0.16,
+      "width": 0.8,
+      "color": "#ffffff"
+     }
+    },
+    {
+     "id": "c_dialog008",
+     "kind": "component",
+     "component": "ChatBubble",
+     "start": 3.69,
+     "duration": 3.33,
+     "props": {
+      "text": "Yes, it is. May I see your passport, please?",
+      "name": "Staff",
+      "side": "right",
+      "x": 0.5,
+      "y": 0.4,
+      "width": 0.8,
+      "color": "#dbeafe"
+     }
+    },
+    {
+     "id": "c_dialog009",
+     "kind": "component",
+     "component": "ChatBubble",
+     "start": 7.13,
+     "duration": 2.49,
+     "props": {
+      "text": "Here you are. Can I have a window seat?",
+      "name": "Lan",
+      "side": "left",
+      "x": 0.5,
+      "y": 0.16,
+      "width": 0.8,
+      "color": "#ffffff"
+     }
+    },
+    {
+     "id": "c_dialog010",
+     "kind": "component",
+     "component": "ChatBubble",
+     "start": 9.72,
+     "duration": 3.53,
+     "props": {
+      "text": "Sure. Here is your boarding pass. Have a nice flight!",
+      "name": "Staff",
+      "side": "right",
+      "x": 0.5,
+      "y": 0.4,
+      "width": 0.8,
+      "color": "#dbeafe"
+     }
+    },
+    {
+     "id": "c_dialog011",
+     "kind": "text",
+     "text": "TIẾNG ANH SÂN BAY",
+     "start": 0,
+     "duration": 14.14,
+     "x": 0.5,
+     "y": 0.05,
+     "style": {
+      "fontSize": 44,
+      "color": "#facc15",
+      "fontWeight": 900,
+      "background": "rgba(0,0,0,.5)"
+     },
+     "animation": {
+      "in": "slide-down",
+      "out": "fade",
+      "duration": 0.5
+     }
+    }
+   ]
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_dialog012",
+     "name": "Carefree",
+     "assetId": "aud_m2a92ba9573",
+     "start": 0,
+     "in": 0,
+     "out": 14.14,
+     "volume": 0.08
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_dialog001",
+     "name": "v_10c102c629.m4a",
+     "assetId": "aud_10c102c629",
+     "start": 0.4,
+     "in": 0,
+     "out": 2.794,
+     "volume": 1
+    },
+    {
+     "id": "c_dialog002",
+     "name": "v_a6a7c1fc6c.m4a",
+     "assetId": "aud_a6a7c1fc6c",
+     "start": 3.69,
+     "in": 0,
+     "out": 2.933,
+     "volume": 1
+    },
+    {
+     "id": "c_dialog003",
+     "name": "v_9f40b1ed6d.m4a",
+     "assetId": "aud_9f40b1ed6d",
+     "start": 7.13,
+     "in": 0,
+     "out": 2.089,
+     "volume": 1
+    },
+    {
+     "id": "c_dialog004",
+     "name": "v_5a3d3726ca.m4a",
+     "assetId": "aud_5a3d3726ca",
+     "start": 9.72,
+     "in": 0,
+     "out": 3.127,
+     "volume": 1
+    }
+   ]
+  }
+ ],
+ "subtitles": {
+  "enabled": true,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.8
+  },
+  "cues": [
+   {
+    "start": 0.4,
+    "end": 2.51,
+    "text": "Xin lỗi, đây có phải quầy làm thủ tục đi"
+   },
+   {
+    "start": 2.51,
+    "end": 3.19,
+    "text": "Hà Nội không?"
+   },
+   {
+    "start": 3.69,
+    "end": 6.35,
+    "text": "Đúng rồi. Cho tôi xem hộ chiếu của bạn"
+   },
+   {
+    "start": 6.35,
+    "end": 6.63,
+    "text": "nhé?"
+   },
+   {
+    "start": 7.13,
+    "end": 9.22,
+    "text": "Đây ạ. Cho tôi ghế cạnh cửa sổ được không?"
+   },
+   {
+    "start": 9.72,
+    "end": 11.66,
+    "text": "Được chứ. Thẻ lên máy bay của bạn đây."
+   },
+   {
+    "start": 11.66,
+    "end": 12.84,
+    "text": "Chúc chuyến bay vui vẻ!"
+   }
+  ]
+ },
+ "demo": "dialogue"
+}

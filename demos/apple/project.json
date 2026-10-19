@@ -1,0 +1,135 @@
+{
+ "name": "Demo · Giới thiệu sản phẩm",
+ "settings": {
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "img_halong3",
+   "name": "halong3.jpg",
+   "path": "media/halong3.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/20729701@N00/535885837",
+   "attribution": "Ảnh: \"HaLong Bay - Boat Ride\" by MadeByMark is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_lantern1",
+   "name": "lantern1.jpg",
+   "path": "media/lantern1.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 684,
+   "source": "https://www.flickr.com/photos/129176831@N06/16860069039",
+   "attribution": "Ảnh: \"Hoi An - Lanterns\" by teflsearch is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "aud_mfcae86f319",
+   "name": "music_fcae86f319_13.m4a",
+   "path": "media/music_fcae86f319_13.m4a",
+   "type": "audio",
+   "duration": 13,
+   "libraryId": "inc:Wholesome.mp3",
+   "attribution": "\"Wholesome\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_apple001",
+     "kind": "component",
+     "component": "AppleMotion",
+     "duration": 5,
+     "props": {
+      "headline": "Kỳ nghỉ *trong tầm tay*.",
+      "sub": "Đặt tour Hạ Long chỉ với một chạm.",
+      "image": "/media/halong3.jpg",
+      "theme": "light",
+      "device": "phone"
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.5
+     }
+    },
+    {
+     "id": "c_apple002",
+     "kind": "component",
+     "component": "AppleMotion",
+     "duration": 5,
+     "props": {
+      "headline": "Đẹp đến *từng khoảnh khắc*.",
+      "sub": "Ảnh và video sắc nét, lưu trọn hành trình.",
+      "image": "/media/lantern1.jpg",
+      "theme": "dark",
+      "device": "laptop"
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.5
+     }
+    },
+    {
+     "id": "c_apple003",
+     "kind": "component",
+     "component": "AppleMotion",
+     "duration": 4,
+     "props": {
+      "headline": "Travel *Mẫu*.",
+      "sub": "Sản phẩm demo · AI Video Studio",
+      "theme": "light",
+      "device": "none"
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": []
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_apple004",
+     "name": "Wholesome",
+     "assetId": "aud_mfcae86f319",
+     "start": 0,
+     "in": 0,
+     "out": 13,
+     "volume": 0.4
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": []
+  }
+ ],
+ "subtitles": {
+  "enabled": false,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.86
+  },
+  "cues": []
+ },
+ "demo": "apple",
+ "demoPoster": 0.24
+}

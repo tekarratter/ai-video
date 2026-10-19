@@ -1,0 +1,333 @@
+{
+ "name": "Demo · Video từ bài viết",
+ "settings": {
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "aud_53cd2c56af",
+   "name": "v_53cd2c56af.m4a",
+   "path": "media/v_53cd2c56af.m4a",
+   "type": "audio",
+   "duration": 4.004,
+   "tts": {
+    "text": "Bánh mì Việt Nam là ổ bánh vỏ giòn, ruột mềm, kẹp pa tê, thịt, rau thơm và đồ chua.",
+    "voice": "vi:Trúc Ly",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_856752ad34",
+   "name": "v_856752ad34.m4a",
+   "path": "media/v_856752ad34.m4a",
+   "type": "audio",
+   "duration": 4.084,
+   "tts": {
+    "text": "Bánh mì du nhập vào Việt Nam từ thời Pháp thuộc, rồi được người Việt biến tấu theo cách riêng.",
+    "voice": "vi:Trúc Ly",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_422766866f",
+   "name": "v_422766866f.m4a",
+   "path": "media/v_422766866f.m4a",
+   "type": "audio",
+   "duration": 3.778,
+   "tts": {
+    "text": "Năm 2011, từ bánh mì được đưa vào Từ điển tiếng Anh Oxford.",
+    "voice": "vi:Trúc Ly",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_af85286999",
+   "name": "v_af85286999.m4a",
+   "path": "media/v_af85286999.m4a",
+   "type": "audio",
+   "duration": 1.117,
+   "tts": {
+    "text": "Theo Wikipedia.",
+    "voice": "vi:Trúc Ly",
+    "speed": 1
+   }
+  },
+  {
+   "id": "img_banhmi3",
+   "name": "banhmi3.jpg",
+   "path": "media/banhmi3.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 680,
+   "source": "https://www.flickr.com/photos/7927684@N03/4927299660",
+   "attribution": "Ảnh: \"Mmm...meatball banh mi\" by jeffreyw is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_banhmi1",
+   "name": "banhmi1.jpg",
+   "path": "media/banhmi1.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 684,
+   "source": "https://www.flickr.com/photos/41942551@N02/7506599742",
+   "attribution": "Ảnh: \"Day186: KBBQ meets Banh Mi\" by SodanieChea is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_banhmi2",
+   "name": "banhmi2.jpg",
+   "path": "media/banhmi2.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/35034346243@N01/152788004",
+   "attribution": "Ảnh: \"banh mi\" by stu_spivack is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "img_banhmi4",
+   "name": "banhmi4.jpg",
+   "path": "media/banhmi4.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 682,
+   "source": "https://www.flickr.com/photos/46635911@N00/727779118",
+   "attribution": "Ảnh: \"Bo Kho Banh Mi at Pahm Ngu Lao, Hanoi\" by jonolist is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  {
+   "id": "aud_mfcae86f319",
+   "name": "music_fcae86f319_16.m4a",
+   "path": "media/music_fcae86f319_16.m4a",
+   "type": "audio",
+   "duration": 15.64,
+   "libraryId": "inc:Wholesome.mp3",
+   "attribution": "\"Wholesome\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_articl005",
+     "kind": "image",
+     "assetId": "img_banhmi3",
+     "duration": 5.25,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "zoom-in",
+      "amount": 0.15
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.5
+     }
+    },
+    {
+     "id": "c_articl006",
+     "kind": "image",
+     "assetId": "img_banhmi1",
+     "duration": 4.93,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "pan-left",
+      "amount": 0.15
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.5
+     }
+    },
+    {
+     "id": "c_articl007",
+     "kind": "image",
+     "assetId": "img_banhmi2",
+     "duration": 4.63,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "zoom-out",
+      "amount": 0.15
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.5
+     }
+    },
+    {
+     "id": "c_articl008",
+     "kind": "image",
+     "assetId": "img_banhmi4",
+     "duration": 2.32,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "pan-right",
+      "amount": 0.15
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": [
+    {
+     "id": "c_articl009",
+     "kind": "text",
+     "text": "Bánh mì Việt Nam",
+     "start": 0.3,
+     "duration": 3.6,
+     "x": 0.5,
+     "y": 0.42,
+     "style": {
+      "fontSize": 110,
+      "color": "#ffffff",
+      "fontWeight": 900,
+      "shadow": "0 6px 30px rgba(0,0,0,.7)"
+     },
+     "animation": {
+      "in": "pop",
+      "out": "fade",
+      "duration": 0.6
+     }
+    },
+    {
+     "id": "c_articl010",
+     "kind": "text",
+     "text": "Nguồn: Wikipedia",
+     "start": 13.32,
+     "duration": 2.32,
+     "x": 0.04,
+     "y": 0.07,
+     "align": "left",
+     "style": {
+      "fontSize": 30,
+      "color": "#ffffff",
+      "fontWeight": 600,
+      "background": "rgba(0,0,0,.45)",
+      "align": "left"
+     },
+     "animation": {
+      "in": "fade",
+      "out": "fade",
+      "duration": 0.3
+     }
+    }
+   ]
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_articl011",
+     "name": "Wholesome",
+     "assetId": "aud_mfcae86f319",
+     "start": 0,
+     "in": 0,
+     "out": 15.64,
+     "volume": 0.14
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_articl001",
+     "name": "v_53cd2c56af.m4a",
+     "assetId": "aud_53cd2c56af",
+     "start": 0.4,
+     "in": 0,
+     "out": 4.004,
+     "volume": 1
+    },
+    {
+     "id": "c_articl002",
+     "name": "v_856752ad34.m4a",
+     "assetId": "aud_856752ad34",
+     "start": 4.75,
+     "in": 0,
+     "out": 4.084,
+     "volume": 1
+    },
+    {
+     "id": "c_articl003",
+     "name": "v_422766866f.m4a",
+     "assetId": "aud_422766866f",
+     "start": 9.19,
+     "in": 0,
+     "out": 3.778,
+     "volume": 1
+    },
+    {
+     "id": "c_articl004",
+     "name": "v_af85286999.m4a",
+     "assetId": "aud_af85286999",
+     "start": 13.32,
+     "in": 0,
+     "out": 1.117,
+     "volume": 1
+    }
+   ]
+  }
+ ],
+ "subtitles": {
+  "enabled": true,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.86
+  },
+  "cues": [
+   {
+    "start": 0.4,
+    "end": 2.35,
+    "text": "Bánh mì Việt Nam là ổ bánh vỏ giòn, ruột"
+   },
+   {
+    "start": 2.35,
+    "end": 4.4,
+    "text": "mềm, kẹp pa tê, thịt, rau thơm và đồ chua."
+   },
+   {
+    "start": 4.75,
+    "end": 6.57,
+    "text": "Bánh mì du nhập vào Việt Nam từ thời Pháp"
+   },
+   {
+    "start": 6.57,
+    "end": 8.35,
+    "text": "thuộc, rồi được người Việt biến tấu theo"
+   },
+   {
+    "start": 8.35,
+    "end": 8.84,
+    "text": "cách riêng."
+   },
+   {
+    "start": 9.19,
+    "end": 11.86,
+    "text": "Năm 2011, từ bánh mì được đưa vào Từ điển"
+   },
+   {
+    "start": 11.86,
+    "end": 12.97,
+    "text": "tiếng Anh Oxford."
+   },
+   {
+    "start": 13.32,
+    "end": 14.43,
+    "text": "Theo Wikipedia."
+   }
+  ]
+ },
+ "demo": "article"
+}

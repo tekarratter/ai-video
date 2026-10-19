@@ -1,0 +1,113 @@
+{
+ "name": "Demo · Movie Short",
+ "settings": {
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "vid_bbb",
+   "name": "bbb.mp4",
+   "path": "media/bbb.mp4",
+   "type": "video",
+   "duration": 13,
+   "width": 1280,
+   "height": 720,
+   "fps": 60,
+   "hasAudio": true,
+   "videoCodec": "h264",
+   "pixFmt": "yuv420p",
+   "audioCodec": "aac",
+   "attribution": "Big Buck Bunny © Blender Foundation (peach.blender.org), CC BY 3.0"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_movies001",
+     "kind": "component",
+     "component": "BlurFrame",
+     "duration": 13,
+     "props": {
+      "video": "/media/bbb.mp4",
+      "start": 0,
+      "title": "Big Buck Bunny",
+      "tag": "REVIEW PHIM",
+      "volume": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": [
+    {
+     "id": "c_movies002",
+     "kind": "text",
+     "text": "© Blender Foundation · CC BY 3.0",
+     "start": 0,
+     "duration": 13,
+     "x": 0.5,
+     "y": 0.95,
+     "style": {
+      "fontSize": 24,
+      "color": "rgba(255,255,255,.7)",
+      "fontWeight": 500
+     },
+     "animation": {
+      "in": "none",
+      "out": "none",
+      "duration": 0.3
+     }
+    }
+   ]
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": []
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": []
+  }
+ ],
+ "subtitles": {
+  "enabled": true,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.78
+  },
+  "cues": [
+   {
+    "start": 0.3,
+    "end": 4.2,
+    "text": "Một buổi sáng yên bình trong khu rừng…"
+   },
+   {
+    "start": 4.4,
+    "end": 8.6,
+    "text": "chú thỏ khổng lồ ra khỏi hang, vươn vai đón nắng."
+   },
+   {
+    "start": 8.8,
+    "end": 12.8,
+    "text": "Nhưng rắc rối sắp sửa bắt đầu!"
+   }
+  ]
+ },
+ "demo": "movie-short"
+}

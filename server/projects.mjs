@@ -162,6 +162,17 @@ export function duplicate(id) {
   return nid;
 }
 
+/** New project from a demo bundle (demos/<id>: project.json + media/, built by tools/demos/build.mjs). */
+export function fromDemo(dir) {
+  const { demo, demoPoster, ...src } = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf8'));
+  const name = String(src.name || 'Dự án mẫu').replace(/^Demo · /, '') + ' (mẫu)';
+  const nid = uniqueId(name);
+  fs.cpSync(path.join(dir, 'media'), path.join(dirOf(nid), 'media'), { recursive: true });
+  fs.mkdirSync(path.join(dirOf(nid), 'exports'), { recursive: true });
+  writeJson(path.join(dirOf(nid), 'project.json'), { ...src, name, fromDemo: demo, createdAt: Date.now() });
+  return nid;
+}
+
 /** Move to projects/.trash (recoverable by hand). */
 export function remove(id) {
   if (!validId(id) || !fs.existsSync(dirOf(id))) throw new Error('Không tìm thấy project');

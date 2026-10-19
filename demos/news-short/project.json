@@ -1,0 +1,203 @@
+{
+ "name": "Demo · Tin ngắn 1/3 gradient",
+ "settings": {
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "aud_c3e82d387b",
+   "name": "v_c3e82d387b.m4a",
+   "path": "media/v_c3e82d387b.m4a",
+   "type": "audio",
+   "duration": 3.936,
+   "tts": {
+    "text": "Mỗi tối, phố cổ Hội An rực rỡ với những chiếc đèn lồng đủ màu sắc.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_cb7c0910a9",
+   "name": "v_cb7c0910a9.m4a",
+   "path": "media/v_cb7c0910a9.m4a",
+   "type": "audio",
+   "duration": 5.783,
+   "tts": {
+    "text": "Phố cổ Hội An được UNESCO công nhận là di sản văn hóa thế giới năm 1999.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "img_lantern1",
+   "name": "lantern1.jpg",
+   "path": "media/lantern1.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 684,
+   "source": "https://www.flickr.com/photos/129176831@N06/16860069039",
+   "attribution": "Ảnh: \"Hoi An - Lanterns\" by teflsearch is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_lantern2",
+   "name": "lantern2.jpg",
+   "path": "media/lantern2.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/23486717@N06/16872033581",
+   "attribution": "Ảnh: \"hoi an lantern\" by shootlah! is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "img_lantern3",
+   "name": "lantern3.jpg",
+   "path": "media/lantern3.jpg",
+   "type": "image",
+   "width": 1024,
+   "height": 768,
+   "source": "https://www.flickr.com/photos/35314767@N00/8072329867",
+   "attribution": "Ảnh: \"Hoi An Lanterns\" by Mike Hauser is licensed under CC BY 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/2.0/."
+  },
+  {
+   "id": "aud_m2a92ba9573",
+   "name": "music_2a92ba9573_12.m4a",
+   "path": "media/music_2a92ba9573_12.m4a",
+   "type": "audio",
+   "duration": 11.97,
+   "libraryId": "inc:Carefree.mp3",
+   "attribution": "\"Carefree\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_newssh003",
+     "kind": "image",
+     "assetId": "img_lantern1",
+     "duration": 5.19,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "zoom-in",
+      "amount": 0.15
+     },
+     "transition": {
+      "type": "fade",
+      "duration": 0.5
+     }
+    },
+    {
+     "id": "c_newssh004",
+     "kind": "image",
+     "assetId": "img_lantern3",
+     "duration": 7.28,
+     "fit": "cover",
+     "kenBurns": {
+      "preset": "pan-left",
+      "amount": 0.18
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": [
+    {
+     "id": "c_newssh005",
+     "kind": "component",
+     "component": "NewsGradient",
+     "start": 0,
+     "duration": 11.97,
+     "props": {
+      "kicker": "DU LỊCH",
+      "headline": "Phố cổ Hội An *lung linh* đèn lồng",
+      "sub": "Tin mẫu · AI Video Studio",
+      "accent": "#f59e0b",
+      "bottom": 0.24
+     }
+    }
+   ]
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_newssh006",
+     "name": "Carefree",
+     "assetId": "aud_m2a92ba9573",
+     "start": 0,
+     "in": 0,
+     "out": 11.97,
+     "volume": 0.12
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_newssh001",
+     "name": "v_c3e82d387b.m4a",
+     "assetId": "aud_c3e82d387b",
+     "start": 0.4,
+     "in": 0,
+     "out": 3.936,
+     "volume": 1
+    },
+    {
+     "id": "c_newssh002",
+     "name": "v_cb7c0910a9.m4a",
+     "assetId": "aud_cb7c0910a9",
+     "start": 4.69,
+     "in": 0,
+     "out": 5.783,
+     "volume": 1
+    }
+   ]
+  }
+ ],
+ "subtitles": {
+  "enabled": true,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.9
+  },
+  "cues": [
+   {
+    "start": 0.4,
+    "end": 2.76,
+    "text": "Mỗi tối, phố cổ Hội An rực rỡ với những"
+   },
+   {
+    "start": 2.76,
+    "end": 4.34,
+    "text": "chiếc đèn lồng đủ màu sắc."
+   },
+   {
+    "start": 4.69,
+    "end": 8.03,
+    "text": "Phố cổ Hội An được UNESCO công nhận là di"
+   },
+   {
+    "start": 8.03,
+    "end": 10.47,
+    "text": "sản văn hóa thế giới năm 1999."
+   }
+  ]
+ },
+ "demo": "news-short"
+}
