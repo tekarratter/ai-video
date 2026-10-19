@@ -24,6 +24,8 @@ const P: Record<string, string> = {
   mic: 'M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3zM19 10v1a7 7 0 01-14 0v-1M12 18v4',
   music: 'M9 18V5l12-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zM21 16a3 3 0 11-6 0 3 3 0 016 0z',
   text: 'M4 7V4h16v3M9 20h6M12 4v16',
+  home: 'M3 11l9-8 9 8M5 9.5V21h5v-6h4v6h5V9.5',
+  layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
   square: 'M4 4h16v16H4z',
   link: 'M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1',
   upload: 'M12 20V9m0 0l-4 4m4-4l4 4M5 4h14',

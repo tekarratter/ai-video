@@ -63,7 +63,7 @@ export const TopBar: React.FC = () => {
   return (
     <div className="topbar">
       <button className="icon-btn chat-toggle" title="Chat với Claude" onClick={() => window.dispatchEvent(new Event('toggle-chat'))}><Icon name="chat" /></button>
-      <div className="brand"><span className="logo">▶</span> <span className="brand-name">AI Video Studio</span></div>
+      <button className="brand" onClick={() => window.dispatchEvent(new Event('show-home'))} title="Trang chủ"><span className="logo">▶</span> <span className="brand-name">AI Video Studio</span></button>
       <button className="btn ghost" title="Danh sách dự án / tạo dự án mới" onClick={openProjects}><Icon name="folder" /> Dự án ▾</button>
       <input
         className="project-name"

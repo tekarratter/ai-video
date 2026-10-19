@@ -478,7 +478,8 @@ const commands = {
       if (t.type === 'sequence' && c.kind === 'text') problems.push(`${c.id}: text clips belong on an overlay track`);
       if (clipDuration(c, p) <= 0) problems.push(`${c.id}: zero duration`);
       if (c.kind === 'component') {
-        const idx = fs.readFileSync(path.join(WORKSPACE, 'custom', 'index.tsx'), 'utf8');
+        const tplIdx = path.join(WORKSPACE, 'custom', 'tpl', 'index.ts');
+        const idx = fs.readFileSync(path.join(WORKSPACE, 'custom', 'index.tsx'), 'utf8') + (fs.existsSync(tplIdx) ? fs.readFileSync(tplIdx, 'utf8') : '');
         if (!new RegExp(`\\b${c.component}\\b`).test(idx)) problems.push(`${c.id}: component ${c.component} not registered in custom/index.tsx`);
       }
     }

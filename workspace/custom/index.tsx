@@ -2,6 +2,7 @@
 //   { "kind": "component", "component": "TitleCard", "props": { ... }, "duration": 4 }
 // Both the editor preview (Vite HMR) and the renderer import this file.
 import type React from 'react';
+import { templateComponents, templateDefaults } from './tpl';
 import { TitleCard } from './TitleCard';
 import { LowerThird } from './LowerThird';
 import { KineticText } from './KineticText';
@@ -36,6 +37,7 @@ import { FilmLeader } from './FilmLeader';
 import { RetroTitle } from './RetroTitle';
 
 export const components: Record<string, React.FC<any>> = {
+  ...templateComponents,
   TitleCard,
   LowerThird,
   KineticText,
@@ -71,6 +73,7 @@ export const components: Record<string, React.FC<any>> = {
 
 /** Default props shown in the editor's "Motion" library (optional). */
 export const componentDefaults: Record<string, Record<string, unknown>> = {
+  ...templateDefaults,
   TitleCard: { title: 'Tiêu đề', subtitle: 'Phụ đề' },
   LowerThird: { name: 'Nguyễn Văn A', role: 'Kiến trúc sư', accent: '#f59e0b' },
   KineticText: { text: 'Biến *ý tưởng* thành video', fontSize: 120 },

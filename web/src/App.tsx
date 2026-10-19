@@ -14,6 +14,7 @@ import { CleanupDialog } from './components/Cleanup';
 import { TelegramAdminDialog, TelegramDialog } from './components/Telegram';
 import { DubDialog } from './components/DubDialog';
 import { ArticleDialog } from './components/ArticleDialog';
+import { Home } from './components/Home';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { deleteSelection, duplicateSelection, fps, seek, currentTime, splitAtPlayhead, togglePlay } from './player';
 
@@ -68,15 +69,29 @@ const Editor: React.FC = () => {
   const [tlH, setTlH] = useState(300);
   const [vp, setVp] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
   const [chatOpen, setChatOpen] = useState(false);
+  // desktop: the chat column can be hidden (rail 💬 / top bar); phones use the drawer
+  const [chatHidden, setChatHidden] = useState(() => { try { return localStorage.getItem('aiv.chatHidden') === '1'; } catch { return false; } });
+  const [view, setView] = useState<'editor' | 'home'>('editor');
   const [portraitOk, setPortraitOk] = useState(() => { try { return sessionStorage.getItem('aiv.portraitOk') === '1'; } catch { return false; } });
   useShortcuts();
   useEffect(() => {
     const on = () => setVp({ w: window.innerWidth, h: window.innerHeight });
-    const tog = () => setChatOpen((o) => !o);
+    const tog = () => {
+      if (window.innerWidth < 1200 || window.innerHeight < 520) { setChatOpen((o) => !o); return; }
+      setChatHidden((h) => { try { localStorage.setItem('aiv.chatHidden', h ? '0' : '1'); } catch { /* storage off */ } return !h; });
+    };
+    const home = () => setView('home');
+    const editor = () => setView('editor');
     window.addEventListener('resize', on);
     window.addEventListener('toggle-chat', tog);
-    return () => { window.removeEventListener('resize', on); window.removeEventListener('toggle-chat', tog); };
+    window.addEventListener('show-home', home);
+    window.addEventListener('show-editor', editor);
+    return () => {
+      window.removeEventListener('resize', on); window.removeEventListener('toggle-chat', tog);
+      window.removeEventListener('show-home', home); window.removeEventListener('show-editor', editor);
+    };
   }, []);
+  useEffect(() => { if (chatOpen || !chatHidden) window.dispatchEvent(new Event('chat-shown')); }, [chatOpen, chatHidden]);
   // phones / small tablets: chat becomes a drawer, timeline shrinks so the preview keeps some room
   const compact = vp.w < 1200 || vp.h < 520;
   const tl = compact ? Math.min(tlH, Math.max(110, Math.round(vp.h * 0.38))) : Math.min(tlH, Math.max(160, vp.h - 250));
@@ -94,12 +109,12 @@ const Editor: React.FC = () => {
   };
 
   return (
-    <div className={`app ${compact ? 'compact' : ''}`} style={{ gridTemplateColumns: compact ? 'minmax(0, 1fr)' : `${chatW}px 4px minmax(0, 1fr)` }}>
-      <div className={compact ? `chat-drawer ${chatOpen ? 'open' : ''}` : 'chat-slot'}>
+    <div className={`app ${compact ? 'compact' : ''} ${chatHidden && !compact ? 'chat-hidden' : ''}`} style={{ gridTemplateColumns: compact || chatHidden ? 'minmax(0, 1fr)' : `${chatW}px 4px minmax(0, 1fr)` }}>
+      <div className={compact ? `chat-drawer ${chatOpen ? 'open' : ''}` : chatHidden ? 'chat-gone' : 'chat-slot'}>
         <ErrorBoundary label="chat"><ChatPanel /></ErrorBoundary>
       </div>
       {compact && chatOpen && <div className="chat-scrim" onClick={() => setChatOpen(false)} />}
-      {!compact && <div className="splitter-x" onPointerDown={drag('x')} />}
+      {!compact && !chatHidden && <div className="splitter-x" onPointerDown={drag('x')} />}
       <div className="editor" style={{ gridTemplateRows: layout.timeline ? 'auto minmax(0, 1fr) 0px 39px' : `auto minmax(0, 1fr) 4px ${tl}px` }}>
         <TopBar />
         {project ? (
@@ -115,6 +130,7 @@ const Editor: React.FC = () => {
         )}
         <div className="splitter-y" style={layout.timeline ? { display: 'none' } : undefined} onPointerDown={drag('y')} />
         {project && <ErrorBoundary label="timeline"><Timeline /></ErrorBoundary>}
+        {view === 'home' && <div className="home-layer"><ErrorBoundary label="trang chủ"><Home /></ErrorBoundary></div>}
       </div>
       <YouTubeDialog />
       <ProjectsDialog />

@@ -8,6 +8,8 @@ import { Icon } from './Icon';
 import { MusicPanel, VoicePanel } from './AudioLibrary';
 import { openDub } from './DubDialog';
 import { openArticle } from './ArticleDialog';
+import { ScenesPanel } from './ScenesPanel';
+import { showHome } from './Home';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -191,6 +193,48 @@ export function addTextClip(text = 'Tiêu đề mới') {
   });
 }
 
+/** Ready-made text styles for the "Chữ" panel (overlay text clips at the playhead). */
+const TEXT_PRESETS: { name: string; sample: string; clip: any }[] = [
+  { name: 'Tiêu đề lớn', sample: 'Tiêu đề', clip: { text: 'Tiêu đề', duration: 3, y: 0.45, style: { fontSize: 120, color: '#ffffff', fontWeight: 900, shadow: '0 6px 30px rgba(0,0,0,.6)' }, animation: { in: 'pop', out: 'fade', duration: 0.6 } } },
+  { name: 'Phụ đề nền đen', sample: 'Dòng chú thích', clip: { text: 'Dòng chú thích', duration: 3, y: 0.82, width: 0.84, style: { fontSize: 52, color: '#ffffff', fontWeight: 600, background: 'rgba(0,0,0,.6)' }, animation: { in: 'fade', out: 'fade', duration: 0.3 } } },
+  { name: 'Nhấn mạnh vàng', sample: 'GIẢM 50%', clip: { text: 'GIẢM 50%', duration: 2.5, y: 0.5, style: { fontSize: 140, color: '#facc15', fontWeight: 900, uppercase: true, shadow: '0 8px 30px rgba(0,0,0,.6)' }, animation: { in: 'zoom-in', out: 'fade', duration: 0.5, loop: 'pulse' } } },
+  { name: 'Gõ chữ', sample: 'Từng chữ hiện ra…', clip: { text: 'Từng chữ hiện ra…', duration: 4, y: 0.5, style: { fontSize: 72, color: '#ffffff', fontWeight: 700, fontFamily: 'Georgia, serif' }, animation: { in: 'typewriter', out: 'fade', duration: 1.2 } } },
+  { name: 'Nhãn góc', sample: 'Ảnh minh họa', clip: { text: 'Ảnh minh họa', duration: 4, x: 0.04, y: 0.06, align: 'left', style: { fontSize: 28, color: '#ffffff', fontWeight: 600, background: 'rgba(0,0,0,.45)', align: 'left' }, animation: { in: 'fade', out: 'fade', duration: 0.3 } } },
+  { name: 'Trích dẫn', sample: '“Câu nói hay”', clip: { text: '“Câu nói hay”', duration: 4, y: 0.5, width: 0.8, style: { fontSize: 76, color: '#ffffff', fontWeight: 700, fontFamily: '"Playfair Display", Georgia, serif' }, animation: { in: 'blur', out: 'fade', duration: 0.8 } } },
+];
+const TEXT_COMPONENTS: [string, string][] = [['NewsGradient', 'Tiêu đề tin 1/3'], ['NewsTicker', 'Chữ chạy'], ['LowerThird', 'Tên / chức danh'], ['ChatBubble', 'Bong bóng thoại'], ['KineticText', 'Chữ động'], ['CallToAction', 'Nút đăng ký']];
+
+function addTextPreset(preset: any) {
+  useStore.getState().update((p) => {
+    const t = trackOf(p, 'overlay');
+    const clip = { id: newId(), kind: 'text', start: currentTime(), x: 0.5, y: 0.5, ...JSON.parse(JSON.stringify(preset)) };
+    t.clips.push(clip);
+    useStore.setState({ selection: clip.id });
+  });
+}
+
+const TextPanel: React.FC = () => (
+  <div className="panel-body">
+    <div className="muted small" style={{ marginBottom: 8 }}>Bấm để thêm vào track chữ tại playhead, rồi sửa nội dung ở Inspector.</div>
+    <div className="text-presets">
+      {TEXT_PRESETS.map((x) => (
+        <button key={x.name} className="text-preset" onClick={() => addTextPreset(x.clip)} title={x.name}>
+          <span style={{ fontWeight: x.clip.style.fontWeight, color: x.clip.style.color, background: x.clip.style.background, fontFamily: x.clip.style.fontFamily, padding: x.clip.style.background ? '1px 6px' : undefined }}>{x.sample}</span>
+          <small>{x.name}</small>
+        </button>
+      ))}
+    </div>
+    <div className="section-title">Chữ động (motion)</div>
+    <div className="row gap" style={{ flexWrap: 'wrap' }}>
+      {TEXT_COMPONENTS.filter(([n]) => components[n]).map(([n, label]) => <button key={n} className="btn small" onClick={() => addComponentClip(n, 'overlay')}>{label}</button>)}
+    </div>
+    <div className="row gap" style={{ marginTop: 12 }}>
+      <button className="btn small" onClick={() => addTextClip()}><Icon name="text" /> Chữ trống</button>
+      <button className="btn small" onClick={() => useStore.getState().select('subs')}><Icon name="text" /> Phụ đề…</button>
+    </div>
+  </div>
+);
+
 export function addSolidClip() {
   useStore.getState().update((p) => {
     const t = trackOf(p, 'sequence');
@@ -370,10 +414,22 @@ const AssetBrowser: React.FC<{ assets: any[] }> = ({ assets }) => {
   );
 };
 
+type Tab = 'scenes' | 'assets' | 'text' | 'motion' | 'music' | 'voice' | 'comp';
+const RAIL: [Tab, string, string, string][] = [
+  ['scenes', 'layers', 'Cảnh', 'Cảnh & Lời thoại'],
+  ['assets', 'image', 'Media', 'Media của dự án'],
+  ['text', 'text', 'Chữ', 'Chữ & phụ đề'],
+  ['motion', 'motion', 'Motion', 'Motion graphic'],
+  ['music', 'music', 'Nhạc', 'Nhạc nền'],
+  ['voice', 'mic', 'Giọng', 'Giọng đọc AI'],
+  ['comp', 'comp', 'Cấu trúc', 'Cấu trúc dự án'],
+];
+
 export const LeftPanel: React.FC = () => {
   const project = useStore((s) => s.project);
   const openComp = useStore((s) => s.openComp);
-  const [tab, setTab] = useState<'comp' | 'assets' | 'motion' | 'music' | 'voice'>('assets');
+  const [tab, setTabRaw] = useState<Tab>(() => { try { return (localStorage.getItem('aiv.leftTab') as Tab) || 'assets'; } catch { return 'assets'; } });
+  const setTab = (t: Tab) => { setTabRaw(t); try { localStorage.setItem('aiv.leftTab', t); } catch { /* storage off */ } };
   const [q, setQ] = useState('');
   const [url, setUrl] = useState('');
   const [drag, setDrag] = useState(false);
@@ -382,14 +438,20 @@ export const LeftPanel: React.FC = () => {
 
   return (
     <div className="left-panel panel">
-      <div className="panel-tabs">
-        <button className={tab === 'comp' ? 'active' : ''} onClick={() => setTab('comp')}>Comps</button>
-        <button className={tab === 'assets' ? 'active' : ''} onClick={() => setTab('assets')}>Assets</button>
-        <button className={tab === 'motion' ? 'active' : ''} onClick={() => setTab('motion')}>Motion</button>
-        <button className={tab === 'music' ? 'active' : ''} onClick={() => setTab('music')} title="Thư viện nhạc nền">Music</button>
-        <button className={tab === 'voice' ? 'active' : ''} onClick={() => setTab('voice')} title="Giọng đọc AI (TTS) — chọn & nghe thử giọng cho clip"><Icon name="mic" size={11} />Voice</button>
-        <button className="collapse-btn" onClick={() => toggleLayout('left')} title="Thu gọn panel"><Icon name="chevron" size={13} className="flip" /></button>
+      <div className="rail">
+        <button className="rail-btn" onClick={showHome} title="Trang chủ: template, tạo nhanh, dự án gần đây"><Icon name="home" size={18} /><span>Trang chủ</span></button>
+        <div className="rail-sep" />
+        {RAIL.map(([k, icon, label, title]) => (
+          <button key={k} className={`rail-btn ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)} title={title}><Icon name={icon} size={18} /><span>{label}</span></button>
+        ))}
+        <div className="spacer" />
+        <button className="rail-btn" onClick={() => window.dispatchEvent(new Event('toggle-chat'))} title="Hiện / ẩn chat Claude"><Icon name="chat" size={18} /><span>Claude</span></button>
+        <button className="rail-btn" onClick={() => toggleLayout('left')} title="Thu gọn panel"><Icon name="chevron" size={16} className="flip" /></button>
       </div>
+      <div className="rail-panel">
+      <div className="rail-title">{RAIL.find((r) => r[0] === tab)?.[3]}</div>
+      {tab === 'scenes' && <ScenesPanel />}
+      {tab === 'text' && <TextPanel />}
 
       {tab === 'music' && <MusicPanel />}
       {tab === 'voice' && <VoicePanel />}
@@ -448,6 +510,7 @@ export const LeftPanel: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

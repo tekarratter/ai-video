@@ -102,6 +102,99 @@ for people who don't like reading — clear narration, the article's own photos,
 8. `vedit validate`, look at 2–3 `vedit still <t>` frames (title, a middle scene, the end), fix, then report the scenes
    in a few lines. Don't render unless asked.
 
+## Video templates
+
+The editor's home screen ("Trang chủ") offers templates. The UI has **already created and opened the project** (frame size
+set) and uploaded the user's files as the newest assets before it sends you the brief — work in the open project, don't
+create another. Common rules for every template:
+- Script in the requested voice language, short spoken sentences, faithful to the source (no invented facts/quotes).
+  Topic only (no source): explain general knowledge carefully; no made-up statistics or quotes.
+- Voice: `vedit tts` one call per scene/line (step 5 of "Video từ bài viết"); scenes start with their voice line.
+- Photos: user's uploads first, then the source article's (`vedit article <url> --import`), then free CC photos
+  (`vedit images`, label "Ảnh minh họa" / "Illustration"); never present a stock photo as the real event/person.
+- Subtitles/music as asked (same as "Video từ bài viết"). Template components are in `custom/tpl/` — read the file for
+  all props. `image`/`video` props take asset paths like `/media/x.jpg`. Text props support `*highlight*`.
+- `vedit validate`, check 2–3 `vedit still` frames, report briefly. Don't render.
+
+Template components (all scale to 16:9, 9:16, 1:1):
+- `BreakingIntro` (scene) `{label, headline, date, image, accent, channel}` — "TIN NÓNG" opener, ~3 s.
+- `NewsGradient` (overlay) `{kicker, headline, sub, accent, height, bottom}` — bottom-third gradient caption.
+- `NewsTicker` (overlay, span the whole video) `{label, items[], color, clock, position}`.
+- `PodcastStudio` (scene) `{title, episode, hosts:[{name, role, color, image}], turns:[{speaker:0|1, start, end, text}], caption}`
+  — `turns` are seconds **from the clip start**; copy them from the voice clips' timing so the right host lights up.
+- `ChatBubble` (overlay) `{text, name, side:'left'|'right', x, y, width, color}` — typewriter speech bubble.
+- `WhiteboardScene` (scene) `{title, lines[], image, imageSide, lineSeconds}` — clip ≥ (1 + lines) × lineSeconds.
+- `DoodleImage` (scene) `{image, caption}` — pencil sketch → watercolour, handwritten caption.
+- `PaperCutout` (scene) `{image, kicker, title, note, paper, accent}` — VOX-style torn photo, red circle on `*word*`.
+- `StrobeTeaser` (scene) `{images[], title, subtitle, beat, revealSeconds}` — flash cuts every `beat` frames, then reveal.
+- `MenuShowcase` (scene) `{brand, items:[{image, name, price, desc}], accent, dark}` — each item gets an equal share.
+- `AppleMotion` (scene) `{headline, sub, image | video, theme:'light'|'dark', device:'phone'|'laptop'|'none'}`.
+- `BlurFrame` (scene) `{video, start, title, tag, titleColor, blur, volume}` — horizontal video in a 9:16 frame on its own blur.
+
+### Template: Tin nóng 60s
+1. Source = link → `vedit article <url> --import`; text → use it directly. Script: 6–9 lines (~150 words for 60 s).
+2. Scene 1: `BreakingIntro` (~3 s, headline, today's date, best photo, `channel` if given) with the hook line.
+3. Then one photo per line, Ken Burns (zoom-in/pan alternating), `NewsGradient` overlay per scene with a 3–8 word headline of
+   that line (`kicker` = category). `NewsTicker` over the whole video with 3–5 short facts. Last line: "Theo <nguồn>".
+4. Subtitles above the gradient caption is too busy: if subtitles are on, keep `NewsGradient` only on scene 1 and the last
+   scene and put cues at position ~0.62.
+
+### Template: Tin ngắn 1/3 gradient
+User's video/photos on the main track (video keeps its own audio; photos 3–5 s each with Ken Burns). One `NewsGradient` over
+the whole first ~5 s with the given headline (`kicker` e.g. "TIN NÓNG"), then a smaller one per key fact. If notes were
+given: narrate them (TTS) and lower the video's volume to 0.2; otherwise subtitles from the video's speech (`subtitles`).
+
+### Template: Podcast 2 người
+1. Write a natural dialogue between host A (voice 1) and host B (voice 2): greeting, 4–10 exchanges per minute, each turn
+   1–3 sentences, ending with a summary + goodbye. From a link: discuss the article (cite it). Names: from the brief or
+   pick Vietnamese names matching the voices' gender.
+2. TTS each turn with its voice, in order, 0.3 s gap. One `PodcastStudio` clip covering the whole conversation
+   (`title` = show name, `hosts` with the uploaded photos if any, `turns` = each voice clip's [start, end] relative to the
+   clip start + its text, `caption: true` unless subtitles are on — then `caption: false`).
+3. Optional: every ~30 s cut away 3–5 s to a photo/`KineticText` of the key point (split the PodcastStudio clip around it,
+   shifting `turns`).
+
+### Template: Hội thoại tình huống
+Dialogue (6–16 lines) for the situation; for language learning keep sentences short and useful. Background: uploaded
+photos or `vedit images` (a place matching the situation). Main track: the background photo(s) with gentle Ken Burns.
+Each line: TTS with that character's voice + a `ChatBubble` overlay for the line's duration (`side` left for A, right for B,
+`y` alternating 0.18/0.42 on 9:16). For English learning, subtitles show the Vietnamese translation.
+
+### Template: Whiteboard giải thích
+Script = intro + 3–6 key ideas + recap. One `WhiteboardScene` per idea: `title` = the idea in ≤ 5 words, `lines` = 2–4
+short bullet phrases (not the narration), `image` = an uploaded/CC illustration (optional; drawn as a sketch), clip
+duration = that scene's voice length (and ≥ (1+lines) × lineSeconds — lower `lineSeconds` if needed). Recap scene lists
+the ideas.
+
+### Template: Doodle màu nước
+One `DoodleImage` per uploaded photo (order as uploaded), caption = a short handwritten line, narration from the story
+(1–2 sentences per photo). Fade transitions 0.6 s. Music soft/acoustic.
+
+### Template: Phóng sự cắt giấy
+Documentary tone: question hook → facts → turning point → conclusion. `PaperCutout` scenes (alternate `paper` colours
+`#efe6d2` / `#e9eef2`, `kicker` = chapter like "BỐI CẢNH", "CON SỐ", "NGHI VẤN", `*circle*` the key word, `note` = a
+handwritten figure). Mix in `StatCounter` for numbers and `OldFilm`/`LightLeak` sparingly.
+
+### Template: Strobe Teaser
+No narration. Music first: `vedit music search` energetic/epic, note its tempo; `beat` = round(fps × 60 / BPM) (or 8).
+One `StrobeTeaser` clip 10–15 s with all uploaded photos, `title`/`subtitle` from the brief, `revealSeconds` 2.5–3.5;
+music volume 0.8, fade out 1 s.
+
+### Template: Menu F&B
+Parse "name – price – description" lines. One `MenuShowcase` with all items (≈ 2.5–3.5 s each, total ~22 s), `brand` =
+shop name, accent matching the photos (warm `#f59e0b` default). Music upbeat. Optional `CallToAction` at the end
+("ĐẶT NGAY").
+
+### Template: Giới thiệu sản phẩm
+Scenes of `AppleMotion` (one per highlight: short `headline`, `sub` = one sentence, alternate `device` phone/none and
+`theme` light/dark), the uploaded product photo/video as `image`/`video`; narration optional (calm, short). End with the
+product name big (`AppleMotion` device none). Clean minimal music.
+
+### Template: Movie Short
+Main track: `BlurFrame` clips over the uploaded horizontal video (`video` = its path, `start` = source second, `title`/`tag`
+from the brief), cut to the requested part(s). Subtitles from speech (`subtitles`), translated if asked; dubbing → `dub`.
+Subtitle position ~0.78 (below the sharp video).
+
 ## project.json schema (all times in SECONDS)
 
 ```jsonc
