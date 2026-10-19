@@ -11,6 +11,12 @@
   "size": "1920x1080",
   "video": true
  },
+ "cartoon3d": {
+  "name": "Demo · Hoạt hình 3D",
+  "duration": 19,
+  "size": "1920x1080",
+  "video": true
+ },
  "dialogue": {
   "name": "Demo · Hội thoại tình huống",
   "duration": 14.1,

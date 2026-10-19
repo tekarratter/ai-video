@@ -11,7 +11,7 @@
     "noEmit": true,
     "esModuleInterop": true,
     "lib": ["DOM", "ES2023"],
-    "paths": { "@custom": ["./workspace/custom/index.tsx"] }
+    "paths": { "@custom": ["./workspace/custom/index.tsx"], "@custom/*": ["./workspace/custom/*"] }
   },
   "include": ["web/src", "remotion", "workspace/custom", "shared"]
 }

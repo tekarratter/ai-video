@@ -5,12 +5,14 @@ import { ChatBubble, PodcastStudio } from './Dialogue';
 import { DoodleImage, PaperCutout, WhiteboardScene } from './Sketch';
 import { AppleMotion, BlurFrame, MenuShowcase, StrobeTeaser } from './Business';
 import { SAMPLE } from './samples';
+import { Character3D, CharacterStage } from './Character3D';
 
 export const templateComponents: Record<string, React.FC<any>> = {
   BreakingIntro, NewsGradient, NewsTicker,
   PodcastStudio, ChatBubble,
   WhiteboardScene, DoodleImage, PaperCutout,
   StrobeTeaser, MenuShowcase, AppleMotion, BlurFrame,
+  Character3D, CharacterStage,
 };
 
 /** Preview props for the Motion library / template gallery (sample photos are CC images on Wikimedia Commons). */
@@ -31,4 +33,9 @@ export const templateDefaults: Record<string, Record<string, unknown>> = {
   MenuShowcase: { brand: 'PHỞ GIA TRUYỀN', items: [{ image: SAMPLE.food, name: 'Phở bò tái', price: '65K', desc: 'Nước dùng ninh 12 giờ' }, { image: SAMPLE.rolls, name: 'Gỏi cuốn', price: '45K', desc: 'Tôm tươi, rau sống' }] },
   AppleMotion: { headline: 'Đơn giản. *Mạnh mẽ.*', sub: 'Dựng video chỉ bằng một câu lệnh.', image: SAMPLE.bay, theme: 'light', device: 'phone' },
   BlurFrame: { video: '', title: 'Tên phim · Tập 1', tag: 'REVIEW PHIM' },
+  Character3D: { preset: 'be_trai', name: 'Bé Bin', background: 'stage', actions: [{ start: 0, action: 'wave' }, { start: 2, action: 'talk' }] },
+  CharacterStage: {
+    background: 'sky', names: true,
+    cast: [{ preset: 'be_gai', name: 'Lan', x: 0.3, actions: [{ start: 0, action: 'talk' }, { start: 2, action: 'idle' }] }, { preset: 'be_trai', name: 'Nam', x: 0.7, actions: [{ start: 0, action: 'wave' }, { start: 2, action: 'talk' }] }],
+  },
 };

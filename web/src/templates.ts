@@ -31,6 +31,7 @@ export const CATEGORIES: [string, string, string][] = [
   ['news', 'Tin tức', '📰'],
   ['dialogue', 'Hội thoại & Podcast', '💬'],
   ['illustrative', 'Minh họa', '🎨'],
+  ['cartoon', 'Hoạt hình 3D', '🧸'],
   ['business', 'Kinh doanh', '🛍️'],
   ['subtitle', 'Phụ đề & Ngôn ngữ', '📖'],
 ];
@@ -94,6 +95,30 @@ export const TEMPLATES: Template[] = [
       { k: 'files', type: 'files', label: 'Ảnh bối cảnh / nhân vật (tuỳ chọn)', accept: 'image/*', hint: 'Không có thì Claude tìm ảnh minh họa miễn phí' },
     ],
     recipe: 'Hội thoại tình huống',
+  },
+  {
+    id: 'cartoon3d', cat: 'cartoon', name: 'Hoạt hình 3D kể chuyện', hot: true, icon: '🧸',
+    desc: 'Nhân vật 3D hoạt hình trò chuyện, giải thích, kể chuyện: tự nhép môi theo giọng AI, vẫy tay, chỉ, đi bộ, biểu cảm. Hợp video thiếu nhi, giáo dục, kịch ngắn.',
+    preview: { component: 'CharacterStage', frame: 50 },
+    sizes: ['1920x1080', '1080x1920', '1080x1080'], length: [['short', '~30 giây (6–8 câu)'], ['medium', '~1 phút (12–16 câu)'], ['long', '~2 phút']], voice: true,
+    fields: [
+      { k: 'source', type: 'source', label: 'Câu chuyện / chủ đề', modes: ['topic', 'text', 'link'] },
+      { k: 'cast', type: 'text', label: 'Nhân vật', placeholder: 'VD: bé Lan (bé gái) và ông nội; để trống thì Claude chọn' },
+      { k: 'voice2', type: 'voice2', label: 'Giọng nhân vật thứ hai' },
+    ],
+    recipe: 'Hoạt hình 3D',
+  },
+  {
+    id: 'presenter3d', cat: 'cartoon', name: 'Nhân vật 3D thuyết minh', icon: '🧑‍🏫',
+    desc: 'Một nhân vật 3D đứng góc khung hình, nói và chỉ vào ảnh/nội dung bên cạnh: bài giảng, giới thiệu sản phẩm, tin tức vui.',
+    preview: { component: 'Character3D', frame: 40 },
+    sizes: ['1920x1080', '1080x1920'], length: LEN, voice: true,
+    fields: [
+      { k: 'source', type: 'source', label: 'Nội dung', modes: ['topic', 'link', 'text'] },
+      { k: 'cast', type: 'text', label: 'Nhân vật', placeholder: 'VD: thầy giáo đeo kính, cô gái áo dài…' },
+      { k: 'files', type: 'files', label: 'Ảnh / video minh họa (tuỳ chọn)', accept: 'image/*,video/*', hint: 'Không có thì Claude tìm ảnh minh họa miễn phí' },
+    ],
+    recipe: 'Nhân vật 3D thuyết minh',
   },
   {
     id: 'whiteboard', cat: 'illustrative', name: 'Whiteboard giải thích', hot: true, icon: '✏️',

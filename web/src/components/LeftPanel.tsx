@@ -9,6 +9,7 @@ import { MusicPanel, VoicePanel } from './AudioLibrary';
 import { openDub } from './DubDialog';
 import { openArticle } from './ArticleDialog';
 import { ScenesPanel } from './ScenesPanel';
+import { CharacterPanel } from './CharacterPanel';
 import { showHome } from './Home';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -414,11 +415,12 @@ const AssetBrowser: React.FC<{ assets: any[] }> = ({ assets }) => {
   );
 };
 
-type Tab = 'scenes' | 'assets' | 'text' | 'motion' | 'music' | 'voice' | 'comp';
+type Tab = 'scenes' | 'assets' | 'text' | 'chars' | 'motion' | 'music' | 'voice' | 'comp';
 const RAIL: [Tab, string, string, string][] = [
   ['scenes', 'layers', 'Cảnh', 'Cảnh & Lời thoại'],
   ['assets', 'image', 'Media', 'Media của dự án'],
   ['text', 'text', 'Chữ', 'Chữ & phụ đề'],
+  ['chars', 'person', 'Nhân vật', 'Nhân vật 3D hoạt hình'],
   ['motion', 'motion', 'Motion', 'Motion graphic'],
   ['music', 'music', 'Nhạc', 'Nhạc nền'],
   ['voice', 'mic', 'Giọng', 'Giọng đọc AI'],
@@ -452,6 +454,7 @@ export const LeftPanel: React.FC = () => {
       <div className="rail-title">{RAIL.find((r) => r[0] === tab)?.[3]}</div>
       {tab === 'scenes' && <ScenesPanel />}
       {tab === 'text' && <TextPanel />}
+      {tab === 'chars' && <CharacterPanel />}
 
       {tab === 'music' && <MusicPanel />}
       {tab === 'voice' && <VoicePanel />}

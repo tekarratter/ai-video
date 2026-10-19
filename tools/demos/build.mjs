@@ -148,6 +148,39 @@ const fade = (d = 0.5) => ({ type: 'fade', duration: d });
 
 /* ---------------- the demos ---------------- */
 const BUILDERS = {
+  async cartoon3d() {
+    const d = new Demo('cartoon3d', 'Demo · Hoạt hình 3D', 1920, 1080);
+    const LAN = 'vi:Mai Anh', NAM = 'vi:Thiện Minh';
+    const vs = await d.lines([
+      { text: 'Nam ơi, sao bầu trời lại có màu xanh nhỉ?', voice: LAN },
+      { text: 'Ánh nắng có đủ bảy màu. Khi đi qua không khí, ánh sáng xanh bị tán xạ mạnh hơn.', voice: NAM },
+      { text: 'À, vậy ánh xanh tỏa khắp bầu trời, nên mình thấy trời màu xanh!', voice: LAN },
+      { text: 'Đúng rồi! Hiện tượng đó gọi là tán xạ Rayleigh.', voice: NAM },
+    ], '', { lead: 2.2, gap: 0.45 });
+    const total = +(vs[3].end + 1.8).toFixed(2);
+    const r = (x) => +x.toFixed(2);
+    d.main({
+      kind: 'component', component: 'CharacterStage', name: 'Lan & Nam', duration: total,
+      props: {
+        background: 'sky', names: true,
+        cast: [
+          { preset: 'be_gai', name: 'Lan', voiceName: LAN, x: 0.3, y: 0.8, size: 0.6, facing: 0.35, actions: [
+            { start: 0, action: 'wave' }, { start: r(vs[0].start), action: 'think', expression: 'surprised' }, { start: r(vs[0].end), action: 'idle', expression: 'smile' },
+            { start: r(vs[2].start), action: 'talk', expression: 'happy' }, { start: r(vs[2].end), action: 'clap' }, { start: r(vs[3].end), action: 'happy', expression: 'happy' }] },
+          { preset: 'be_trai', name: 'Nam', voiceName: NAM, x: 1.15, y: 0.8, size: 0.6, facing: -0.35, actions: [
+            { start: 0, action: 'walk', to: 0.7, end: 1.9 }, { start: 1.9, action: 'wave' }, { start: r(vs[0].start), action: 'idle' },
+            { start: r(vs[1].start), action: 'talk' }, { start: r(vs[1].end), action: 'idle' }, { start: r(vs[2].end), action: 'nod' },
+            { start: r(vs[3].start), action: 'point', expression: 'happy' }, { start: r(vs[3].end), action: 'happy', expression: 'happy' }] },
+        ],
+      },
+    });
+    d.over({ kind: 'component', component: 'NewsGradient', start: 0, duration: 2.1, props: { kicker: 'HOẠT HÌNH 3D', headline: 'Vì sao *bầu trời* màu xanh?', accent: '#38bdf8', bottom: 0.08 } });
+    d.subs(vs); d.p.subtitles.style.position = 0.93;
+    await d.music('inc:Carefree.mp3', total, { volume: 0.1 });
+    d.p.demoPoster = 0.55;
+    return d.save();
+  },
+
   async 'news-60s'() {
     const d = new Demo('news-60s', 'Demo · Tin nóng 60s', 1080, 1920);
     const vs = await d.lines([
@@ -358,8 +391,8 @@ async function renderPreviews(ids) {
     if (!f.startsWith(DEMOS) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.statusCode = 404; return res.end(); }
     const size = fs.statSync(f).size, m = /bytes=(\d+)-(\d*)/.exec(req.headers.range || '');
     const type = { '.jpg': 'image/jpeg', '.mp4': 'video/mp4', '.m4a': 'audio/mp4' }[path.extname(f)] || 'application/octet-stream';
-    if (m) { const a = +m[1], b = m[2] ? +m[2] : size - 1; res.writeHead(206, { 'content-type': type, 'content-range': `bytes ${a}-${b}/${size}`, 'accept-ranges': 'bytes', 'content-length': b - a + 1 }); fs.createReadStream(f, { start: a, end: b }).pipe(res); }
-    else { res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' }); fs.createReadStream(f).pipe(res); }
+    if (m) { const a = +m[1], b = m[2] ? +m[2] : size - 1; res.writeHead(206, { 'access-control-allow-origin': '*', 'content-type': type, 'content-range': `bytes ${a}-${b}/${size}`, 'accept-ranges': 'bytes', 'content-length': b - a + 1 }); fs.createReadStream(f, { start: a, end: b }).pipe(res); }
+    else { res.writeHead(200, { 'access-control-allow-origin': '*', 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' }); fs.createReadStream(f).pipe(res); }
   });
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
   const port = srv.address().port;

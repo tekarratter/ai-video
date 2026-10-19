@@ -195,6 +195,55 @@ Main track: `BlurFrame` clips over the uploaded horizontal video (`video` = its 
 from the brief), cut to the requested part(s). Subtitles from speech (`subtitles`), translated if asked; dubbing → `dub`.
 Subtitle position ~0.78 (below the sharp video).
 
+## Nhân vật 3D (cartoon characters)
+
+`custom/tpl/Character3D.tsx`: toon-shaded 3D characters (three.js), posed per frame, lip-synced to TTS. Read the file for
+every option.
+- `Character3D` = one character (its own props + `background`, `names`). `CharacterStage` = several characters in one 3D
+  scene `{cast:[…], background, names, camera}`. Use `CharacterStage` when 2+ characters share a scene (separate
+  `Character3D` clips each draw a background and a WebGL canvas).
+- Character: `preset` (be_trai, be_gai, hoc_sinh, anh, chi, aodai, thay_giao, bac_si, ong, ba, nong_dan, shipper) and/or
+  `look` overrides `{build:'kid'|'adult', skin, hair, hairStyle, outfit, hat, glasses, beard, tie, blush, shirt, pants,
+  shoes, accent}`. Allowed values: hairStyle short|spiky|curly|long|bob|bun|ponytail|pigtails|bald; outfit
+  tshirt|shirt|suit|hoodie|dress|aodai; hat none|cap|nonla|beanie; beard none|mustache|beard. Also `name`, `x` (centre,
+  0..1), `y` (feet, 0..1, default .93), `size` (height as a fraction of the frame, default .72), and `facing` (-1..1, where
+  + turns toward screen right).
+- Animation: `actions: [{start, end?, action, expression?, to?, facing?}]`. Times are seconds from the clip start. A step
+  runs until the next one starts (or until `end`), with a 0.3 s blend between steps.
+  - actions: idle, talk, wave, point, walk, happy, think, dance, nod, shrug, bow, clap. `walk` with `to` moves the
+    character to x=`to` between `start` and `end`. `point` aims where the character faces (or toward the frame centre).
+  - expressions: smile, neutral, happy, sad, surprised, angry.
+- Lip-sync: set `voiceName` to the exact TTS voice id (e.g. `"vi:Mai Anh"`). The renderer then gives the character every
+  TTS line in that voice that overlaps the clip, and the mouth follows the loudness. So each character needs its own
+  voice. With no voice, a `talk` step still moves the mouth.
+- `background`: 'stage' | 'sky' | 'studio' | 'classroom', a CSS colour or gradient, an image path, or 'none'. 'none' is
+  transparent; put that clip on the overlay track above photos or video.
+- The "Nhân vật" panel saves characters to project.json `characters: [{id, name, look, voice}]`. Reuse their `look` and
+  `voice` exactly, so a character looks the same in every scene.
+- 3D frames are software-rendered, about 3–4× slower than normal scenes. Use 3D only where the story needs it.
+
+### Template: Hoạt hình 3D
+1. Script: a dialogue or story for 2 characters (3 at most), short spoken lines, kid-friendly when the audience is kids.
+   Pick presets that match the brief (give named characters Vietnamese names) and voice 1 / voice 2 by gender. Save them
+   to `characters`.
+2. TTS each line with its character's voice, in order, with a 0.4 s gap and the first line at about 1.5 s.
+3. Scenes: `CharacterStage` clips of 5–15 s, split at story beats or location changes.
+   - Vary the background: sky, classroom, stage, or a CC photo as `background`.
+   - Give the cast `voiceName`, and set `names: true` in the first scene.
+   - In `actions`, the speaker `talk`s during their line (the step starts at the line start). Listeners `idle`, `nod` or
+     `think` and face the speaker (`facing` ±0.3).
+   - Add gestures on key words: point when explaining, wave on hello and bye, happy or clap at the end, walk in for
+     entrances.
+4. Optional: a 3–4 s photo or `KineticText` cut-away for a key fact. With subtitles on, use subtitle position ~0.93 and
+   cast `y` ~0.8, `size` ~0.6. Soft music at volume 0.1.
+
+### Template: Nhân vật 3D thuyết minh
+- One presenter (preset from the brief) on the overlay track for the whole video: `Character3D` with `background:'none'`,
+  `x` 0.17 (or 0.83), `size` ~0.55, `y` 0.97, and `voiceName` = the narration voice.
+- Actions: `talk`, with `point` toward the content on key sentences and `wave` at the start and end.
+- Main track: photos, videos or motion scenes, kept to the other ~2/3 of the frame. Ken Burns photos are fine.
+- 9:16: put the presenter at the bottom (`y` 0.99, `size` ~0.4).
+
 ## project.json schema (all times in SECONDS)
 
 ```jsonc

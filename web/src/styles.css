@@ -658,3 +658,23 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 
 .tpl-thumb-bg { position: absolute; inset: -20px; background-size: cover; background-position: center; filter: blur(18px) brightness(.45); }
 .tpl-thumb .demo-video { position: relative; }
+
+/* ---------- Nhân vật 3D panel ---------- */
+.chars .char-preview { aspect-ratio: 1 / 1; max-height: 260px; margin: 0 auto 8px; border-radius: 10px; overflow: hidden; background: var(--bg2); border: 1px solid var(--line); }
+.char-editing { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 8px; font-size: 12px; margin-bottom: 6px; }
+.char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 6px; }
+.char-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 2px 5px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; color: var(--text); font-size: 11px; }
+.char-card:hover { border-color: var(--accent); }
+.char-card img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 6px; background: linear-gradient(#fef3c7, #f5b382); }
+.char-card span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.char-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.char-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); border-radius: 999px; padding: 2px 9px; font-size: 11px; cursor: pointer; }
+.char-chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+.char-chip .link-btn { padding: 0; font-size: 11px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+.swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.chars input[type='color'] { width: 28px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; cursor: pointer; }
+.char-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chars .form.compact .field.col { gap: 4px; }
+.char-ask { margin-top: 8px; white-space: normal; text-align: left; height: auto; padding-top: 5px; padding-bottom: 5px; }

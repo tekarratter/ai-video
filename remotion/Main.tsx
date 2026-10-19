@@ -207,22 +207,38 @@ const Text: React.FC<{ clip: Clip; durationFrames: number }> = ({ clip, duration
   );
 };
 
+/**
+ * Lip-sync: a character clip with `voiceName` (or cast members with one) gets every TTS line read in that voice
+ * that overlaps the clip, as `voices: [{ src, start }]` with `start` in seconds from the clip start.
+ */
+function withVoices(props: any, project: Project, start: number, dur: number) {
+  if (!props || !(props.voiceName || props.cast?.some((m: any) => m?.voiceName))) return props;
+  const lines = project.tracks.filter((t: any) => t.type === 'audio' && !t.muted).flatMap((t: any) => layoutTrack(t, project))
+    .map((l: any) => ({ l, a: assetById(project, l.clip.assetId) })).filter(({ a }: any) => a?.tts?.voice);
+  const pick = (voice?: string) => (voice ? lines
+    .filter(({ l, a }: any) => a.tts.voice === voice && l.start < start + dur && l.start + l.duration > start)
+    .map(({ l, a }: any) => ({ src: '/' + a.path.split('/').map(encodeURIComponent).join('/'), start: +(l.start - start - (l.clip.in ?? 0)).toFixed(3) })) : []);
+  const add = (m: any) => (m?.voiceName ? { ...m, voices: [...(m.voices || []), ...pick(m.voiceName)] } : m);
+  return props.cast ? { ...add(props), cast: props.cast.map(add) } : add(props);
+}
+
 const Missing: React.FC<{ label: string }> = ({ label }) => (
   <AbsoluteFill style={{ background: '#400', color: '#fff', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>
     Missing: {label}
   </AbsoluteFill>
 );
 
-const ClipContent: React.FC<{ clip: Clip; durationFrames: number; overlay?: boolean }> = ({ clip, durationFrames, overlay }) => {
+const ClipContent: React.FC<{ clip: Clip; durationFrames: number; overlay?: boolean; start?: number }> = ({ clip, durationFrames, overlay, start = 0 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const { project } = React.useContext(Ctx);
   let inner: React.ReactNode;
   switch (clip.kind) {
     case 'text': inner = <Text clip={clip} durationFrames={durationFrames} />; break;
     case 'solid': inner = <AbsoluteFill style={{ background: clip.color || '#000' }} />; break;
     case 'component': {
       const C = (components as Record<string, React.FC<any>>)[clip.component];
-      inner = C ? <C {...(clip.props || {})} /> : <Missing label={`component ${clip.component}`} />;
+      inner = C ? <C {...(withVoices(clip.props, project, start, durationFrames / fps) || {})} /> : <Missing label={`component ${clip.component}`} />;
       break;
     }
     default: inner = <Media clip={clip} durationFrames={durationFrames} overlay={overlay} />;
@@ -255,7 +271,7 @@ const SequenceTrack: React.FC<{ track: any }> = ({ track }) => {
     const d = sec(l.duration, fps);
     items.push(
       <TransitionSeries.Sequence key={l.clip.id} durationInFrames={d} name={l.clip.name || l.clip.id}>
-        <ClipContent clip={l.clip} durationFrames={d} />
+        <ClipContent clip={l.clip} durationFrames={d} start={l.start} />
       </TransitionSeries.Sequence>,
     );
     if (l.transition > 0 && i < layout.length - 1) {
@@ -280,7 +296,7 @@ const OverlayTrack: React.FC<{ track: any }> = ({ track }) => {
         const d = sec(l.duration, fps);
         return (
           <Sequence key={l.clip.id} from={Math.round(l.start * fps)} durationInFrames={d} name={l.clip.name || l.clip.text || l.clip.id} layout="none">
-            <ClipContent clip={l.clip} durationFrames={d} overlay />
+            <ClipContent clip={l.clip} durationFrames={d} overlay start={l.start} />
           </Sequence>
         );
       })}

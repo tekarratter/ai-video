@@ -1,0 +1,303 @@
+{
+ "name": "Demo · Hoạt hình 3D",
+ "settings": {
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "aud_857f0d6170",
+   "name": "v_857f0d6170.m4a",
+   "path": "media/v_857f0d6170.m4a",
+   "type": "audio",
+   "duration": 2.458,
+   "tts": {
+    "text": "Nam ơi, sao bầu trời lại có màu xanh nhỉ?",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_29e482d4fb",
+   "name": "v_29e482d4fb.m4a",
+   "path": "media/v_29e482d4fb.m4a",
+   "type": "audio",
+   "duration": 4.653,
+   "tts": {
+    "text": "Ánh nắng có đủ bảy màu. Khi đi qua không khí, ánh sáng xanh bị tán xạ mạnh hơn.",
+    "voice": "vi:Thiện Minh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_e761531036",
+   "name": "v_e761531036.m4a",
+   "path": "media/v_e761531036.m4a",
+   "type": "audio",
+   "duration": 3.763,
+   "tts": {
+    "text": "À, vậy ánh xanh tỏa khắp bầu trời, nên mình thấy trời màu xanh!",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_576bbc8cb7",
+   "name": "v_576bbc8cb7.m4a",
+   "path": "media/v_576bbc8cb7.m4a",
+   "type": "audio",
+   "duration": 2.791,
+   "tts": {
+    "text": "Đúng rồi! Hiện tượng đó gọi là tán xạ Rayleigh.",
+    "voice": "vi:Thiện Minh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_m2a92ba9573",
+   "name": "music_2a92ba9573_19.m4a",
+   "path": "media/music_2a92ba9573_19.m4a",
+   "type": "audio",
+   "duration": 19.01,
+   "libraryId": "inc:Carefree.mp3",
+   "attribution": "\"Carefree\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_cartoo005",
+     "kind": "component",
+     "component": "CharacterStage",
+     "name": "Lan & Nam",
+     "duration": 19.01,
+     "props": {
+      "background": "sky",
+      "names": true,
+      "cast": [
+       {
+        "preset": "be_gai",
+        "name": "Lan",
+        "voiceName": "vi:Mai Anh",
+        "x": 0.3,
+        "y": 0.8,
+        "size": 0.6,
+        "facing": 0.35,
+        "actions": [
+         {
+          "start": 0,
+          "action": "wave"
+         },
+         {
+          "start": 2.2,
+          "action": "think",
+          "expression": "surprised"
+         },
+         {
+          "start": 4.66,
+          "action": "idle",
+          "expression": "smile"
+         },
+         {
+          "start": 10.21,
+          "action": "talk",
+          "expression": "happy"
+         },
+         {
+          "start": 13.97,
+          "action": "clap"
+         },
+         {
+          "start": 17.21,
+          "action": "happy",
+          "expression": "happy"
+         }
+        ]
+       },
+       {
+        "preset": "be_trai",
+        "name": "Nam",
+        "voiceName": "vi:Thiện Minh",
+        "x": 1.15,
+        "y": 0.8,
+        "size": 0.6,
+        "facing": -0.35,
+        "actions": [
+         {
+          "start": 0,
+          "action": "walk",
+          "to": 0.7,
+          "end": 1.9
+         },
+         {
+          "start": 1.9,
+          "action": "wave"
+         },
+         {
+          "start": 2.2,
+          "action": "idle"
+         },
+         {
+          "start": 5.11,
+          "action": "talk"
+         },
+         {
+          "start": 9.76,
+          "action": "idle"
+         },
+         {
+          "start": 13.97,
+          "action": "nod"
+         },
+         {
+          "start": 14.42,
+          "action": "point",
+          "expression": "happy"
+         },
+         {
+          "start": 17.21,
+          "action": "happy",
+          "expression": "happy"
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": [
+    {
+     "id": "c_cartoo006",
+     "kind": "component",
+     "component": "NewsGradient",
+     "start": 0,
+     "duration": 2.1,
+     "props": {
+      "kicker": "HOẠT HÌNH 3D",
+      "headline": "Vì sao *bầu trời* màu xanh?",
+      "accent": "#38bdf8",
+      "bottom": 0.08
+     }
+    }
+   ]
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_cartoo007",
+     "name": "Carefree",
+     "assetId": "aud_m2a92ba9573",
+     "start": 0,
+     "in": 0,
+     "out": 19.01,
+     "volume": 0.1
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_cartoo001",
+     "name": "v_857f0d6170.m4a",
+     "assetId": "aud_857f0d6170",
+     "start": 2.2,
+     "in": 0,
+     "out": 2.458,
+     "volume": 1
+    },
+    {
+     "id": "c_cartoo002",
+     "name": "v_29e482d4fb.m4a",
+     "assetId": "aud_29e482d4fb",
+     "start": 5.11,
+     "in": 0,
+     "out": 4.653,
+     "volume": 1
+    },
+    {
+     "id": "c_cartoo003",
+     "name": "v_e761531036.m4a",
+     "assetId": "aud_e761531036",
+     "start": 10.21,
+     "in": 0,
+     "out": 3.763,
+     "volume": 1
+    },
+    {
+     "id": "c_cartoo004",
+     "name": "v_576bbc8cb7.m4a",
+     "assetId": "aud_576bbc8cb7",
+     "start": 14.42,
+     "in": 0,
+     "out": 2.791,
+     "volume": 1
+    }
+   ]
+  }
+ ],
+ "subtitles": {
+  "enabled": true,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.93
+  },
+  "cues": [
+   {
+    "start": 2.2,
+    "end": 4.66,
+    "text": "Nam ơi, sao bầu trời lại có màu xanh nhỉ?"
+   },
+   {
+    "start": 5.11,
+    "end": 7.49,
+    "text": "Ánh nắng có đủ bảy màu. Khi đi qua không"
+   },
+   {
+    "start": 7.49,
+    "end": 9.76,
+    "text": "khí, ánh sáng xanh bị tán xạ mạnh hơn."
+   },
+   {
+    "start": 10.21,
+    "end": 12.52,
+    "text": "À, vậy ánh xanh tỏa khắp bầu trời, nên"
+   },
+   {
+    "start": 12.52,
+    "end": 13.97,
+    "text": "mình thấy trời màu xanh!"
+   },
+   {
+    "start": 14.42,
+    "end": 16.67,
+    "text": "Đúng rồi! Hiện tượng đó gọi là tán xạ"
+   },
+   {
+    "start": 16.67,
+    "end": 17.21,
+    "text": "Rayleigh."
+   }
+  ]
+ },
+ "demo": "cartoon3d",
+ "demoPoster": 0.55
+}
