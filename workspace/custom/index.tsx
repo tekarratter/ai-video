@@ -2,6 +2,7 @@
 //   { "kind": "component", "component": "TitleCard", "props": { ... }, "duration": 4 }
 // Both the editor preview (Vite HMR) and the renderer import this file.
 import type React from 'react';
+import './fonts';
 import { templateComponents, templateDefaults } from './tpl';
 import { TitleCard } from './TitleCard';
 import { LowerThird } from './LowerThird';
@@ -35,6 +36,7 @@ import { OldFilm } from './OldFilm';
 import { VHS } from './VHS';
 import { FilmLeader } from './FilmLeader';
 import { RetroTitle } from './RetroTitle';
+import { MemorialTitle } from './MemorialTitle';
 
 export const components: Record<string, React.FC<any>> = {
   ...templateComponents,
@@ -69,6 +71,7 @@ export const components: Record<string, React.FC<any>> = {
   VHS,
   FilmLeader,
   RetroTitle,
+  MemorialTitle,
 };
 
 /** Default props shown in the editor's "Motion" library (optional). */
@@ -105,4 +108,5 @@ export const componentDefaults: Record<string, Record<string, unknown>> = {
   VHS: { date: 'OCT. 31 1994', label: 'PLAY ▶', glitch: 0.5, showOsd: true },
   FilmLeader: { from: 5 },
   RetroTitle: { title: 'NGÀY XƯA\nYÊU DẤU', subtitle: 'since 1975' },
+  MemorialTitle: { kicker: 'Lễ giỗ', title: 'Tưởng nhớ', name: 'Họ và tên', lines: [] },
 };

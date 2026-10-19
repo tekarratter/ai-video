@@ -9,6 +9,7 @@ import { slide } from '@remotion/transitions/slide';
 import { wipe } from '@remotion/transitions/wipe';
 import { flip } from '@remotion/transitions/flip';
 import { clockWipe } from '@remotion/transitions/clock-wipe';
+import { vnFontStack } from './vnFonts';
 import { components } from '@custom';
 import { assetById, clipDuration, layoutTrack, normalizeProject, projectDuration } from '../shared/timeline.js';
 import { lookFilter } from './looks';
@@ -186,7 +187,7 @@ const Text: React.FC<{ clip: Clip; durationFrames: number }> = ({ clip, duration
         style={{
           ...anim,
           fontSize: s.fontSize ?? 72,
-          fontFamily: s.fontFamily ?? 'Inter, Arial, sans-serif',
+          fontFamily: vnFontStack(s.fontFamily) ?? 'Inter, Arial, sans-serif',
           fontWeight: s.fontWeight ?? 700,
           fontStyle: s.italic ? 'italic' : undefined,
           color: s.color ?? '#ffffff',
@@ -358,7 +359,7 @@ const Subtitles: React.FC = () => {
     <AbsoluteFill style={{ alignItems: 'center' }}>
       <div style={{
         position: 'absolute', top: `${s.position * 100}%`, transform: 'translateY(-50%)', maxWidth: width * s.maxWidth,
-        fontSize: s.fontSize, color: s.color, background: s.background, fontFamily: s.fontFamily, fontWeight: s.fontWeight,
+        fontSize: s.fontSize, color: s.color, background: s.background, fontFamily: vnFontStack(s.fontFamily), fontWeight: s.fontWeight,
         padding: '0.15em 0.5em', borderRadius: 10, textAlign: 'center', lineHeight: 1.25,
       }}>
         {cue.text}

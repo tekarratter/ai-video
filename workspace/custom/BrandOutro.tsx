@@ -3,9 +3,9 @@ import { AbsoluteFill, Img, interpolate, spring, useCurrentFrame, useVideoConfig
 import { mediaUrl } from './mediaUrl';
 
 /** Closing call-to-action scene with logo, tagline, products and contact. Main-track scene. */
-export const BrandOutro: React.FC<{ logo?: string; bg?: string; greeting?: string; tagline?: string; products?: string[]; phone?: string; phones?: string[]; website?: string; place?: string; accent?: string; pillBg?: string; greetingColor?: string; tint?: string }> = ({
+export const BrandOutro: React.FC<{ logo?: string; bg?: string; greeting?: string; tagline?: string; products?: string[]; phone?: string; phones?: string[]; website?: string; place?: string; note?: string; logoWidth?: number; accent?: string; pillBg?: string; greetingColor?: string; tint?: string }> = ({
   logo, bg, greeting, tagline = 'Reliable & Solid Solutions', products = ['Windows', 'Doors', 'Bifold', 'Storefront'],
-  phone = '(682) 757-7777', phones, website = 'solidlineus.com', place = 'Arlington, Texas', accent = '#1e73be', pillBg = 'rgba(30,115,190,0.25)', greetingColor = '#ffd166', tint = '#0b1622',
+  phone = '(682) 757-7777', phones, website = 'solidlineus.com', place = 'Arlington, Texas', note, logoWidth = 520, accent = '#1e73be', pillBg = 'rgba(30,115,190,0.25)', greetingColor = '#ffd166', tint = '#0b1622',
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -16,7 +16,7 @@ export const BrandOutro: React.FC<{ logo?: string; bg?: string; greeting?: strin
       {bg ? <Img src={mediaUrl(bg)!} style={{ position: 'absolute', height: '100%', left: '50%', transform: `translateX(-50%) scale(${z})`, filter: 'blur(14px) brightness(0.35)' }} /> : null}
       <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 70px', textAlign: 'center' }}>
         {greeting ? <div style={{ color: greetingColor, fontFamily: 'Georgia, serif', fontStyle: 'italic', fontWeight: 700, fontSize: 70, marginBottom: 40, opacity: s(4), transform: `translateY(${(1 - s(4)) * -30}px)`, textShadow: '0 4px 24px rgba(0,0,0,.6)' }}>{greeting}</div> : null}
-        {logo ? <Img src={mediaUrl(logo)!} style={{ width: 520, borderRadius: 40, boxShadow: '0 20px 60px rgba(0,0,0,.5)', transform: `scale(${s(0, 12)})` }} /> : null}
+        {logo ? <Img src={mediaUrl(logo)!} style={{ width: logoWidth, borderRadius: 40, boxShadow: '0 20px 60px rgba(0,0,0,.5)', transform: `scale(${s(0, 12)})` }} /> : null}
         <div style={{ color: '#fff', fontSize: 58, fontWeight: 800, marginTop: 50, opacity: s(14), transform: `translateY(${(1 - s(14)) * 30}px)` }}>{tagline}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16, marginTop: 40 }}>
           {products.map((p, i) => (
@@ -31,7 +31,13 @@ export const BrandOutro: React.FC<{ logo?: string; bg?: string; greeting?: strin
             </div>
           ))}
         </div>
-        <div style={{ color: '#9fb3c8', fontSize: 38, marginTop: 14, letterSpacing: 4, textTransform: 'uppercase', opacity: s(68) }}>{place}</div>
+        {place ? <div style={{ color: '#9fb3c8', fontSize: 38, marginTop: 14, letterSpacing: 4, textTransform: 'uppercase', opacity: s(68) }}>{place}</div> : null}
+        {note ? (
+          // Closing message; words in *stars* are highlighted (e.g. the showroom address).
+          <div style={{ marginTop: 44, color: '#e6eef6', fontSize: 38, fontWeight: 500, lineHeight: 1.4, maxWidth: 960, whiteSpace: 'pre-line', opacity: s(80), transform: `translateY(${(1 - s(80)) * 24}px)` }}>
+            {note.split(/\*([^*]+)\*/).map((part, i) => (i % 2 ? <b key={i} style={{ color: greetingColor, fontWeight: 800, whiteSpace: 'nowrap' }}>{part}</b> : <span key={i}>{part}</span>))}
+          </div>
+        ) : null}
       </div>
     </AbsoluteFill>
   );

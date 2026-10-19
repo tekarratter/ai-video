@@ -1,35 +1,8 @@
 // Shared helpers for the template components (news, dialogue, whiteboard, business…).
-import { useState } from 'react';
-import { continueRender, delayRender, getInputProps, useVideoConfig } from 'remotion';
+import { getInputProps, useVideoConfig } from 'remotion';
 
-export const SANS = '"Be Vietnam Pro", Inter, Arial, sans-serif';
-export const SERIF = '"Playfair Display", Georgia, serif';
-export const HAND = '"Patrick Hand", "Itim", "Comic Sans MS", cursive';
-export const MARKER = '"Itim", "Patrick Hand", "Comic Sans MS", cursive';
-
-// Vietnamese-capable Google fonts (sans, serif, two handwriting faces)
-const HREF = 'https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900'
-  + '&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Patrick+Hand&family=Itim&subset=vietnamese&display=block';
-if (typeof document !== 'undefined' && !document.querySelector(`link[href="${HREF}"]`)) {
-  const l = document.createElement('link');
-  l.rel = 'stylesheet';
-  l.href = HREF;
-  document.head.appendChild(l);
-}
-let ready: Promise<unknown> | null = null;
-const loadAll = () => (ready ??= Promise.race([
-  Promise.all(['700 40px "Be Vietnam Pro"', '900 40px "Be Vietnam Pro"', '900 40px "Playfair Display"', '400 40px "Patrick Hand"', '400 40px "Itim"']
-    .map((f) => document.fonts.load(f, 'Ầ ỗ ữ ặ'))),
-  new Promise((r) => setTimeout(r, 8000)), // offline: fall back instead of hanging the render
-]));
-/** Hold the frame until the fonts are loaded (renders never show the fallback font). */
-export const useFonts = () => {
-  useState(() => {
-    if (typeof document === 'undefined') return;
-    const h = delayRender('Loading template fonts');
-    loadAll().then(() => continueRender(h), () => continueRender(h));
-  });
-};
+// Vietnamese-capable fonts — loaded in one place (remotion/vnFonts.ts, files in the repo)
+export { VN_SANS as SANS, VN_SERIF as SERIF, VN_HAND as HAND, VN_MARKER as MARKER, useVnFonts as useFonts } from '../../../remotion/vnFonts';
 
 /** "/media/x.jpg" → URL the renderer can load (mediaBase); http(s) URLs pass through. */
 export const media = (src?: string) => {

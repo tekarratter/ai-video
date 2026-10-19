@@ -1,10 +1,12 @@
 import React from 'react';
+import { useVnFonts } from './fonts';
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 
 /** Section caption: small tag + bold title that wipes in. Transparent — use on an overlay track. */
-export const SectionTitle: React.FC<{ tag?: string; title?: string; accent?: string; y?: number }> = ({
-  tag = '01', title = 'Tiêu đề', accent = '#fbbf24', y = 0.7,
+export const SectionTitle: React.FC<{ tag?: string; title?: string; accent?: string; y?: number; font?: string }> = ({
+  tag = '01', title = 'Tiêu đề', accent = '#fbbf24', y = 0.7, font = 'Inter, Arial, sans-serif',
 }) => {
+  useVnFonts();
   const frame = useCurrentFrame();
   const { fps, durationInFrames, height } = useVideoConfig();
   const t = spring({ frame, fps, config: { damping: 200 } });
@@ -12,7 +14,7 @@ export const SectionTitle: React.FC<{ tag?: string; title?: string; accent?: str
   const pop = spring({ frame: frame - 6, fps, config: { damping: 12, mass: 0.7 } });
   const out = interpolate(frame, [durationInFrames - 10, durationInFrames], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
-    <AbsoluteFill style={{ opacity: out, fontFamily: 'Inter, Arial, sans-serif' }}>
+    <AbsoluteFill style={{ opacity: out, fontFamily: font }}>
       <div style={{ position: 'absolute', left: 0, right: 0, top: height * y, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0 70px' }}>
         <div style={{ background: accent, color: '#111', fontWeight: 800, fontSize: 36, letterSpacing: 6, padding: '8px 26px', borderRadius: 40, textTransform: 'uppercase', transform: `translateY(${(1 - t) * 40}px) scale(${0.8 + 0.2 * t})`, opacity: t }}>
           {tag}

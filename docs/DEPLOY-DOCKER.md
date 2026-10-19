@@ -187,7 +187,7 @@ docker compose up -d --build
 - Dữ liệu trong volume được giữ nguyên.
 - **Không cập nhật khi đang render hoặc upload**, vì tác vụ đang chạy sẽ bị huỷ. Kiểm tra tab **Jobs** trước.
 - Hướng dẫn cho Claude (`workspace/CLAUDE.md`, quyền `.claude/settings.json`) luôn được cập nhật theo image.
-- Motion component trong `workspace/custom` chỉ được **thêm mới**, không ghi đè bản bạn đã sửa.
+- Motion component trong `workspace/custom`: file mới được thêm, file còn nguyên bản cũ được **cập nhật** theo image; file bạn (hoặc Claude) đã sửa được giữ nguyên và ghi log `edited in the workspace, keeping it`. Trước khi build image mới, chạy `node scripts/custom-history.mjs` (cập nhật `docker/custom-history.sums`, danh sách các bản đã phát hành).
 
 ---
 
@@ -216,3 +216,4 @@ docker compose down                                # dừng (giữ dữ liệu)
 | Quên mật khẩu admin | Xoá file người dùng rồi khởi động lại; tài khoản mặc định sẽ được tạo lại: `docker exec ai-video rm /home/node/.config/ai-video/users.json && docker compose restart` |
 | Tải nhạc chậm | Server nhạc Incompetech đôi khi chậm (1–3 phút một bài). Bài đã tải được lưu cache |
 | Giọng đọc lần đầu chậm | Lần đầu cần nạp model, mất khoảng 15 giây. Các lần sau nhanh hơn |
+| Chữ tiếng Việt bị tách ("Đồ ng") | Font nằm sẵn trong repo (`remotion/fonts/`, nạp từ `remotion/vnFonts.ts`), render không cần mạng. Khi thêm font, chạy `node scripts/fetch-fonts.mjs` trên máy có mạng rồi build lại image |
