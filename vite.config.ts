@@ -29,6 +29,7 @@ export default defineConfig({
       '/exports': { target: API, xfwd: true },
       '/cache': { target: API, xfwd: true },
       '/library': { target: API, xfwd: true },
+      '/mcp': { target: API, xfwd: true, timeout: 0, proxyTimeout: 0 }, // MCP for Claude (docs/MCP.md)
       '/ws': { target: API.replace('http', 'ws'), ws: true, xfwd: true },
     },
   },

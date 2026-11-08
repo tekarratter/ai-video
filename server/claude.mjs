@@ -110,9 +110,39 @@ export class ClaudeBridge extends EventEmitter {
     await this.start({ resume });
   }
 
+  /**
+   * Wait until the CLI shows its empty input box. Right after a (re)start — e.g. when a new project was just
+   * opened — the TUI needs several seconds; text pasted earlier got lost or left the box browsing history
+   * ("History 53/59"), and the message never arrived.
+   */
+  async waitReady(timeout = 30000) {
+    const t0 = Date.now();
+    let downs = 0;
+    while (Date.now() - t0 < timeout) {
+      let scr = '';
+      try { scr = (await this.tmuxCmd('capture-pane', '-p', '-t', this.tmux)).stdout; } catch { /* starting */ }
+      const lines = scr.split('\n');
+      if (/History \d+\/\d+/.test(scr) && downs < 80) {
+        // stuck browsing earlier messages: walk back down to the draft
+        await this.tmuxCmd('send-keys', '-t', this.tmux, 'Down').catch(() => {});
+        downs++;
+        await new Promise((r) => setTimeout(r, 120));
+        continue;
+      }
+      const box = lines.findIndex((l, i) => /^❯/.test(l) && /^─{3}/.test(lines[i - 1] || ''));
+      if (box >= 0 && !parsePrompt(lines)) {
+        if (Date.now() - (this.startedAt || 0) < 8000) await new Promise((r) => setTimeout(r, 800)); // let a fresh TUI settle
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 400));
+    }
+    throw new Error('Claude chưa sẵn sàng nhận tin (đang khởi động hoặc chờ bạn chọn trong terminal)');
+  }
+
   /** Type a (possibly multi-line) message into the CLI and submit it. */
   async send(text) {
     if (!(await this.isRunning())) await this.start({ resume: this.status.sessionId || undefined });
+    await this.waitReady();
     const buf = `aiv${Date.now()}`;
     await new Promise((resolve, reject) => {
       const p = spawn('tmux', ['load-buffer', '-b', buf, '-']);

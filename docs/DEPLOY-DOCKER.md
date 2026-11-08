@@ -173,6 +173,8 @@ location / {
 }
 ```
 
+Đường dẫn `/mcp` (kết nối Claude qua MCP, xem [MCP.md](MCP.md)) đi chung reverse proxy này, không cần cấu hình thêm.
+
 Khi đã có reverse proxy, nên đổi `ports` thành `"127.0.0.1:5180:5180"` để không ai vào thẳng cổng 5180 được.
 
 ---

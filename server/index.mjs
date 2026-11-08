@@ -21,6 +21,7 @@ import * as youtube from './youtube.mjs';
 import * as auth from './auth.mjs';
 import * as projects from './projects.mjs';
 import * as cleanup from './cleanup.mjs';
+import { mountMcp } from '../mcp/server.mjs';
 import * as telegram from './telegram.mjs';
 import * as claudeAuth from './claudeauth.mjs';
 
@@ -135,6 +136,8 @@ function startJob(type, label, fn, { onFinish } = {}) {
 app.use(express.json({ limit: '50mb' }));
 app.use(auth.requireAuth);
 auth.registerRoutes(app);
+// MCP: Claude (Code / Desktop / claude.ai) drives the app — token auth, see mcp/server.mjs
+mountMcp(app, { port: PORT });
 // renders read voice audio with fetch() for lip-sync (page origin ≠ API): allow it; '*' never carries cookies
 app.use(['/media', '/p/:id/media'], (req, res, next) => { res.set('Access-Control-Allow-Origin', '*'); next(); });
 app.use('/media', express.static(MEDIA_DIR, { fallthrough: false }));

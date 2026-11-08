@@ -686,3 +686,9 @@ table.users td, table.users th { padding: 5px 4px; border-bottom: 1px solid var(
 .doc-drop.has { border-style: solid; border-color: #3b82f688; }
 .doc-drop b { word-break: break-all; }
 .modal .seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+
+/* MCP connection dialog */
+.mcp-modal { width: min(640px, 100%); }
+.mcp-fresh { display: flex; flex-direction: column; gap: 8px; border: 1px solid #3b82f666; background: #3b82f612; border-radius: 10px; padding: 10px; }
+.mcp-snippet pre { margin: 2px 0 0; padding: 8px; background: #0d1117; border: 1px solid var(--line); border-radius: 6px; font-size: 11.5px; white-space: pre-wrap; word-break: break-all; font-family: 'JetBrains Mono', monospace; }
+.mcp-token { padding: 6px 0; border-top: 1px solid var(--line); }

@@ -11,6 +11,7 @@
     "serve": "concurrently -k -n server,web -c blue,green \"node server/index.mjs\" \"vite\""
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@mozilla/readability": "^0.6.0",
     "@react-three/fiber": "^9.8.2",
     "@remotion/bundler": "^4.0.535",
@@ -30,6 +31,7 @@
     "remotion": "^4.0.535",
     "three": "^0.186.1",
     "ws": "^8.18.3",
+    "zod": "^4.5.4",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
