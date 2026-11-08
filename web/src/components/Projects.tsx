@@ -88,6 +88,7 @@ export const ProjectsDialog: React.FC = () => {
           </button>
           <input ref={restoreRef} type="file" hidden accept=".zip,application/zip" onChange={(e) => { const f = e.target.files?.[0]; if (f) restore(f); e.target.value = ''; }} />
           <button className="btn small" title="Dán link bài báo / diễn đàn → dự án mới có video đọc bài, ảnh trong bài, phụ đề" onClick={() => { setOpen(false); openArticle({ newProject: true }); }}><Icon name="text" /> Tạo từ link bài viết</button>
+          <button className="btn small" title="File Word / PDF → dự án mới có video đọc tài liệu với hoạt ảnh minh họa" onClick={() => { setOpen(false); openArticle({ newProject: true, mode: 'doc' }); }}><Icon name="file" /> Tạo từ Word/PDF</button>
           <button className="btn primary small" onClick={() => setCreating(!creating)}><Icon name="plus" /> Dự án mới</button>
           <button className="icon-btn" onClick={() => setOpen(false)}><Icon name="x" /></button>
         </div>

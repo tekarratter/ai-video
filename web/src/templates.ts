@@ -23,7 +23,7 @@ export type Template = {
   /** Recipe heading in workspace/CLAUDE.md ("## Template: …") */
   recipe: string;
   /** opens an existing dialog instead of the template form */
-  dialog?: 'article' | 'dub';
+  dialog?: 'article' | 'dub' | 'document';
 };
 
 export const CATEGORIES: [string, string, string][] = [
@@ -70,6 +70,12 @@ export const TEMPLATES: Template[] = [
     desc: 'Dán link bài báo / diễn đàn → video đọc tóm tắt, ảnh trong bài + ảnh minh họa, phụ đề. Giọng Việt hoặc Anh.',
     preview: { component: 'NewsGradient', frame: 40, props: { kicker: 'TÓM TẮT', headline: 'Đọc bài *thay bạn* trong 60 giây' }, bg: 'linear-gradient(160deg,#1e3a8a,#0f172a)' },
     sizes: ['1920x1080', '1080x1920'], voice: true, fields: [], recipe: 'Video từ bài viết', dialog: 'article',
+  },
+  {
+    id: 'document', cat: 'illustrative', name: 'Video từ Word / PDF', hot: true, icon: '📄',
+    desc: 'Tải báo cáo, bài giảng, tài liệu hướng dẫn → video giọng đọc với hoạt ảnh minh họa: ý chính, biểu đồ, quy trình, bảng, phóng to hình trong tài liệu.',
+    preview: { component: 'KeyPoints', frame: 75 },
+    sizes: ['1920x1080', '1080x1920'], voice: true, fields: [], recipe: 'Video từ tài liệu (Word/PDF)', dialog: 'document',
   },
   {
     id: 'podcast', cat: 'dialogue', name: 'Podcast 2 người', hot: true, icon: '🎙️',

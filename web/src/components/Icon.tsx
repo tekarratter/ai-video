@@ -25,6 +25,7 @@ const P: Record<string, string> = {
   music: 'M9 18V5l12-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zM21 16a3 3 0 11-6 0 3 3 0 016 0z',
   text: 'M4 7V4h16v3M9 20h6M12 4v16',
   home: 'M3 11l9-8 9 8M5 9.5V21h5v-6h4v6h5V9.5',
+  file: 'M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M8 13h8M8 17h5',
   person: 'M12 3a4 4 0 100 8 4 4 0 000-8zM4 21c0-4.4 3.6-7 8-7s8 2.6 8 7',
   layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
   square: 'M4 4h16v16H4z',

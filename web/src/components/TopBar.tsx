@@ -79,8 +79,8 @@ export const TopBar: React.FC = () => {
         <div className="render-progress" title={`${renderJob.label}${queuedCount && renderJob.stage !== 'queued' ? ` · ${queuedCount} render đang chờ` : ''}`}>
           <span>
             {renderJob.projectId && renderJob.projectId !== activeProject ? `${renderJob.projectName} · ` : ''}
-            {renderJob.stage === 'stopping' ? 'Đang dừng…' : renderJob.stage === 'queued' ? 'Chờ lượt' : renderJob.stage === 'bundle' ? 'Đóng gói' : renderJob.stage === 'browser' ? 'Chuẩn bị' : renderJob.stage === 'audio' ? 'Âm thanh' : renderJob.stage === 'join' ? 'Ghép cảnh' : renderJob.current ? `Cảnh ${renderJob.current.split(' · ')[0]}` : 'Render'} {!['stopping', 'queued'].includes(renderJob.stage) && `${Math.round(renderJob.progress * 100)}%`}
-            {renderJob.eta ? ` · còn ~${fmtEta(renderJob.eta)}` : ''}{queuedCount && renderJob.stage !== 'queued' ? ` · +${queuedCount} chờ` : ''}
+            {renderJob.stage === 'stopping' ? 'Đang dừng…' : renderJob.stage === 'queued' ? 'Chờ lượt' : renderJob.stage === 'bundle' ? 'Đóng gói' : renderJob.stage === 'browser' ? 'Chuẩn bị' : renderJob.stage === 'audio' ? 'Âm thanh' : renderJob.stage === 'join' ? 'Ghép cảnh' : renderJob.current ? (/^\d/.test(renderJob.current) ? `Cảnh ${renderJob.current.split(' · ')[0]}` : `Render ${renderJob.current}`) : 'Render'} {!['stopping', 'queued'].includes(renderJob.stage) && `${Math.round(renderJob.progress * 100)}%`}
+            {renderJob.eta ? ` · còn ~${fmtEta(renderJob.eta)}` : ['render', 'audio', 'join'].includes(renderJob.stage) ? ' · đang ước tính thời gian…' : ''}{queuedCount && renderJob.stage !== 'queued' ? ` · +${queuedCount} chờ` : ''}
           </span>
           <div className="bar"><div style={{ width: `${renderJob.progress * 100}%` }} /></div>
         </div>

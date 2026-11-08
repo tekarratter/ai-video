@@ -148,6 +148,33 @@ const fade = (d = 0.5) => ({ type: 'fade', duration: d });
 
 /* ---------------- the demos ---------------- */
 const BUILDERS = {
+  async document() {
+    // a made-up company report (numbers are examples, said so on screen)
+    const d = new Demo('document', 'Demo · Video từ tài liệu', 1920, 1080);
+    const vs = await d.lines([
+      'Báo cáo quý ba của công ty Ánh Dương, tóm tắt trong hai mươi giây.',
+      'Có ba điểm nổi bật: doanh thu tăng, khách hàng mới tăng gấp đôi, và chi phí giảm.',
+      'Doanh thu tăng đều qua từng tháng, đạt mười hai tỷ đồng vào tháng chín.',
+      'Quý tới, công ty tập trung ba việc: mở rộng bán hàng online, đào tạo đội ngũ, và ra mắt sản phẩm mới.',
+    ], 'vi:Mai Anh', { lead: 0.6, gap: 0.4 });
+    const tr = 0.45;
+    const sp = d.spans(vs, { tr, tail: 1.6 });
+    const at = (i, frac) => +(vs[i].start - (i ? vs[i].start : 0) + vs[i].dur * frac).toFixed(2); // seconds from clip start
+    const common = { accent: '#2563eb', theme: 'light' };
+    d.main({ kind: 'component', component: 'DocTitle', duration: sp[0], transition: fade(tr), props: { title: 'Báo cáo kinh doanh *Quý 3*', subtitle: 'Công ty Ánh Dương — tài liệu ví dụ', meta: 'Tháng 10 · 12 trang', accent: '#2563eb' } });
+    d.main({ kind: 'component', component: 'KeyPoints', duration: sp[1], transition: fade(tr), props: { ...common, kicker: 'Điểm nổi bật', title: 'Quý 3 *tăng trưởng*', times: [at(1, 0.2), at(1, 0.45), at(1, 0.7)],
+      items: [{ icon: '📈', title: 'Doanh thu tăng', text: 'Tăng đều cả 3 tháng' }, { icon: '🤝', title: 'Khách hàng mới ×2', text: 'Gấp đôi quý trước' }, { icon: '💰', title: 'Chi phí giảm', text: 'Tối ưu vận hành' }] } });
+    d.main({ kind: 'component', component: 'BarChart', duration: sp[2], transition: fade(tr), props: { ...common, kicker: 'Doanh thu', title: 'Doanh thu theo *tháng*', unit: ' tỷ', source: 'Số liệu ví dụ', highlight: 2, times: [0.5, 1.1, at(2, 0.7)],
+      bars: [{ label: 'Tháng 7', value: 8.5 }, { label: 'Tháng 8', value: 10.2 }, { label: 'Tháng 9', value: 12 }] } });
+    d.main({ kind: 'component', component: 'ProcessFlow', duration: sp[3], props: { ...common, kicker: 'Quý 4', title: 'Ba việc *ưu tiên*', times: [at(3, 0.15), at(3, 0.42), at(3, 0.66)],
+      steps: [{ icon: '🛒', title: 'Bán hàng online', text: 'Mở rộng kênh số' }, { icon: '🎓', title: 'Đào tạo đội ngũ', text: 'Kỹ năng bán hàng' }, { icon: '🚀', title: 'Sản phẩm mới', text: 'Ra mắt tháng 12' }] } });
+    d.subs(vs); d.p.subtitles.style.position = 0.9;
+    const total = sp.reduce((a, b) => a + b, 0) - tr * 3;
+    await d.music('inc:Carefree.mp3', total, { volume: 0.08 });
+    d.p.demoPoster = 0.45;
+    return d.save();
+  },
+
   async cartoon3d() {
     const d = new Demo('cartoon3d', 'Demo · Hoạt hình 3D', 1920, 1080);
     const LAN = 'vi:Mai Anh', NAM = 'vi:Thiện Minh';

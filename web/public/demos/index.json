@@ -23,6 +23,12 @@
   "size": "1080x1920",
   "video": true
  },
+ "document": {
+  "name": "Demo · Video từ tài liệu",
+  "duration": 21.4,
+  "size": "1920x1080",
+  "video": true
+ },
  "doodle": {
   "name": "Demo · Doodle màu nước",
   "duration": 9.8,

@@ -1,0 +1,326 @@
+{
+ "name": "Demo · Video từ tài liệu",
+ "settings": {
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "background": "#000000"
+ },
+ "assets": [
+  {
+   "id": "aud_bf7126b6d4",
+   "name": "v_bf7126b6d4.m4a",
+   "path": "media/v_bf7126b6d4.m4a",
+   "type": "audio",
+   "duration": 3.899,
+   "tts": {
+    "text": "Báo cáo quý ba của công ty Ánh Dương, tóm tắt trong hai mươi giây.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_2538024b4c",
+   "name": "v_2538024b4c.m4a",
+   "path": "media/v_2538024b4c.m4a",
+   "type": "audio",
+   "duration": 4.592,
+   "tts": {
+    "text": "Có ba điểm nổi bật: doanh thu tăng, khách hàng mới tăng gấp đôi, và chi phí giảm.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_721d5440da",
+   "name": "v_721d5440da.m4a",
+   "path": "media/v_721d5440da.m4a",
+   "type": "audio",
+   "duration": 3.659,
+   "tts": {
+    "text": "Doanh thu tăng đều qua từng tháng, đạt mười hai tỷ đồng vào tháng chín.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_126534968c",
+   "name": "v_126534968c.m4a",
+   "path": "media/v_126534968c.m4a",
+   "type": "audio",
+   "duration": 5.807,
+   "tts": {
+    "text": "Quý tới, công ty tập trung ba việc: mở rộng bán hàng online, đào tạo đội ngũ, và ra mắt sản phẩm mới.",
+    "voice": "vi:Mai Anh",
+    "speed": 1
+   }
+  },
+  {
+   "id": "aud_m2a92ba9573",
+   "name": "music_2a92ba9573_21.m4a",
+   "path": "media/music_2a92ba9573_21.m4a",
+   "type": "audio",
+   "duration": 21.36,
+   "libraryId": "inc:Carefree.mp3",
+   "attribution": "\"Carefree\" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "main",
+   "name": "Main",
+   "type": "sequence",
+   "clips": [
+    {
+     "id": "c_docume005",
+     "kind": "component",
+     "component": "DocTitle",
+     "duration": 5.35,
+     "transition": {
+      "type": "fade",
+      "duration": 0.45
+     },
+     "props": {
+      "title": "Báo cáo kinh doanh *Quý 3*",
+      "subtitle": "Công ty Ánh Dương — tài liệu ví dụ",
+      "meta": "Tháng 10 · 12 trang",
+      "accent": "#2563eb"
+     }
+    },
+    {
+     "id": "c_docume006",
+     "kind": "component",
+     "component": "KeyPoints",
+     "duration": 5.44,
+     "transition": {
+      "type": "fade",
+      "duration": 0.45
+     },
+     "props": {
+      "accent": "#2563eb",
+      "theme": "light",
+      "kicker": "Điểm nổi bật",
+      "title": "Quý 3 *tăng trưởng*",
+      "times": [
+       0.92,
+       2.07,
+       3.21
+      ],
+      "items": [
+       {
+        "icon": "📈",
+        "title": "Doanh thu tăng",
+        "text": "Tăng đều cả 3 tháng"
+       },
+       {
+        "icon": "🤝",
+        "title": "Khách hàng mới ×2",
+        "text": "Gấp đôi quý trước"
+       },
+       {
+        "icon": "💰",
+        "title": "Chi phí giảm",
+        "text": "Tối ưu vận hành"
+       }
+      ]
+     }
+    },
+    {
+     "id": "c_docume007",
+     "kind": "component",
+     "component": "BarChart",
+     "duration": 4.51,
+     "transition": {
+      "type": "fade",
+      "duration": 0.45
+     },
+     "props": {
+      "accent": "#2563eb",
+      "theme": "light",
+      "kicker": "Doanh thu",
+      "title": "Doanh thu theo *tháng*",
+      "unit": " tỷ",
+      "source": "Số liệu ví dụ",
+      "highlight": 2,
+      "times": [
+       0.5,
+       1.1,
+       2.56
+      ],
+      "bars": [
+       {
+        "label": "Tháng 7",
+        "value": 8.5
+       },
+       {
+        "label": "Tháng 8",
+        "value": 10.2
+       },
+       {
+        "label": "Tháng 9",
+        "value": 12
+       }
+      ]
+     }
+    },
+    {
+     "id": "c_docume008",
+     "kind": "component",
+     "component": "ProcessFlow",
+     "duration": 7.41,
+     "props": {
+      "accent": "#2563eb",
+      "theme": "light",
+      "kicker": "Quý 4",
+      "title": "Ba việc *ưu tiên*",
+      "times": [
+       0.87,
+       2.44,
+       3.83
+      ],
+      "steps": [
+       {
+        "icon": "🛒",
+        "title": "Bán hàng online",
+        "text": "Mở rộng kênh số"
+       },
+       {
+        "icon": "🎓",
+        "title": "Đào tạo đội ngũ",
+        "text": "Kỹ năng bán hàng"
+       },
+       {
+        "icon": "🚀",
+        "title": "Sản phẩm mới",
+        "text": "Ra mắt tháng 12"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "overlay",
+   "name": "Text & Overlay",
+   "type": "overlay",
+   "clips": []
+  },
+  {
+   "id": "music",
+   "name": "Music",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_docume009",
+     "name": "Carefree",
+     "assetId": "aud_m2a92ba9573",
+     "start": 0,
+     "in": 0,
+     "out": 21.36,
+     "volume": 0.08
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "name": "Giọng đọc",
+   "type": "audio",
+   "clips": [
+    {
+     "id": "c_docume001",
+     "name": "v_bf7126b6d4.m4a",
+     "assetId": "aud_bf7126b6d4",
+     "start": 0.6,
+     "in": 0,
+     "out": 3.899,
+     "volume": 1
+    },
+    {
+     "id": "c_docume002",
+     "name": "v_2538024b4c.m4a",
+     "assetId": "aud_2538024b4c",
+     "start": 4.9,
+     "in": 0,
+     "out": 4.592,
+     "volume": 1
+    },
+    {
+     "id": "c_docume003",
+     "name": "v_721d5440da.m4a",
+     "assetId": "aud_721d5440da",
+     "start": 9.89,
+     "in": 0,
+     "out": 3.659,
+     "volume": 1
+    },
+    {
+     "id": "c_docume004",
+     "name": "v_126534968c.m4a",
+     "assetId": "aud_126534968c",
+     "start": 13.95,
+     "in": 0,
+     "out": 5.807,
+     "volume": 1
+    }
+   ]
+  }
+ ],
+ "subtitles": {
+  "enabled": true,
+  "style": {
+   "fontSize": 49,
+   "color": "#ffffff",
+   "background": "rgba(0,0,0,.55)",
+   "position": 0.9
+  },
+  "cues": [
+   {
+    "start": 0.6,
+    "end": 3.06,
+    "text": "Báo cáo quý ba của công ty Ánh Dương, tóm"
+   },
+   {
+    "start": 3.06,
+    "end": 4.5,
+    "text": "tắt trong hai mươi giây."
+   },
+   {
+    "start": 4.9,
+    "end": 7.25,
+    "text": "Có ba điểm nổi bật: doanh thu tăng, khách"
+   },
+   {
+    "start": 7.25,
+    "end": 9.49,
+    "text": "hàng mới tăng gấp đôi, và chi phí giảm."
+   },
+   {
+    "start": 9.89,
+    "end": 11.88,
+    "text": "Doanh thu tăng đều qua từng tháng, đạt"
+   },
+   {
+    "start": 11.88,
+    "end": 13.55,
+    "text": "mười hai tỷ đồng vào tháng chín."
+   },
+   {
+    "start": 13.95,
+    "end": 16.18,
+    "text": "Quý tới, công ty tập trung ba việc: mở"
+   },
+   {
+    "start": 16.18,
+    "end": 18.58,
+    "text": "rộng bán hàng online, đào tạo đội ngũ, và"
+   },
+   {
+    "start": 18.58,
+    "end": 19.76,
+    "text": "ra mắt sản phẩm mới."
+   }
+  ]
+ },
+ "demo": "document",
+ "demoPoster": 0.45
+}

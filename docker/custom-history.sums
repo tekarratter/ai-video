@@ -1,5 +1,6 @@
 0c0ba8f5e96a64e4065c725025abfc1d2ca50c66  ./LowerThird.tsx
 1bed508a3be69cdc498414f03e94ad9e4d7295b5  ./ProjectIntro.tsx
+1edb2b8999a5ec53328021a4c6dc4654bd2e6038  ./index.tsx
 20f7645fd122b0338c0c5dd6db53fa85d0e56ab9  ./KineticText.tsx
 25591e29abe323efc9d0fbf996ac27f63af955fe  ./FilmLeader.tsx
 256fb77dc50a3f1dd048aeb2fd98b1d9a881cfb2  ./OldFilm.tsx
@@ -11,6 +12,7 @@
 454b874d6d73693326bbe9ad30c8f7b6ed43f55d  ./BeforeAfter.tsx
 45e19376ed3cfebd315a698b1e029708ee3a0068  ./FloatingGhost.tsx
 477c9d2929a137ab8d5183f90d85a09fc2c21f3c  ./tpl/index.ts
+51c184d7c6b72901d7b2aeb627fb45a25b945b89  ./EndCard.tsx
 53eb510b45cc57fb5c127fee0b40e1e64de809d8  ./HalloweenTitle.tsx
 547792d169c8893ff9f8f6c13cc84d65db150f8c  ./PanPhoto.tsx
 59c9094ce2b4342b9d64d75cb883c207c21b1f48  ./mediaUrl.ts
@@ -18,7 +20,9 @@
 5b85f3da8fe6e83acc20bf06a22e69f213b78282  ./SectionTitle.tsx
 5b96ff9aa2da37ed5bf14c90d83bab1c5a524b5a  ./index.tsx
 64dbfbb943270d94fa6800a257a60f2fa873d68e  ./FallingLeaves.tsx
+66ad9b8277ea838da4c1c5b13813800e7917e342  ./CruiseIntro.tsx
 691f9beea5e73577fb1180b47a5ace846d4d217d  ./VHS.tsx
+7254dd02a861b5a053c7ea280748c0ecb31f9a8b  ./BrandOutro.tsx
 77f0f41b101795b9d8a893030eb80ea7263538b7  ./SpookyFog.tsx
 7afd5fd30a4c4f84167f13c943fd540c32d54937  ./BrandOutro.tsx
 80cf602057eddfdb16f596676a45289181eb00bc  ./index.tsx
@@ -26,18 +30,22 @@
 826d5d405ba48e14d1b36689a3422a16fa35a292  ./index.tsx
 8706d2d4370d986ee5cc62505e3b68182e9a5b95  ./StepTitle.tsx
 8a0a882eb462db3f36dbe35cf17a29710b314188  ./tpl/News.tsx
+8e9a607976d9211db284f2e8c986f70278c14555  ./fonts.ts
 8fb709f33dd548deb9b92c9c5238871b70840ab5  ./HalloweenBats.tsx
 9c99a09e481c183fa144972f9b32f9ef44e1e1a5  ./tpl/Business.tsx
 9fffee9ee5d70348a1e2a7a8e9f06dbb4e4cafa5  ./CallToAction.tsx
+a30420d6cc3e430031ce67b9b0ed80487beb7fb5  ./MemorialTitle.tsx
 ab450ef3026521e3960674f91aa1c23cb5496b24  ./HangingSpider.tsx
 ae5bac1ec894559fecf983c432d53c2c0effca59  ./RetroTitle.tsx
 b0c9f83e2af247bfa9930974b005d2f317cb14b0  ./BrandOutro.tsx
 b7f7ed4d31646711fdfcc60235daac564b014be0  ./Snowfall.tsx
+b8fb3f6c0fe4bc3e8879484ac9dbf38a1a2a278c  ./SectionTitle.tsx
 bbd0cda3d25d6ae562e0528c755426e0e1fed018  ./TitleCard.tsx
 bbeb86b57b8a159282731c5ad42894d5849881d0  ./tpl/index.ts
 c0df09220f4917b826e18843a098d04dba4c5519  ./FeatureList.tsx
 c1b24809ff0850ac55ab672db927a4bc50eee996  ./tpl/Sketch.tsx
 c54a6d0b03fa2d9d6051402d305f05697957aae8  ./PhotoCard.tsx
+c86414ceabd3c80fa005e57a7b8daaa8368b4d14  ./tpl/common.ts
 ce8cc9f1a4e81cc50142a2cc170c45bba6fca22d  ./LightLeak.tsx
 d4e503ef976dcda5f5b904b6e07e1dd05607c538  ./StatCounter.tsx
 e372fa3cddcaa6a100145da37b6750bf652bb5d0  ./Countdown.tsx

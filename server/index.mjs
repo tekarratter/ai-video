@@ -94,6 +94,8 @@ function persistJobs() {
 }
 // Estimated time left: progress rate since the current phase began, smoothed. Render phases that share
 // one progress scale (scenes → sound → join) count as one phase; bundling/queueing get no estimate.
+// The first estimate comes after 10 s of measurable progress (not after 1 %: a 10-minute video at
+// 2–3 frames/s needs over a minute to reach 1 %, and the UI showed nothing until then).
 const etaState = new WeakMap();
 const etaPhase = (stage) => (['render', 'audio', 'join'].includes(stage) ? 'main' : stage);
 function trackEta(job) {
@@ -102,7 +104,7 @@ function trackEta(job) {
   const e = etaState.get(job);
   if (!e || e.k !== k || p < e.p0) { etaState.set(job, { k, t0: now, p0: p }); job.eta = undefined; return; }
   const dp = p - e.p0, dt = (now - e.t0) / 1000;
-  if (dp < 0.01 || dt < 5) return;
+  if (dp <= 0.0005 || dt < 10) return;
   const raw = (dt * (1 - p)) / dp;
   job.eta = Math.max(1, Math.round(job.eta ? job.eta * 0.8 + raw * 0.2 : raw));
 }
@@ -212,6 +214,19 @@ app.post('/api/upload/finish', (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// Word / PDF / text documents ("video from a document") are kept in media/docs/ (read by `vedit doc`), not as assets.
+const DOC_RE = /\.(pdf|docx|doc|odt|rtf|pptx|ppt|odp|txt|md)$/i;
+function saveDocument(src, name) {
+  const dir = path.join(MEDIA_DIR, 'docs');
+  fs.mkdirSync(dir, { recursive: true });
+  const ext = path.extname(name).toLowerCase();
+  const base = path.basename(name, path.extname(name)).normalize('NFC').replace(/[/\\:*?"<>|\x00-\x1f]+/g, '_').trim() || 'tai-lieu';
+  let dest = path.join(dir, base + ext);
+  for (let i = 2; fs.existsSync(dest); i++) dest = path.join(dir, `${base}-${i}${ext}`);
+  try { fs.renameSync(src, dest); } catch { fs.copyFileSync(src, dest); fs.rmSync(src, { force: true }); }
+  return path.relative(WORKSPACE, dest).split(path.sep).join('/');
+}
+
 const MEDIA_RE = /\.(jpe?g|png|webp|gif|heic|heif|avif|tiff?|bmp|mp4|mov|m4v|webm|mkv|avi|mp3|m4a|wav|aac|ogg|flac)$/i;
 /** Unpack a .zip (Google Drive / Takeout download, a folder zipped on the phone…) and list the media
  *  inside, sub-folders and zips-inside-the-zip included. Folder structure is kept while unpacking so
@@ -254,11 +269,12 @@ function startImport(raw, asLogo) {
     }
     if (!files.length) throw new Error('Không có file media nào để nhập');
     update({ label: `Nhập ${files.length} file` });
-    const ok = [], failed = [], paths = [];
+    const ok = [], failed = [], paths = [], docs = [];
     for (const [i, f] of files.entries()) {
       const base = i / files.length;
       update({ stage: `${i + 1}/${files.length} ${f.name}`, progress: base });
       try {
+        if (DOC_RE.test(f.name)) { const rel = saveDocument(f.path, f.name); ok.push(path.basename(rel)); paths.push(rel); docs.push(rel); continue; }
         const project = readProject();
         const asset = await importMedia(project, f.path, {
           move: true, name: f.name,
@@ -282,7 +298,7 @@ function startImport(raw, asLogo) {
     if (failed.length) broadcast({ type: 'toast', level: 'error', text: `Lỗi nhập: ${failed.join('; ')}` });
     if (!ok.length) throw new Error(failed.join('; '));
     setTimeout(proxySweep, 500);
-    return { label: `Đã nhập ${ok.length}/${files.length} file`, paths };
+    return { label: `Đã nhập ${ok.length}/${files.length} file`, paths, docs };
   });
   return job;
 }
@@ -324,6 +340,13 @@ app.get('/api/custom-components', (req, res) => {
 });
 
 app.get('/api/jobs', (req, res) => res.json([...jobs.values()].slice(-30)));
+// documents uploaded to the open project (media/docs), newest first
+app.get('/api/docs', (req, res) => {
+  const dir = path.join(MEDIA_DIR, 'docs');
+  let list = [];
+  try { list = fs.readdirSync(dir).filter((f) => DOC_RE.test(f)).map((f) => { const st = fs.statSync(path.join(dir, f)); return { name: f, path: `media/docs/${f}`, size: st.size, mtime: st.mtimeMs }; }); } catch { /* none yet */ }
+  res.json(list.sort((a, b) => b.mtime - a.mtime));
+});
 const exportInfo = new Map(); // name|mtime → { duration, width, height }
 function probeExport(file) {
   return new Promise((resolve) => execFile('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height:format=duration', '-of', 'json', file], (err, out) => {
@@ -807,6 +830,7 @@ app.post('/api/chat/attach', upload.array('files'), async (req, res) => {
   const paths = [];
   for (const f of req.files) {
     const name = Buffer.from(f.originalname, 'latin1').toString('utf8');
+    if (DOC_RE.test(name)) { paths.push(saveDocument(f.path, name)); continue; }
     try {
       const project = readProject();
       const asset = await importMedia(project, f.path, { move: true, name });

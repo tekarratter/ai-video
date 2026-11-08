@@ -11,6 +11,7 @@ import { downloadUrl } from '../shared/download.mjs';
 import { importTrack, musicFacets, searchMusic } from '../shared/library.mjs';
 import { listVoices, synthesize, ttsFileName } from '../shared/tts.mjs';
 import { articleKey, downloadImage, extractArticle, searchImages } from './article.mjs';
+import { DOC_RE, docKey, extractDocument, pageSheets, renderPages } from './document.mjs';
 import {
   addAudioClip, assetById, clipDuration, creditsFor, fmtTime, layoutTrack, LOGO_DEFAULTS, LOGO_POSITIONS, newId, projectDuration, sourceToTimeline,
 } from '../shared/timeline.js';
@@ -403,6 +404,96 @@ const commands = {
     }
   },
 
+  /** Word / PDF / text document → text + its pictures in reading order, page images, for "video from a document". */
+  async doc() {
+    const usage = 'usage: doc <file> [--import [all|1,3]] [--sheet] [--pages 2,5-6] [--max 30] [--refresh] [--json]';
+    if (!pos[0]) {
+      // no file: list the documents uploaded to this project (media/docs)
+      const dir = path.join(WORKSPACE, 'media', 'docs');
+      const list = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => DOC_RE.test(f)) : [];
+      if (!list.length) die(`${usage}\n(chưa có tài liệu nào trong media/docs — tải file Word/PDF lên ở tab Assets hoặc kéo vào khung chat)`);
+      for (const f of list) console.log(`media/docs/${f}  ${(fs.statSync(path.join(dir, f)).size / 1e6).toFixed(1)} MB`);
+      return;
+    }
+    const file = [pos[0], path.join(WORKSPACE, pos[0]), path.join(WORKSPACE, 'media', 'docs', pos[0])].map((f) => path.resolve(f)).find((f) => fs.existsSync(f) && fs.statSync(f).isFile());
+    if (!file) die(`không thấy file "${pos[0]}" (${usage})`);
+    if (!DOC_RE.test(file)) die('chỉ đọc được .docx .pdf .txt .md (và .doc .odt .rtf .pptx khi có LibreOffice)');
+    const key = docKey(file);
+    const dir = path.join(CACHE_DIR, 'docs', key);
+    const cacheFile = path.join(dir, 'extract.json');
+    let d = !opt.refresh && fs.existsSync(cacheFile) ? JSON.parse(fs.readFileSync(cacheFile, 'utf8')) : null;
+    if (!d || !d.blocks.every((b) => b.type !== 'img' || !b.file || fs.existsSync(b.file))) {
+      console.error(`Đang đọc ${path.basename(file)} …`);
+      d = await extractDocument(file, dir).catch((e) => die(e.message));
+      fs.writeFileSync(cacheFile, JSON.stringify(d, null, 1));
+    }
+    const docName = path.basename(file).replace(/\.\w+$/, '');
+    const slug = docName.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'tai-lieu';
+    const imgs = d.blocks.filter((b) => b.type === 'img');
+    const credit = `Hình từ tài liệu "${d.title || docName}"`;
+
+    if (opt.import) {
+      const want = opt.import === true || opt.import === 'all' ? null : new Set(String(opt.import).split(',').map(Number));
+      const max = Number(opt.max || 30);
+      const p = readProject();
+      let added = 0;
+      for (const b of imgs) {
+        if ((want && !want.has(b.n)) || added >= max || b.skip || !b.file) continue;
+        const have = p.assets.find((x) => x.source === `${key}#img${b.n}`);
+        if (have) { b.assetId = have.id; continue; }
+        try {
+          const info = await probe(b.file);
+          if (info.type !== 'image' || Math.min(info.width || 0, info.height || 0) < 160) { b.skip = 'quá nhỏ'; continue; }
+          const asset = await importMedia(p, b.file, { name: `${slug}-hinh-${b.n}${path.extname(b.file)}` });
+          Object.assign(asset, { source: `${key}#img${b.n}`, attribution: credit });
+          b.assetId = asset.id; added++;
+          writeProject(p); // after each image so the editor shows them as they arrive
+          console.error(`  #${b.n} → ${asset.id} ${asset.width}x${asset.height}`);
+        } catch (e) { b.skip = e.message; console.error(`  #${b.n} bỏ qua: ${e.message}`); }
+      }
+      for (const b of imgs) { const x = p.assets.find((y) => y.id === b.assetId); if (x) Object.assign(b, { width: x.width, height: x.height }); }
+      fs.writeFileSync(cacheFile, JSON.stringify(d, null, 1));
+    }
+
+    // page images: --sheet = thumbnails to look at; --pages 2,5-6 = big page renders imported as assets (for DocZoom)
+    const range = (s) => String(s).split(',').flatMap((x) => { const [a, b] = x.split('-').map(Number); return b ? Array.from({ length: b - a + 1 }, (_, i) => a + i) : [a]; })
+      .filter((n) => n >= 1 && n <= (d.pages || 0));
+    const pageAssets = [];
+    if ((opt.sheet || opt.pages) && !d.pdf) die('không tạo được ảnh trang cho file này (file .docx cần LibreOffice) — dùng hình trong tài liệu (--import) hoặc hoạt ảnh');
+    if (opt.sheet) {
+      const pages = Array.from({ length: Math.min(d.pages, 48) }, (_, i) => i + 1);
+      const sheets = await pageSheets(d.pdf, dir, pages);
+      console.log(`PAGE SHEETS (4 trang/hàng, đọc trái → phải, trên → dưới) — Read để xem:`);
+      for (const s of sheets) console.log(`  trang ${s.from}–${s.to}: ${s.file}`);
+    }
+    if (opt.pages) {
+      const p = readProject();
+      for (const n of opt.pages === true || opt.pages === 'all' ? range(`1-${Math.min(d.pages, 30)}`) : range(opt.pages)) {
+        const have = p.assets.find((x) => x.source === `${key}#page${n}`);
+        if (have) { pageAssets.push([n, have]); continue; }
+        const [png] = await renderPages(d.pdf, path.join(dir, 'pages'), { pages: [n], size: 2000, prefix: 'page' });
+        const asset = await importMedia(p, png, { name: `${slug}-trang-${n}.png` });
+        Object.assign(asset, { source: `${key}#page${n}`, attribution: credit });
+        writeProject(p);
+        pageAssets.push([n, asset]);
+      }
+    }
+
+    if (opt.json) { console.log(JSON.stringify({ ...d, pageAssets: pageAssets.map(([n, a]) => ({ page: n, assetId: a.id, path: a.path })) }, null, 1)); return; }
+    console.log(`TITLE: ${d.title || docName}`);
+    console.log(`FILE: ${path.relative(WORKSPACE, file) || file} | ${d.kind.toUpperCase()}${d.pages ? ` | ${d.pages} trang${d.pagesRead && d.pagesRead < d.pages ? ` (đọc ${d.pagesRead} trang đầu)` : ''}` : ''}${d.author ? ` | ${d.author}` : ''}`);
+    console.log(`WORDS: ${d.words}  IMAGES: ${imgs.length}${imgs.some((b) => b.assetId) ? ` (imported: ${imgs.filter((b) => b.assetId).length})` : imgs.length ? ' (not imported yet — add --import)' : ''}${d.pdf ? '  PAGE IMAGES: --sheet / --pages n' : ''}`);
+    if (d.scanned) console.log('WARNING: PDF gần như không có lớp chữ (bản scan / ảnh chụp) — dùng --sheet rồi --pages để xem từng trang và tự đọc nội dung trong ảnh.');
+    for (const [n, a] of pageAssets) console.log(`PAGE ${n} → ${a.id} ${a.path} ${a.width}x${a.height}`);
+    console.log('---');
+    for (const b of d.blocks) {
+      if (b.type === 'page') console.log(`\n[PAGE ${b.page}]`);
+      else if (b.type === 'img') console.log(`[IMG #${b.n}${b.assetId ? ` ${b.assetId}` : ''}${b.width ? ` ${b.width}x${b.height}` : ''}${b.page ? ` p.${b.page}` : ''}${b.skip ? ` (bỏ qua: ${b.skip})` : ''}]`);
+      else if (b.type === 'table') for (const [i, r] of b.rows.entries()) console.log(`| ${r.join(' | ')} |${i === 0 ? `\n|${r.map(() => '---').join('|')}|` : ''}`);
+      else console.log(`${b.type === 'title' ? '# ' : b.type === 'h' ? `${'#'.repeat(Math.min(6, (b.level || 1) + 1))} ` : b.type === 'quote' ? '> ' : b.type === 'li' ? '- ' : b.type === 'caption' ? '(chú thích) ' : ''}${b.text}`);
+    }
+  },
+
   /** Free CC-licensed illustration photos (Openverse → Wikimedia Commons). */
   async images() {
     const q = pos.join(' ');
@@ -506,6 +597,9 @@ const commands = {
   youtube <exports/x.mp4> --title t [--description d] [--tags a,b] [--privacy private] [--shorts]   upload to YouTube
   article <url> [--import [all|1,3]] [--max 24] [--refresh] [--json]
                                          read a news/blog/forum article: title, text, images in order; --import adds its images as assets
+  doc [file] [--import [all|1,3]] [--sheet] [--pages 2,5-6] [--refresh] [--json]
+                                         read a Word/PDF/text document (media/docs/…): headings, text, tables, [IMG #n] in order;
+                                         --import adds its pictures, --sheet = page thumbnails to look at, --pages = page images as assets
   images <english words> [--count 8] [--orientation landscape|portrait] [--import 1,3|all]
                                          free CC illustration photos (Openverse / Wikimedia), credits kept in asset.attribution
   music search <words> [--genre G] [--feel F] [--max 60]   search the background-music library (Incompetech CC BY + library/music)

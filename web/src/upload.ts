@@ -1,5 +1,7 @@
 /** Send one file to the server in 8 MB parts (Cloudflare caps a request at 100 MB). Resumes and retries on network errors.
  *  Returns the upload id to hand to an endpoint that consumes it (e.g. /api/projects/restore). */
+import { useStore } from './store';
+
 const CHUNK = 8 * 1024 * 1024;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -25,4 +27,18 @@ export async function uploadParts(file: File, onProgress?: (loaded: number, tota
     }
   }
   return id;
+}
+
+/** Resolve once a server job reaches done/error (job updates arrive over the websocket). */
+export function waitJob(id: string) {
+  return new Promise<any>((resolve, reject) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    let unsub = () => {};
+    const check = (s: ReturnType<typeof useStore.getState>) => {
+      const j = s.jobs[id];
+      if (j?.stage === 'done') { unsub(); resolve(j); }
+      else if (j?.stage === 'error') { unsub(); reject(new Error(j.error || 'nhập file lỗi')); }
+    };
+    unsub = useStore.subscribe(check);
+    check(useStore.getState());
+  });
 }

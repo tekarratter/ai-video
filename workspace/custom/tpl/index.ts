@@ -6,6 +6,7 @@ import { DoodleImage, PaperCutout, WhiteboardScene } from './Sketch';
 import { AppleMotion, BlurFrame, MenuShowcase, StrobeTeaser } from './Business';
 import { SAMPLE } from './samples';
 import { Character3D, CharacterStage } from './Character3D';
+import { BarChart, DataTable, DocTitle, DocZoom, KeyPoints, ProcessFlow, VersusCompare } from './Explainer';
 
 export const templateComponents: Record<string, React.FC<any>> = {
   BreakingIntro, NewsGradient, NewsTicker,
@@ -13,6 +14,7 @@ export const templateComponents: Record<string, React.FC<any>> = {
   WhiteboardScene, DoodleImage, PaperCutout,
   StrobeTeaser, MenuShowcase, AppleMotion, BlurFrame,
   Character3D, CharacterStage,
+  DocTitle, KeyPoints, BarChart, ProcessFlow, DataTable, VersusCompare, DocZoom,
 };
 
 /** Preview props for the Motion library / template gallery (sample photos are CC images on Wikimedia Commons). */
@@ -38,4 +40,27 @@ export const templateDefaults: Record<string, Record<string, unknown>> = {
     background: 'sky', names: true,
     cast: [{ preset: 'be_gai', name: 'Lan', x: 0.3, actions: [{ start: 0, action: 'talk' }, { start: 2, action: 'idle' }] }, { preset: 'be_trai', name: 'Nam', x: 0.7, actions: [{ start: 0, action: 'wave' }, { start: 2, action: 'talk' }] }],
   },
+  DocTitle: { title: 'Phòng chống *sốt xuất huyết*', subtitle: 'Những điều cần biết mùa mưa', meta: 'Bộ Y tế · 2026' },
+  KeyPoints: {
+    kicker: 'Phần 2', title: 'Dấu hiệu *nhận biết*',
+    items: [{ icon: '🌡️', title: 'Sốt cao', text: '39–40°C, kéo dài 2–7 ngày' }, { icon: '🤕', title: 'Đau nhức', text: 'Đau đầu, hốc mắt, cơ khớp' }, { icon: '🩸', title: 'Xuất huyết', text: 'Chấm đỏ dưới da, chảy máu cam' }],
+  },
+  BarChart: {
+    kicker: 'Số liệu', title: 'Số ca mắc theo *khu vực*', unit: '', source: 'Nguồn: số liệu minh họa',
+    bars: [{ label: 'Miền Nam', value: 88000 }, { label: 'Miền Trung', value: 34000 }, { label: 'Miền Bắc', value: 23000 }], highlight: 0,
+  },
+  ProcessFlow: {
+    kicker: 'Các bước', title: 'Chiến dịch *3 diệt*',
+    steps: [{ icon: '🦟', title: 'Diệt muỗi', text: 'Phun thuốc, dùng vợt' }, { icon: '🐛', title: 'Diệt lăng quăng', text: 'Thả cá, thay nước' }, { icon: '🪣', title: 'Diệt nơi đẻ', text: 'Đậy kín dụng cụ chứa nước' }],
+  },
+  DataTable: {
+    kicker: 'Bảng 1', title: 'Số ca và tử vong', columns: ['Khu vực', 'Số ca', 'Tử vong'],
+    rows: [['Miền Nam', '88.000', '21'], ['Miền Trung', '34.000', '9'], ['Miền Bắc', '23.000', '4']], highlight: 0,
+  },
+  VersusCompare: {
+    title: 'Nên và *không nên*',
+    left: { title: 'Không nên', icon: '🚫', points: ['Tự ý dùng aspirin', 'Chờ hết sốt mới đi khám'] },
+    right: { title: 'Nên', icon: '✅', points: ['Uống nhiều nước', 'Đến cơ sở y tế gần nhất'] },
+  },
+  DocZoom: { image: '', caption: 'Biểu đồ: số ca tăng *32%* so với năm trước', kicker: 'TRANG 1', focus: { x: 0.15, y: 0.3, w: 0.7, h: 0.25 } },
 };

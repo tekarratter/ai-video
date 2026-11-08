@@ -489,7 +489,8 @@ export const LeftPanel: React.FC = () => {
             <button className="btn small" onClick={() => fileRef.current?.click()}><Icon name="upload" /> Tải file</button>
             <button className="btn small" onClick={() => openDub()} title="Dịch lời thoại của video/link YouTube và đọc lại bằng giọng AI"><Icon name="mic" /> Thuyết minh</button>
             <button className="btn small" onClick={() => openArticle()} title="Dán link bài báo / diễn đàn → video có giọng đọc, ảnh trong bài và ảnh minh họa"><Icon name="text" /> Từ bài viết</button>
-            <input ref={fileRef} type="file" multiple hidden accept="video/*,image/*,audio/*,.heic,.heif,.zip" onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ''; }} />
+            <button className="btn small" onClick={() => openArticle({ mode: 'doc' })} title="File Word / PDF → video có giọng đọc và hoạt ảnh minh họa (biểu đồ, ý chính, quy trình…)"><Icon name="file" /> Từ Word/PDF</button>
+            <input ref={fileRef} type="file" multiple hidden accept="video/*,image/*,audio/*,.heic,.heif,.zip,.pdf,.docx,.doc,.odt,.rtf,.pptx,.txt,.md" onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ''; }} />
           </div>
           <form className="url-import" onSubmit={(e) => { e.preventDefault(); if (url.trim()) { importUrl(url.trim()); setUrl(''); } }}>
             <Icon name="link" />

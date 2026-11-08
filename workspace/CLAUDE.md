@@ -40,6 +40,8 @@ Run `node ../tools/vedit.mjs help` for all options. Most used:
   — logo/watermark shown over the **whole** video. `--off` hides, `--remove` deletes, no args prints the current setting.
 - `article <url> [--import]` — read a news/blog/forum article (text + photos in order); `--import` adds its photos.
 - `images <english words> [--orientation landscape|portrait] [--import 1,3]` — free CC illustration photos (credits kept).
+- `doc [media/docs/x.pdf] [--import 1,3] [--sheet] [--pages 3]` — read a Word/PDF/text document (text, tables, pictures in
+  order); `--sheet` page thumbnails to Read, `--pages` page images as assets. See "Video từ tài liệu".
 - `validate` — check project.json after hand edits.
 - `youtube <exports/x.mp4> --title "…" [--description "…"] [--tags a,b] [--privacy private|unlisted|public] [--shorts]` —
   publish to the user's YouTube channel. **Only when the user explicitly asks to upload**, confirm title/privacy first,
@@ -102,6 +104,50 @@ for people who don't like reading — clear narration, the article's own photos,
 8. `vedit validate`, look at 2–3 `vedit still <t>` frames (title, a middle scene, the end), fix, then report the scenes
    in a few lines. Don't render unless asked.
 
+## Video từ tài liệu (Word/PDF → explained video)
+
+Requested from the "Video từ tài liệu Word / PDF" dialog (document path `media/docs/…`, voice, length, frame size, visual
+style, 3D presenter yes/no, options). Uploaded documents (also from the Assets tab or the chat) are stored in
+`media/docs/` — `vedit doc` with no argument lists them. Goal: someone who won't read the document understands it —
+a clear spoken explanation with animated illustrations and the document's own figures. Steps:
+
+1. `vedit doc <path>` — title, headings (`##`), text, tables (`| a | b |`), `[IMG #n WxH p.N]` pictures and `[PAGE n]` markers
+   in reading order. Read **all** of it before writing (long output is normal). `WARNING … scan` = no text layer: run
+   `--sheet`, Read the sheets, then `--pages a-b` and Read those page images to read the text yourself.
+2. Set `name` in project.json to a short title of the document (the UI named it after the file).
+3. Look at the document: `vedit doc <path> --sheet` (PDF; .docx only when LibreOffice is installed) → Read the sheet JPGs
+   to find figures, charts, tables and diagrams worth showing. `--import 2,5` adds useful pictures as assets (skip logos,
+   icons, decorations) — Read the imported files to check them. `--pages 3` imports page 3 as an image asset (prints
+   `PAGE 3 → img_x media/… WxH`) for `DocZoom`: Read that image and estimate the `focus` box as fractions of the page.
+4. Script in the requested language: hook (why it matters) → what the document is (title, organisation/author, year) →
+   one scene per key idea in the document's order → conclusion / recommendations → "Theo tài liệu …" / "Source: …".
+   Explain jargon in plain words (keep the technical term once with a short explanation); numbers, names, doses, dates
+   exactly as written; no invented facts, no advice beyond the document, keep its caveats (medical, legal, financial).
+   Spell out abbreviations the TTS can't read. Length: ~2.5 words/s (vi), ~2.6 (en). Show the scene list in one short
+   message, then continue without waiting.
+5. One visual per scene, chosen by what the narration says (`custom/tpl/Explainer.tsx` — read it for all props):
+   - list of 2–6 points → `KeyPoints` (emoji `icon` per item) · numbers to compare → `BarChart` (values exactly from the
+     document, `unit`, `source`) · steps / procedure / timeline → `ProcessFlow` · a table → `DataTable` (≤ 8 rows, ≤ 5
+     columns; summarise bigger ones) · pros/cons, before/after, A vs B, myth/fact → `VersusCompare`
+   - a figure, table or key passage of the document → `DocZoom` (page image + `focus` + `caption`), or an imported
+     picture as an image clip with Ken Burns / `DoodleImage`
+   - one big number → `StatCounter`; a quotation → `QuoteCard`; the main takeaway → `KineticText`; an abstract concept →
+     `WhiteboardScene`; opener → `DocTitle` (`image` = page 1 asset if it has a cover, `meta` = organisation · year)
+   - style "Hình trong tài liệu + ảnh minh họa": prefer the document's pictures/pages, then `vedit images` CC photos with
+     the "Ảnh minh họa" label (as in "Video từ bài viết"); "Chỉ hoạt ảnh": components only.
+   Don't use the same component twice in a row. One `accent` colour and one `theme` for the whole video. On-screen text =
+   short phrases (≤ 8 words), never the narration itself. Set `times` (seconds from the clip start) so each item appears
+   when the narration reaches it (estimate from the word position in the line × the voice clip length).
+6. Voice and timing exactly as "Video từ bài viết" steps 5–6 (component clips: `duration` = scene length + transition;
+   fade 0.4–0.5 s). Title on the first scene comes from `DocTitle`; source in the last scene.
+7. 3D presenter (only if asked): a `Character3D` on the overlay track for the whole video, `background: 'none'`,
+   `voiceName` = the narration voice, `talk` + `point` on key sentences, `wave` at start and end; 16:9 `x` 0.9, `y` 0.98,
+   `size` 0.42 (9:16: `x` 0.82, `y` 0.99, `size` 0.3). Check stills that it doesn't hide text; move it or skip it on a
+   crowded scene (split the clip).
+8. Subtitles (if asked) at position ~0.9 — the Explainer scenes keep the bottom free for them. Music: calm/corporate,
+   volume 0.12. `vedit validate`, check 3–4 `vedit still` frames (opener, a chart/table, a DocZoom, the end), report.
+   Don't render.
+
 ## Video templates
 
 The editor's home screen ("Trang chủ") offers templates. The UI has **already created and opened the project** (frame size
@@ -130,6 +176,12 @@ Template components (all scale to 16:9, 9:16, 1:1):
 - `MenuShowcase` (scene) `{brand, items:[{image, name, price, desc}], accent, dark}` — each item gets an equal share.
 - `AppleMotion` (scene) `{headline, sub, image | video, theme:'light'|'dark', device:'phone'|'laptop'|'none'}`.
 - `BlurFrame` (scene) `{video, start, title, tag, titleColor, blur, volume}` — horizontal video in a 9:16 frame on its own blur.
+- Explainer scenes (`Explainer.tsx`; common `{title, kicker, accent, theme:'light'|'dark', source, times[]}`):
+  `DocTitle` `{title, subtitle, kicker, meta, image}` · `KeyPoints` `{items:[{icon, title, text}]}` ·
+  `BarChart` `{bars:[{label, value, color?, display?}], unit, decimals, highlight, horizontal, locale:'vi'|'en'}` ·
+  `ProcessFlow` `{steps:[{icon, title, text}]}` · `DataTable` `{columns[], rows[][], highlight}` ·
+  `VersusCompare` `{left:{title, icon, color, points[]}, right:{…}, vs}` ·
+  `DocZoom` `{image, aspect, focus:{x, y, w, h}, caption, kicker, zoomAt}` (page image zoom with a highlighter box).
 
 ### Template: Tin nóng 60s
 1. Source = link → `vedit article <url> --import`; text → use it directly. Script: 6–9 lines (~150 words for 60 s).

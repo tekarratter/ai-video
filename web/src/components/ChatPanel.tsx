@@ -5,21 +5,7 @@ import { currentTime } from '../player';
 import { Icon } from './Icon';
 import { openClaudeAuth, useClaudeAuth } from './Account';
 import { TerminalView } from './TerminalView';
-import { uploadParts } from '../upload';
-
-/** Resolve once a server job reaches done/error (job updates arrive over the websocket). */
-function waitJob(id: string) {
-  return new Promise<any>((resolve, reject) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-    let unsub = () => {};
-    const check = (s: ReturnType<typeof useStore.getState>) => {
-      const j = s.jobs[id];
-      if (j?.stage === 'done') { unsub(); resolve(j); }
-      else if (j?.stage === 'error') { unsub(); reject(new Error(j.error || 'nhập file lỗi')); }
-    };
-    unsub = useStore.subscribe(check);
-    check(useStore.getState());
-  });
-}
+import { uploadParts, waitJob } from '../upload';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -384,7 +370,7 @@ export const ChatPanel: React.FC = () => {
             <div className="composer-bar">
               <label className="icon-btn" title="Đính kèm ảnh/video">
                 <Icon name="paperclip" />
-                <input type="file" multiple hidden accept="image/*,video/*,audio/*,.heic,.heif,.zip" onChange={(e) => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
+                <input type="file" multiple hidden accept="image/*,video/*,audio/*,.heic,.heif,.zip,.pdf,.docx,.doc,.odt,.rtf,.pptx,.txt,.md" onChange={(e) => { if (e.target.files) attach(e.target.files); e.target.value = ''; }} />
               </label>
               {uploading && <span className="small muted">đang tải {uploading}</span>}
               <label className="ctx-toggle" title="Gửi kèm vị trí playhead và clip đang chọn">

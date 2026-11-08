@@ -102,7 +102,7 @@ export const Home: React.FC = () => {
   useEffect(() => { api('/api/projects').then((r) => useStore.setState({ projects: r.projects, activeProject: r.active })).catch(() => {}); }, []);
 
   const choose = (t: Template) => {
-    if (t.dialog === 'article') { openArticle({ newProject: true }); return; }
+    if (t.dialog === 'article' || t.dialog === 'document') { openArticle({ newProject: true, mode: t.dialog === 'document' ? 'doc' : 'link' }); return; }
     if (t.dialog === 'dub') { showEditor(); openDub(); return; }
     setPick(t);
   };
@@ -134,6 +134,10 @@ export const Home: React.FC = () => {
           <button className="quick-card" onClick={() => openArticle({ newProject: true })}>
             <span className="quick-icon">📝</span>
             <b>Từ link bài viết</b><span>Báo, blog, diễn đàn → video có giọng đọc</span>
+          </button>
+          <button className="quick-card" onClick={() => openArticle({ newProject: true, mode: 'doc' })}>
+            <span className="quick-icon">📄</span>
+            <b>Từ Word / PDF</b><span>Tài liệu → video giảng giải có hoạt ảnh</span>
           </button>
           <button className="quick-card" onClick={() => { showEditor(); openDub(); }}>
             <span className="quick-icon">🎧</span>

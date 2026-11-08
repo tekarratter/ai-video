@@ -25,6 +25,7 @@ const staleUploads = () => children(UPLOAD_DIR).filter((p) => { try { return Dat
 
 const EXTRAS = {
   frames: { label: 'Ảnh khung hình tạm (Claude chụp để xem lại timeline)', paths: () => children(path.join(CACHE_DIR, 'frames')) },
+  docs: { label: 'Bản đọc tài liệu Word/PDF (đọc lại được khi cần)', paths: () => children(path.join(CACHE_DIR, 'docs')) },
   uploads: { label: 'File tải lên dở dang (quá 1 ngày)', paths: staleUploads },
   trash: { label: 'Dự án đã xoá (thùng rác)', paths: () => children(TRASH_DIR) },
   parts: { label: 'Cảnh đã render sẵn (giúp lần render sau chỉ làm lại cảnh thay đổi)', paths: () => children(path.join(CACHE_DIR, 'render-parts')) },

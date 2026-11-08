@@ -500,7 +500,7 @@ const Jobs: React.FC = () => {
       {!jobs.length && !hasUploads && <div className="empty">Chưa có tác vụ nào.</div>}
       {jobs.map((j) => (
         <div key={j.id} className={`job ${j.stage}`}>
-          <div className="row"><b>{j.label}</b><span className="spacer" /><span className="small muted">{j.stage}{!['done', 'error', 'queued'].includes(j.stage) && j.progress ? ` · ${Math.round(j.progress * 100)}%` : ''}{j.eta ? ` · còn ~${fmtEta(j.eta)}` : ''}</span></div>
+          <div className="row"><b>{j.label}</b><span className="spacer" /><span className="small muted">{j.stage}{!['done', 'error', 'queued'].includes(j.stage) && j.progress ? ` · ${Math.round(j.progress * 100)}%` : ''}{j.eta ? ` · còn ~${fmtEta(j.eta)}` : ['render', 'audio', 'join'].includes(j.stage) ? ' · đang ước tính…' : ''}</span></div>
           {!['done', 'error'].includes(j.stage) && <div className="bar"><div style={{ width: `${(j.progress || 0) * 100}%` }} /></div>}
           {j.type === 'render' && !!j.sceneCount && <SceneList job={j} />}
           {j.type === 'render' && !['done', 'error', 'stopping'].includes(j.stage) && (
