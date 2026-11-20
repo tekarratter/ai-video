@@ -1,0 +1,8 @@
+# Python cho AI Video Studio trên Windows (chỉ CPU — không cần torch/CUDA).
+# faster-whisper chạy bằng CTranslate2 (int8 trên CPU).
+faster-whisper>=1.1
+# faster-whisper 1.2.x truyền av.open(metadata_errors=…), PyAV >= 17 đã bỏ tham số này
+av>=11,<17
+yt-dlp
+pillow
+pillow-heif

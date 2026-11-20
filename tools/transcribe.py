@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Transcribe a media file with faster-whisper (word timestamps). Usage:
    transcribe.py <input> <output.json> [--model small] [--lang vi]"""
-import argparse, json, sys
+import argparse, json, os, sys
 
 ap = argparse.ArgumentParser()
 ap.add_argument("input")
@@ -9,10 +9,15 @@ ap.add_argument("output")
 ap.add_argument("--model", default="small")
 ap.add_argument("--lang", default=None)
 a = ap.parse_args()
+# Windows consoles default to cp1252/cp437: never crash printing Vietnamese text
+for _s in (sys.stdout, sys.stderr):
+    try: _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception: pass
 
 from faster_whisper import WhisperModel
 
-model = WhisperModel(a.model, device="cpu", compute_type="int8")
+# WHISPER_THREADS caps CPU threads (0 = library default); set by scripts/windows/run.ps1 to the physical core count
+model = WhisperModel(a.model, device="cpu", compute_type="int8", cpu_threads=int(os.environ.get("WHISPER_THREADS", "0") or 0))
 segments, info = model.transcribe(a.input, language=a.lang, word_timestamps=True, vad_filter=True, beam_size=5)
 out = {"language": info.language, "duration": info.duration, "segments": []}
 for s in segments:

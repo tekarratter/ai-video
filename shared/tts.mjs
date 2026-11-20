@@ -3,8 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { CACHE_DIR, ROOT, hash } from './store.mjs';
+import { IS_WIN, TTS_PYTHON } from './platform.mjs';
 
-const PY = process.env.TTS_PYTHON || path.join(ROOT, '.venv-tts', 'bin', 'python');
+const PY = TTS_PYTHON;
 const SCRIPT = path.join(ROOT, 'tools', 'tts.py');
 const TTS_DIR = path.join(CACHE_DIR, 'tts');
 
@@ -12,7 +13,7 @@ export const ttsInstalled = () => fs.existsSync(PY);
 
 function run(args, onLine) {
   return new Promise((resolve, reject) => {
-    if (!ttsInstalled()) return reject(new Error('Chưa cài TTS: chạy scripts/install-tts.sh'));
+    if (!ttsInstalled()) return reject(new Error(IS_WIN ? 'Chưa cài TTS: chạy scripts\\windows\\install-tts.ps1' : 'Chưa cài TTS: chạy scripts/install-tts.sh'));
     const p = spawn(PY, [SCRIPT, ...args], { env: { ...process.env, HF_HUB_DISABLE_PROGRESS_BARS: '1' } });
     let out = '', err = '';
     p.stdout.on('data', (d) => {

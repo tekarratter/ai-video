@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
+import { HAS_TMUX, NO_TMUX_MSG } from '../shared/platform.mjs';
 import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
@@ -80,7 +81,7 @@ export function setToken(token) {
   cache = null;
 }
 
-const tmux = (...a) => exec('tmux', a);
+const tmux = (...a) => (HAS_TMUX ? exec('tmux', a) : Promise.reject(new Error(NO_TMUX_MSG)));
 const screen = async () => (await tmux('capture-pane', '-p', '-J', '-t', LOGIN_TMUX)).stdout;
 
 /** Start `claude auth login` in a hidden tmux session and return the sign-in URL. */

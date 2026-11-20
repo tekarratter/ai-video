@@ -14,6 +14,8 @@ Trình dựng video chạy trên Remotion, làm việc cùng **Claude Code**. Ch
 
 ## Chạy
 
+> **Windows (chỉ CPU):** chạy `ai-video.bat` — tự cài và chạy bằng một lệnh. Xem **[README-windows.md](README-windows.md)**.
+
 ```bash
 npm install
 npm run dev          # server :3001 + giao diện :5180  →  mở http://<máy>:5180

@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { DOMParser } from 'linkedom';
+import { unzip, which } from '../shared/platform.mjs';
 
 const exec = promisify(execFile);
 const run = (cmd, args, o = {}) => exec(cmd, args, { maxBuffer: 1 << 28, timeout: 300_000, ...o });
@@ -20,7 +21,7 @@ export const docKey = (file) => crypto.createHash('sha1').update(fs.readFileSync
 const words = (s) => (String(s).match(/[\p{L}\p{N}]+/gu) || []).length;
 const clean = (s) => String(s).normalize('NFC').replace(/[ \t ]+/g, ' ').replace(/ *\n */g, '\n').trim();
 
-async function has(cmd) { try { await run('which', [cmd]); return true; } catch { return false; } }
+const has = async (cmd) => which(cmd);
 
 /* ---------------- .docx ---------------- */
 
@@ -29,7 +30,7 @@ async function readDocx(file, dir) {
   fs.rmSync(x, { recursive: true, force: true });
   fs.mkdirSync(x, { recursive: true });
   // exit code 1 = warnings only; unzip refuses entries escaping the folder
-  await run('unzip', ['-qq', '-o', file, '-d', x]).catch((e) => { if (e.code !== 1) throw new Error('không mở được file .docx (hỏng hoặc có mật khẩu)'); });
+  await unzip(file, x, { strict: true }).catch(() => { throw new Error('không mở được file .docx (hỏng hoặc có mật khẩu)'); });
   const xml = (p) => { const f = path.join(x, p); return fs.existsSync(f) ? new DOMParser().parseFromString(fs.readFileSync(f, 'utf8'), 'text/xml') : null; };
   const doc = xml('word/document.xml');
   if (!doc) throw new Error('file .docx không có nội dung (word/document.xml)');

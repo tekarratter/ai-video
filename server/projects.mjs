@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { EXPORT_DIR, MEDIA_DIR, PROJECT_FILE, WORKSPACE } from '../shared/store.mjs';
 import { emptyProject, normalizeProject, projectDuration } from '../shared/timeline.js';
+import { IS_WIN } from '../shared/platform.mjs';
 
 export const PROJECTS_DIR = path.join(WORKSPACE, 'projects');
 const ACTIVE_FILE = path.join(PROJECTS_DIR, 'active.json');
@@ -39,6 +40,13 @@ function setActive(id) {
 
 /** Point workspace/<name> at target atomically (tmp symlink + rename). */
 function relink(linkPath, target) {
+  if (IS_WIN) {
+    // Windows: a directory junction (no admin / Developer Mode needed, unlike symlinks). A junction cannot be
+    // renamed over another one, so drop the old link first (rmdir removes only the link, never the target).
+    if (isLink(linkPath)) fs.rmdirSync(linkPath);
+    fs.symlinkSync(path.resolve(target), linkPath, 'junction');
+    return;
+  }
   const tmp = `${linkPath}.lnk-${process.pid}`;
   fs.rmSync(tmp, { force: true });
   fs.symlinkSync(path.relative(path.dirname(linkPath), target), tmp);
@@ -216,15 +224,16 @@ export function backupStage(id, { exports = true, claudeDir } = {}) {
   const project = JSON.parse(fs.readFileSync(path.join(dirOf(id), 'project.json'), 'utf8'));
   fs.copyFileSync(path.join(dirOf(id), 'project.json'), path.join(pdir, 'project.json'));
   for (const sub of ['media', ...(exports ? ['exports'] : [])]) {
-    if (fs.existsSync(path.join(dirOf(id), sub))) fs.symlinkSync(path.join(dirOf(id), sub), path.join(pdir, sub));
+    if (fs.existsSync(path.join(dirOf(id), sub))) fs.symlinkSync(path.join(dirOf(id), sub), path.join(pdir, sub), IS_WIN ? 'junction' : undefined);
   }
   const custom = path.join(WORKSPACE, 'custom');
-  if (fs.existsSync(custom)) fs.symlinkSync(custom, path.join(tmp, 'custom'));
+  if (fs.existsSync(custom)) fs.symlinkSync(custom, path.join(tmp, 'custom'), IS_WIN ? 'junction' : undefined);
   const sid = claudeSession(id);
   const transcript = sid && claudeDir ? path.join(claudeDir, `${sid}.jsonl`) : null;
   if (transcript && fs.existsSync(transcript)) {
     fs.mkdirSync(path.join(tmp, 'claude'));
-    fs.symlinkSync(transcript, path.join(tmp, 'claude', `${sid}.jsonl`));
+    if (IS_WIN) fs.copyFileSync(transcript, path.join(tmp, 'claude', `${sid}.jsonl`)); // file symlinks need admin on Windows
+    else fs.symlinkSync(transcript, path.join(tmp, 'claude', `${sid}.jsonl`));
   }
   writePlain(path.join(tmp, 'backup.json'), {
     app: 'ai-video', version: 1, projectId: id, name: project.name, createdAt: Date.now(),

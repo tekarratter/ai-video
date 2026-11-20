@@ -8,6 +8,7 @@ import {
   CACHE_DIR, ROOT, WORKSPACE, importMedia, probe, readProject, writeProject,
 } from '../shared/store.mjs';
 import { downloadUrl } from '../shared/download.mjs';
+import { DRAWTEXT_FONT, PYTHON } from '../shared/platform.mjs';
 import { importTrack, musicFacets, searchMusic } from '../shared/library.mjs';
 import { listVoices, synthesize, ttsFileName } from '../shared/tts.mjs';
 import { articleKey, downloadImage, extractArticle, searchImages } from './article.mjs';
@@ -50,9 +51,16 @@ async function ffmpeg(args) {
   return stderr;
 }
 
-async function api(method, url, body) {
-  const r = await fetch(SERVER + url, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
-    .catch(() => die(`server not reachable at ${SERVER} (start it with: npm run dev)`));
+async function api(method, url, body, { retries = method === 'GET' ? 20 : 0 } = {}) {
+  // GETs (job polling) retry: while a render bundles with webpack the server can be too busy to accept a
+  // connection for a while — common on slow CPU-only machines.
+  let r;
+  for (let i = 0; ; i++) {
+    r = await fetch(SERVER + url, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }).catch(() => null);
+    if (r) break;
+    if (i >= retries) die(`server not reachable at ${SERVER} (start it with: npm run dev)`);
+    await new Promise((res) => setTimeout(res, 3000));
+  }
   const j = await r.json();
   if (!r.ok) die(j.error || r.statusText);
   return j;
@@ -94,7 +102,7 @@ async function transcribe(project, ref, { lang, model = process.env.WHISPER_MODE
   const args = [path.join(ROOT, 'tools', 'transcribe.py'), file, out, '--model', model];
   if (lang) args.push('--lang', lang);
   await new Promise((resolve, reject) => {
-    const p = spawn('python3', args, { stdio: ['ignore', 'inherit', 'inherit'] });
+    const p = spawn(PYTHON, args, { stdio: ['ignore', 'inherit', 'inherit'], windowsHide: true });
     p.on('close', (c) => (c === 0 ? resolve() : reject(new Error(`transcribe failed (${c})`))));
   });
   return JSON.parse(fs.readFileSync(out, 'utf8'));
@@ -157,7 +165,7 @@ const commands = {
     const out = path.join(CACHE_DIR, 'frames', `${asset?.id || 'f'}_sheet.jpg`);
     fs.mkdirSync(path.dirname(out), { recursive: true });
     const d = info.duration || 1;
-    await ffmpeg(['-y', '-i', file, '-vf', `fps=${n}/${d.toFixed(3)},scale=480:-2,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='%{pts\\:hms}':x=8:y=8:fontsize=22:fontcolor=white:box=1:boxcolor=black@0.6,tile=${cols}x${rows}`, '-frames:v', '1', out]);
+    await ffmpeg(['-y', '-i', file, '-vf', `fps=${n}/${d.toFixed(3)},scale=480:-2,drawtext=fontfile=${DRAWTEXT_FONT}:text='%{pts\\:hms}':x=8:y=8:fontsize=22:fontcolor=white:box=1:boxcolor=black@0.6,tile=${cols}x${rows}`, '-frames:v', '1', out]);
     console.log(`${out}\n(${n} frames evenly spaced over ${d.toFixed(1)}s, timestamps drawn top-left; step ≈ ${(d / n).toFixed(2)}s)`);
   },
 

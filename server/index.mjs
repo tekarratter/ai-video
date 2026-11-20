@@ -16,6 +16,7 @@ import { LOCAL_MUSIC_DIR, importTrack, musicFacets, searchMusic } from '../share
 import { listVoices, synthesize, ttsFileName } from '../shared/tts.mjs';
 import { LANGS, TTS_LANGS, dubAsset } from '../shared/dub.mjs';
 import { ClaudeBridge } from './claude.mjs';
+import { HAS_TMUX, NO_TMUX_MSG, unzip, zipToStdout } from '../shared/platform.mjs';
 import { renderProject, renderStopper, renderTimelineStill } from './render.mjs';
 import * as youtube from './youtube.mjs';
 import * as auth from './auth.mjs';
@@ -237,7 +238,7 @@ const MEDIA_RE = /\.(jpe?g|png|webp|gif|heic|heif|avif|tiff?|bmp|mp4|mov|m4v|web
 async function unpackZip(zipPath, dir, depth = 0) {
   fs.mkdirSync(dir, { recursive: true });
   // exit 1 = warnings only; unzip itself refuses entries escaping `dir` (../, absolute paths)
-  await new Promise((resolve) => execFile('unzip', ['-qq', '-o', zipPath, '-d', dir], { maxBuffer: 1 << 24 }, () => resolve()));
+  await unzip(zipPath, dir);
   const out = [];
   const walk = async (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))) {
@@ -428,7 +429,7 @@ app.get('/api/projects/:id/backup', (req, res) => {
   res.setHeader('Content-Type', 'application/zip');
   res.setHeader('Content-Disposition', `attachment; filename="${projects.backupName(req.params.id)}"`);
   // already-compressed media is stored as is (fast, no CPU burn); JSON/TSX get deflated
-  const zip = spawn('zip', ['-r', '-q', '-n', '.mp4:.mov:.m4v:.webm:.mkv:.jpg:.jpeg:.png:.webp:.gif:.heic:.mp3:.m4a:.aac:.ogg:.flac:.wav:.zip', '-', '.'], { cwd: dir });
+  const zip = zipToStdout(dir);
   zip.stdout.pipe(res);
   zip.stderr.on('data', (d) => console.warn('[backup]', String(d).trim()));
   zip.on('error', (e) => { console.warn('[backup]', e.message); cleanup(); res.destroy(e); });
@@ -445,7 +446,7 @@ app.post('/api/projects/restore', (req, res) => {
     fs.mkdirSync(dir, { recursive: true });
     try {
       update({ stage: 'giải nén' });
-      await new Promise((resolve, reject) => execFile('unzip', ['-qq', '-o', part, '-d', dir], { maxBuffer: 1 << 24 }, (err) => (err && err.code > 1 ? reject(new Error(`unzip lỗi ${err.code}`)) : resolve())));
+      await unzip(part, dir, { strict: true });
       update({ stage: 'tạo dự án', progress: 0.8 });
       const r = projects.restoreUnpacked(dir, { name: req.body?.name, claudeDir: claude.projectDir });
       broadcast({ type: 'projects', ...projectsPayload() });
@@ -793,7 +794,7 @@ claude.on('screen', (s) => {
 });
 claude.watch();
 // Only start Claude when it is signed in — otherwise it would sit on its login screen; the admin signs in from the UI.
-if (process.env.CLAUDE_AUTOSTART !== '0') {
+if (process.env.CLAUDE_AUTOSTART !== '0' && HAS_TMUX) {
   claudeAuth.status({ fresh: true }).then((s) => {
     if (s.loggedIn) return claude.start({ resume: projects.claudeSession() || 'continue' });
     console.warn('[claude] Claude Code chưa đăng nhập — vào editor: menu tài khoản → Claude Code');
@@ -919,6 +920,6 @@ setInterval(proxySweep, 120_000);
 
 server.listen(PORT, () => {
   console.log(`[ai-video] server http://localhost:${PORT}  workspace=${WORKSPACE}`);
-  console.log(`[ai-video] Claude Code CLI dùng chung: tmux attach -t ${claude.tmux}`);
+  console.log(HAS_TMUX ? `[ai-video] Claude Code CLI dùng chung: tmux attach -t ${claude.tmux}` : `[ai-video] ${NO_TMUX_MSG}`);
 });
 

@@ -5,11 +5,11 @@ import path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { CACHE_DIR, EXPORT_DIR, ROOT, WORKSPACE, hash } from './store.mjs';
+import { PYTHON, TTS_PYTHON, YTDLP } from './platform.mjs';
 
 const exec = promisify(execFile);
-const TTS_PY = process.env.TTS_PYTHON || path.join(ROOT, '.venv-tts', 'bin', 'python');
-const WHISPER_PY = process.env.WHISPER_PYTHON || 'python3';
-const YTDLP = process.env.YTDLP || (fs.existsSync(path.join(process.env.HOME || '', '.local/bin/yt-dlp')) ? path.join(process.env.HOME, '.local/bin/yt-dlp') : 'yt-dlp');
+const TTS_PY = TTS_PYTHON;
+const WHISPER_PY = process.env.WHISPER_PYTHON || PYTHON;
 
 export const LANGS = { vi: 'Vietnamese', en: 'English', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', fr: 'French', de: 'German', es: 'Spanish', th: 'Thai' };
 export const TTS_LANGS = ['vi', 'en'];
@@ -18,7 +18,7 @@ export const TTS_LANGS = ['vi', 'en'];
 
 function run(cmd, args, { onLine, env } = {}) {
   return new Promise((resolve, reject) => {
-    const p = spawn(cmd, args, { env: { ...process.env, ...env } });
+    const p = spawn(cmd, args, { env: { ...process.env, ...env }, windowsHide: true });
     let err = '';
     let buf = '';
     p.stdout.on('data', (d) => {
