@@ -58,6 +58,16 @@ function Initialize-AiVideoEnv {
   $env:HF_HUB_DISABLE_PROGRESS_BARS = '1'
   $env:HF_HUB_DISABLE_SYMLINKS_WARNING = '1'   # Windows không tạo symlink cho cache HuggingFace
 
+  # --- Giọng đọc AI: dùng .venv-tts của repo, nếu chưa có thì dùng VieNeu-TTS đã cài ở C:\Claude\tools\vieneu-tts ---
+  if (-not $env:TTS_PYTHON -and -not (Test-Path (Join-Path $Root '.venv-tts\Scripts\python.exe'))) {
+    $vnRoot = if ($env:VIENEU_DIR) { $env:VIENEU_DIR } else { Join-Path (Split-Path (Split-Path $Root)) 'tools\vieneu-tts' }
+    $vnPy = Join-Path $vnRoot '.venv\Scripts\python.exe'
+    if (Test-Path $vnPy) {
+      $env:TTS_PYTHON = $vnPy
+      if (-not $env:HF_HOME) { $env:HF_HOME = Join-Path $vnRoot 'models' }   # dùng lại model đã tải, không tải lần nữa
+    }
+  }
+
   # --- Giới hạn luồng CPU (máy chỉ có CPU) ---
   $logical = [Environment]::ProcessorCount
   $physical = $logical

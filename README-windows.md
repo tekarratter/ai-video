@@ -84,7 +84,7 @@ Không cài gì vào Python hệ thống.
 - **Panel chat Claude bị tắt.** Panel này điều khiển Claude Code qua `tmux`, mà Windows không có tmux. Có hai cách thay thế:
   - Mở Claude Code (CLI hoặc app desktop) trong thư mục `workspace\`. Claude sửa `project.json` hoặc gọi `node ..\tools\vedit.mjs …`, và giao diện cập nhật ngay.
   - Kết nối qua **MCP**: menu tài khoản → *Kết nối Claude (MCP)*. Xem [docs/MCP.md](docs/MCP.md).
-- **Giọng đọc AI (VieNeu/Kokoro)** là tuỳ chọn và chưa cài sẵn. Muốn dùng thì tạo `.venv-tts` theo `scripts/install-tts.sh`, hoặc trỏ biến `TTS_PYTHON` tới một Python đã có `vieneu`, `kokoro-onnx` và `soundfile`.
+- **Giọng đọc AI (VieNeu/Kokoro)**: nếu chưa có `.venv-tts`, script tự dùng VieNeu-TTS đã cài ở `C:\Claude\tools\vieneu-tts` (đặt `TTS_PYTHON` và `HF_HOME` tới đó; đổi chỗ bằng `VIENEU_DIR`). Giọng tiếng Anh (Kokoro) cần thêm `kokoro-onnx`.
 - **Đọc PDF/Word**:
   - `.docx` đọc được ngay.
   - PDF cần poppler (`pdftotext`, `pdfimages`, `pdftoppm`) trong PATH.
