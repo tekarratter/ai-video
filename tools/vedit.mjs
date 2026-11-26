@@ -256,6 +256,27 @@ const commands = {
     console.log(times.map((t) => t.toFixed(2)).join('\n') || 'no scene changes');
   },
 
+  // "Clone video mẫu": shots + word-timed speech + palettes → templates/<id>/ANALYSIS.md, TIMELINE.md, sheets;
+  // --save ["Tên"] also saves it as a user template (TEMPLATE.md + skeleton project)
+  async analyze() {
+    const { file, asset } = resolveMedia(readProject(), pos[0]);
+    const R = await import('../shared/reference.mjs');
+    const id = R.createReference(file, asset?.name || path.basename(file), { move: false });
+    const a = await R.analyze(id, { lang: opt.lang, model: opt.model, onStage: (s, p) => process.stderr.write(`  [${Math.round(p * 100)}%] ${s}\n`) });
+    const st = a.stats;
+    console.log(`templates/${id}/  (${st.duration}s, ${st.shots} shots, avg ${st.avgShot}s, ${st.wordsPerMin} words/min, ${a.beats.length} beats)`);
+    for (const b of a.beats) console.log(`  ${String(b.i).padStart(2)} ${b.start.toFixed(2)}-${b.end.toFixed(2)} ${b.role.padEnd(6)} shots ${b.shots.join(',') || '-'}  ${b.text.slice(0, 80)}`);
+    for (const x of ['ANALYSIS.md', 'TIMELINE.md', ...a.sheets.shots, a.sheets.overview]) console.log(path.join(R.TEMPLATES_DIR, id, x));
+    if (opt.save) { const t = R.saveTemplate(id, { name: opt.save === true ? undefined : opt.save }); console.log(`saved template "${t.name}" → ${path.join(R.TEMPLATES_DIR, id, 'TEMPLATE.md')}`); }
+  },
+
+  async templates() {
+    const R = await import('../shared/reference.mjs');
+    const list = R.listTemplates();
+    for (const t of list) console.log([t.id, t.size, `${t.duration}s`, t.flow.map((b) => b.role).join('→'), t.name].join('\t'));
+    console.log(`${list.length} user templates (read templates/<id>/TEMPLATE.md to make a video in that flow)`);
+  },
+
   async add() {
     const p = readProject();
     const asset = assetById(p, pos[0]) || die(`no asset ${pos[0]}`);
@@ -601,6 +622,10 @@ const commands = {
   cut-silence [clipId...|--all] [--noise -32] [--min 0.6] [--pad 0.12]  remove silences from main track
   subtitles [assetId...] [--lang vi] [--max-chars 42]          build subtitle cues from speech
   scenes <assetId> [--threshold 0.3]     scene-change timestamps
+  analyze <assetId|file> [--lang vi] [--model small] [--save "Tên"]
+                                         clone a reference video: shots, word-timed speech, beats, palettes →
+                                         templates/<id>/ANALYSIS.md, TIMELINE.md, sheet JPGs; --save makes it a template
+  templates                              user templates made from reference videos (templates/<id>/TEMPLATE.md)
   render [--draft] [--range 0-10]        export MP4 via Remotion (needs server)
   youtube <exports/x.mp4> --title t [--description d] [--tags a,b] [--privacy private] [--shorts]   upload to YouTube
   article <url> [--import [all|1,3]] [--max 24] [--refresh] [--json]

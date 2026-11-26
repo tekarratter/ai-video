@@ -10,7 +10,8 @@ import { openArticle } from './ArticleDialog';
 import { openDub } from './DubDialog';
 import { openProjects } from './Projects';
 import { uploadFiles } from './LeftPanel';
-import { CATEGORIES, SIZE_LABEL, TEMPLATES, type Field, type Template } from '../templates';
+import { CATEGORIES, SIZE_LABEL, TEMPLATES, fromUserTemplate, type Field, type Template, type UserTemplate } from '../templates';
+import { openClone, templatesChanged } from './CloneDialog';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -30,6 +31,20 @@ function useDemos() {
   }, []);
   return demos;
 }
+
+/** Templates the user made from reference videos (GET /api/templates), refreshed on 'templates-changed'. */
+function useUserTemplates() {
+  const [list, setList] = useState<Template[]>([]);
+  useEffect(() => {
+    const load = () => api('/api/templates').then((r) => setList((r.templates as UserTemplate[]).map(fromUserTemplate))).catch(() => {});
+    load();
+    window.addEventListener('templates-changed', load);
+    return () => window.removeEventListener('templates-changed', load);
+  }, []);
+  return list;
+}
+
+const ratioLabel = (size: string) => (size === '1080x1920' ? '9:16' : size === '1080x1080' ? '1:1' : size === '1920x1080' ? '16:9' : size.replace('x', '×'));
 
 /** Demo video of a template: poster, plays muted on hover (card) or with sound + controls (dialog). */
 const DemoVideo: React.FC<{ id: string; info: DemoInfo; play: boolean; controls?: boolean }> = ({ id, info, play, controls }) => {
@@ -76,11 +91,12 @@ const TemplateCard: React.FC<{ t: Template; demo?: DemoInfo; onPick: (t: Templat
   return (
     <button className="tpl-card" onClick={() => onPick(t)} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <div className="tpl-thumb">
-        {demo?.video && <div className="tpl-thumb-bg" style={{ backgroundImage: `url(/demos/${t.id}.jpg)` }} />}
-        {demo?.video ? <DemoVideo id={t.id} info={demo} play={hover} /> : <TemplatePreview t={t} play={hover} />}
+        {(demo?.video || t.user) && <div className="tpl-thumb-bg" style={{ backgroundImage: `url(${t.user ? t.user.poster : `/demos/${t.id}.jpg`})` }} />}
+        {t.user ? <img className="tpl-poster" src={t.user.poster} alt="" loading="lazy" /> : demo?.video ? <DemoVideo id={t.id} info={demo} play={hover} /> : <TemplatePreview t={t} play={hover} />}
         {t.hot && <span className="tpl-hot">HOT</span>}
         {demo?.video && <span className="tpl-demo">▶ Video mẫu</span>}
-        <span className="tpl-size">{size === '1080x1920' ? '9:16' : size === '1080x1080' ? '1:1' : '16:9'}{demo ? ` · ${Math.round(demo.duration)}s` : ''}</span>
+        {t.user && <span className="tpl-demo">⭐ {t.user.beats} nhịp · {t.user.shots} cảnh</span>}
+        <span className="tpl-size">{ratioLabel(size)}{demo ? ` · ${Math.round(demo.duration)}s` : t.user ? ` · ${Math.round(t.user.duration)}s` : ''}</span>
       </div>
       <div className="tpl-meta">
         <b>{t.icon} {t.name}</b>
@@ -98,6 +114,7 @@ export const Home: React.FC = () => {
   const [q, setQ] = useState('');
   const [pick, setPick] = useState<Template | null>(null);
   const demos = useDemos();
+  const mine = useUserTemplates();
   const galleryRef = useRef<HTMLDivElement>(null);
   useEffect(() => { api('/api/projects').then((r) => useStore.setState({ projects: r.projects, activeProject: r.active })).catch(() => {}); }, []);
 
@@ -111,7 +128,7 @@ export const Home: React.FC = () => {
     showEditor();
   };
   const ql = q.trim().toLowerCase();
-  const list = TEMPLATES.filter((t) => (cat === 'all' || t.cat === cat) && (!ql || `${t.name} ${t.desc}`.toLowerCase().includes(ql)));
+  const list = [...mine, ...TEMPLATES].filter((t) => (cat === 'all' || t.cat === cat) && (!ql || `${t.name} ${t.desc}`.toLowerCase().includes(ql)));
   const recent = [...projects].sort((a: any, b: any) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 8);
 
   return (
@@ -143,9 +160,13 @@ export const Home: React.FC = () => {
             <span className="quick-icon">🎧</span>
             <b>Thuyết minh video</b><span>Dịch & lồng tiếng Việt / Anh</span>
           </button>
+          <button className="quick-card" onClick={() => openClone()}>
+            <span className="quick-icon">🎬</span>
+            <b>Clone video mẫu</b><span>Tải video lên → phân tích luồng → template mới</span>
+          </button>
           <button className="quick-card hot" onClick={() => galleryRef.current?.scrollIntoView({ behavior: 'smooth' })}>
             <span className="quick-icon">⚡</span>
-            <b>Templates</b><span>{TEMPLATES.length} kiểu video có sẵn</span>
+            <b>Templates</b><span>{TEMPLATES.length} kiểu có sẵn{mine.length ? ` + ${mine.length} của bạn` : ''}</span>
           </button>
         </div>
 
@@ -178,7 +199,13 @@ export const Home: React.FC = () => {
         </div>
         <div className="tpl-grid">
           {list.map((t) => <TemplateCard key={t.id} t={t} demo={demos[t.id]} onPick={choose} />)}
-          {!list.length && <div className="muted">Không có template phù hợp.</div>}
+          {cat === 'mine' && (
+            <button className="tpl-card tpl-new" onClick={() => openClone()}>
+              <div className="tpl-thumb"><div className="tpl-thumb-empty">🎬</div></div>
+              <div className="tpl-meta"><b>+ Template mới từ video</b><span className="muted small">Tải video bạn muốn học theo; máy phân tích cảnh, lời, nhịp và lưu thành template.</span></div>
+            </button>
+          )}
+          {!list.length && cat !== 'mine' && <div className="muted">Không có template phù hợp.</div>}
         </div>
       </div>
       {pick && <TemplateDialog t={pick} demo={demos[pick.id]} onClose={() => setPick(null)} />}
@@ -228,7 +255,7 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
     setErr(''); setBusy('Đang mở bản mẫu…');
     try {
       await flushSave(); rememberProject();
-      const r = await api(`/api/demos/${t.id}/use`, 'POST');
+      const r = await api(t.user ? `/api/templates/${t.id}/use` : `/api/demos/${t.id}/use`, 'POST');
       if (r?.projects) useStore.setState({ projects: r.projects, activeProject: r.active });
       useStore.getState().toast('Đã mở bản mẫu — sửa thoải mái, bản gốc không đổi');
       onClose(); showEditor();
@@ -258,7 +285,9 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
           setTimeout(() => { if (check()) { unsub(); resolve(); } }, 1500);
         });
       }
-      const lines = [`Tạo video theo template "${t.name}" — làm theo mục "## Template: ${t.recipe}" trong CLAUDE.md (đọc lại mục đó và "Video templates" trước khi làm).`];
+      const lines = [t.user
+        ? `Tạo video theo template tự tạo "${t.name}" — làm theo mục "Template: Mẫu tự tạo (clone video)" trong CLAUDE.md: đọc templates/${t.id}/TEMPLATE.md (công thức: luồng, nhịp cắt, màu), ANALYSIS.md và xem các ảnh templates/${t.id}/reference/sheet-*.jpg trước khi làm. Giữ cấu trúc, thay toàn bộ nội dung.`
+        : `Tạo video theo template "${t.name}" — làm theo mục "## Template: ${t.recipe}" trong CLAUDE.md (đọc lại mục đó và "Video templates" trước khi làm).`];
       if (srcField) lines.push(`- ${SOURCE_LABEL[mode]}: ${(vals.source || '').trim()}`);
       for (const f of t.fields) {
         if ((f.type === 'text' || f.type === 'textarea') && (vals[f.k] || '').trim()) lines.push(`- ${f.label}: ${vals[f.k].trim()}`);
@@ -289,8 +318,24 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
         </div>
         <div className="tpl-modal-body">
           <div className="tpl-modal-side">
-            <div className="tpl-modal-preview">{demo?.video ? <DemoVideo id={t.id} info={demo} play controls /> : <TemplatePreview t={{ ...t, sizes: [size] }} play />}</div>
-            {demo && (
+            <div className="tpl-modal-preview">{t.user ? <img className="tpl-poster" src={t.user.poster} alt="" /> : demo?.video ? <DemoVideo id={t.id} info={demo} play controls /> : <TemplatePreview t={{ ...t, sizes: [size] }} play />}</div>
+            {t.user && (
+              <>
+                <div className="tpl-flow">{t.user.flow.map((b) => <span key={b.i} title={b.sample} style={{ flex: Math.max(0.04, b.share) }} className={`r-${b.role}`}>{b.label}</span>)}</div>
+                <div className="muted small">{t.user.duration}s · {t.user.shots} cảnh · {t.user.pacing.avgShot}s/cảnh{t.user.pacing.wordsPerMin ? ` · ${t.user.pacing.wordsPerMin} từ/phút` : ''}</div>
+                <button className="btn" disabled={!!busy} onClick={openDemo}><Icon name="copy" /> Tạo dự án từ khung mẫu</button>
+                <div className="muted small">Dự án có sẵn đủ cảnh đúng thời lượng (khung hình mẫu giữ chỗ) và phụ đề lời mẫu — tự thay từng cảnh, hoặc điền form bên phải để Claude làm.</div>
+                <div className="row gap">
+                  <button className="link-btn" onClick={() => { onClose(); openClone({ referenceId: t.id }); }}>Xem / sửa phân tích</button>
+                  <div className="spacer" />
+                  <button className="link-btn danger" disabled={!!busy} onClick={async () => {
+                    if (!window.confirm(`Xoá template "${t.name}"? (chuyển vào workspace/templates/.trash)`)) return;
+                    try { await api(`/api/templates/${t.id}`, 'DELETE'); templatesChanged(); onClose(); } catch (e: any) { setErr(e.message); }
+                  }}>Xoá template</button>
+                </div>
+              </>
+            )}
+            {demo && !t.user && (
               <>
                 <button className="btn" disabled={!!busy} onClick={openDemo}><Icon name="copy" /> Dùng mẫu này để sửa</button>
                 <div className="muted small">Mở bản demo thành dự án mới: thay ảnh, sửa chữ ở bảng Cảnh &amp; Lời thoại, hoặc nhờ Claude sửa.</div>

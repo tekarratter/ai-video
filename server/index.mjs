@@ -25,6 +25,7 @@ import * as cleanup from './cleanup.mjs';
 import { mountMcp } from '../mcp/server.mjs';
 import * as telegram from './telegram.mjs';
 import * as claudeAuth from './claudeauth.mjs';
+import * as reference from '../shared/reference.mjs';
 
 const PORT = Number(process.env.PORT || 3001);
 const MEDIA_BASE = `http://localhost:${PORT}`;
@@ -153,6 +154,7 @@ app.use('/p/:id/media', (req, res, next) => {
 });
 app.use('/exports', express.static(EXPORT_DIR));
 app.use('/cache', express.static(CACHE_DIR));
+app.use('/templates', express.static(reference.TEMPLATES_DIR, { index: false }));
 app.use('/library/music', express.static(LOCAL_MUSIC_DIR));
 
 app.get('/api/project', (req, res) => res.json(readProject()));
@@ -395,7 +397,7 @@ const busyJobs = () => [...jobs.values()].filter((j) => !['done', 'error'].inclu
 const projectsPayload = () => ({ active: projects.activeId(), projects: projects.list() });
 app.get('/api/projects', (req, res) => res.json(projectsPayload()));
 function openProject(id) {
-  const busy = busyJobs().filter((j) => j.type !== 'render'); // renders work on a snapshot of their project
+  const busy = busyJobs().filter((j) => j.type !== 'render' && j.type !== 'analyze'); // renders use a snapshot; analysis works in templates/
   if (busy.length) throw Object.assign(new Error(`Đang có tác vụ chạy (${busy.map((j) => j.label).join(', ')}) — đợi xong rồi chuyển project`), { status: 409 });
   const from = projects.activeId();
   if (from === id) return;
@@ -468,6 +470,49 @@ app.post('/api/demos/:id/use', handle((req) => {
   // thumbnails / waveforms for the asset panel, once the project's media is the open one
   (async () => { for (const a of readProject().assets) if (!fs.existsSync(path.join(CACHE_DIR, 'thumbs', `${a.id}.jpg`)) && !fs.existsSync(path.join(CACHE_DIR, 'thumbs', `${a.id}.wave.png`))) await makePreviews(a); })()
     .catch((e) => console.warn('[demo] previews', e.message));
+}));
+/* ---- "Clone video mẫu": analyse a reference video → flow → user template (shared/reference.mjs) ---- */
+// body: { uploadId, size, fileName } (chunked upload) or { assetId } (a video already in the open project); lang, model
+app.post('/api/reference/analyze', (req, res) => {
+  const { uploadId, size, fileName, assetId, lang, model } = req.body || {};
+  let id;
+  try {
+    if (assetId) {
+      const a = readProject().assets.find((x) => x.id === assetId && x.type === 'video');
+      if (!a) throw new Error('Không có video này trong dự án');
+      id = reference.createReference(path.join(WORKSPACE, a.path), a.name, { move: false });
+    } else {
+      const part = partPath(uploadId);
+      if (partSize(part) !== Number(size)) throw new Error('Video chưa tải lên đủ');
+      id = reference.createReference(part, path.basename(String(fileName || 'video.mp4').replace(/\\/g, '/')));
+    }
+  } catch (e) { return res.status(400).json({ error: e.message }); }
+  const m = ['tiny', 'base', 'small', 'medium'].includes(model) ? model : undefined;
+  const job = startJob('analyze', `Phân tích video mẫu ${fileName || assetId}`, async (update) => {
+    const a = await reference.analyze(id, { lang: lang && lang !== 'auto' ? String(lang) : undefined, model: m, onStage: (stage, progress) => update({ stage, progress }) });
+    return { label: `Đã phân tích: ${a.stats.shots} cảnh, ${a.beats.length} nhịp`, referenceId: id };
+  });
+  res.json({ job, referenceId: id });
+});
+app.get('/api/reference/:id', (req, res) => {
+  try {
+    const tf = path.join(reference.dirOf(req.params.id), 'template.json');
+    res.json({ ...reference.readAnalysis(req.params.id), template: fs.existsSync(tf) ? JSON.parse(fs.readFileSync(tf, 'utf8')) : null });
+  } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
+});
+app.get('/api/templates', (req, res) => res.json({ templates: reference.listTemplates(), roles: reference.ROLES }));
+app.post('/api/templates/:id', (req, res) => {
+  try { const t = reference.saveTemplate(req.params.id, req.body || {}); broadcast({ type: 'templates' }); res.json(t); } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
+});
+app.delete('/api/templates/:id', (req, res) => {
+  try { reference.deleteTemplate(req.params.id); broadcast({ type: 'templates' }); res.json({ ok: true }); } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
+});
+// "Tạo dự án từ khung mẫu": the template's skeleton (placeholder frames + original-timed subtitles) as a new project
+app.post('/api/templates/:id/use', handle((req) => {
+  const nid = projects.fromDemo(reference.skeletonDir(req.params.id));
+  openProject(nid);
+  (async () => { for (const a of readProject().assets) if (!fs.existsSync(path.join(CACHE_DIR, 'thumbs', `${a.id}.jpg`))) await makePreviews(a); })()
+    .catch((e) => console.warn('[template] previews', e.message));
 }));
 app.post('/api/projects/:id/duplicate', handle((req) => { projects.duplicate(req.params.id); broadcast({ type: 'projects', ...projectsPayload() }); }));
 app.patch('/api/projects/:id', handle((req) => {

@@ -24,10 +24,30 @@ export type Template = {
   recipe: string;
   /** opens an existing dialog instead of the template form */
   dialog?: 'article' | 'dub' | 'document';
+  /** user template made from a reference video ("Clone video mẫu"): workspace/templates/<id>/ */
+  user?: UserTemplate;
 };
+
+export type UserTemplate = {
+  id: string; name: string; desc: string; size: string; duration: number; shots: number; beats: number; poster: string;
+  flow: { i: number; role: string; label: string; share: number; dur: number; shots: number; words: number; sample: string; note?: string }[];
+  pacing: { avgShot: number; cutsPerMin: number; wordsPerMin: number; hookEnd: number };
+};
+
+/** A user template shown and used like the built-in ones (form → brief for Claude). */
+export const fromUserTemplate = (u: UserTemplate): Template => ({
+  id: u.id, cat: 'mine', name: u.name, desc: u.desc, icon: '🎬', user: u,
+  preview: { component: '' }, sizes: [u.size], voice: true, recipe: '',
+  fields: [
+    { k: 'source', type: 'source', label: 'Nội dung mới', modes: ['topic', 'text', 'link'] },
+    { k: 'media', type: 'files', label: 'Ảnh / video của bạn', accept: 'image/*,video/*', hint: 'Tuỳ chọn: dùng cho các cảnh, theo thứ tự' },
+    { k: 'cta', type: 'text', label: 'Kêu gọi hành động (tuỳ chọn)', placeholder: 'VD: Nhắn tin ngay để nhận ưu đãi' },
+  ],
+});
 
 export const CATEGORIES: [string, string, string][] = [
   ['all', 'Tất cả', '🔥'],
+  ['mine', 'Mẫu của tôi', '⭐'],
   ['news', 'Tin tức', '📰'],
   ['dialogue', 'Hội thoại & Podcast', '💬'],
   ['illustrative', 'Minh họa', '🎨'],

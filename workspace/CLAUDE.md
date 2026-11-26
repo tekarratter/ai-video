@@ -18,6 +18,7 @@ Reply in the user's language (usually Vietnamese). Keep replies short; the user 
 | `media/` | Imported media. Never delete files here unless asked. |
 | `custom/*.tsx` | Remotion components for motion graphics. Register them in `custom/index.tsx`. |
 | `exports/` | Rendered MP4s. |
+| `templates/<id>/` | User templates cloned from reference videos: `ANALYSIS.md`, `TIMELINE.md`, `TEMPLATE.md`, `reference/sheet-*.jpg`. See "Template: Mẫu tự tạo (clone video)". |
 | `.cache/` | Thumbnails, transcripts (`.cache/transcripts/<assetId>.json`), frames. |
 
 ## Tools — `node ../tools/vedit.mjs <command>`
@@ -35,6 +36,8 @@ Run `node ../tools/vedit.mjs help` for all options. Most used:
 - `subtitles [--lang vi]` — build `project.subtitles.cues` from speech, mapped through the current cuts.
   Re-run after re-cutting.
 - `scenes <assetId>` — scene-change timestamps (good for finding shots / highlights).
+- `analyze <assetId|file> [--lang vi] [--model base] [--save "Tên"]` — clone a reference video: shots (hard cuts + fades),
+  word-timed speech, beats with roles, pacing, palettes → `templates/<id>/`. `templates` lists saved user templates.
 - `render [--draft] [--range 0-10]` — export MP4 with Remotion (slow; only when the user asks).
 - `logo <assetId|file> [--position top-left|top-center|top-right|bottom-left|bottom-center|bottom-right] [--size 0.18] [--margin 0.04] [--opacity 0.9]`
   — logo/watermark shown over the **whole** video. `--off` hides, `--remove` deletes, no args prints the current setting.
@@ -246,6 +249,27 @@ product name big (`AppleMotion` device none). Clean minimal music.
 Main track: `BlurFrame` clips over the uploaded horizontal video (`video` = its path, `start` = source second, `title`/`tag`
 from the brief), cut to the requested part(s). Subtitles from speech (`subtitles`), translated if asked; dubbing → `dub`.
 Subtitle position ~0.78 (below the sharp video).
+
+### Template: Mẫu tự tạo (clone video)
+The user uploaded a video they want to imitate ("Clone video mẫu"); the app analysed it locally and saved it as
+`templates/<id>/`. The brief names the id. The template is a **flow**, not content: keep the structure, replace everything said and shown.
+1. Read `templates/<id>/TEMPLATE.md` (the recipe: beats with roles and shares of the running time, shots per beat, cut pace,
+   words/min, palette), then `ANALYSIS.md` / `TIMELINE.md`. **Read the sheet JPGs** (`reference/sheet-shots-*.jpg`,
+   `reference/sheet-overview.jpg`) — the automatic analysis has no OCR: on-screen text, caption style, stickers, layout and
+   graphics are only visible there. For a passage that matters, look closer with `vedit frames templates/<id>/reference/source.mp4`.
+   If ANALYSIS.md lacks it, add a short "Quan sát thêm" section (what's on screen per beat) so the next run has it.
+2. Write the new script beat by beat: same number of beats, same roles in the same order, each beat ≈ the sample's word count.
+   Never reuse the sample's words, names, brands or claims — only its rhetoric (question hook, list, proof, CTA…). The CTA beat
+   uses the user's CTA (brief) or a neutral one.
+3. Voice: one `vedit tts` per beat, back to back on `voice`; the voice lengths set the timing (time is anchored to words, so the
+   total may differ from the sample by ±30%).
+4. Pictures: per beat the sample's number of shots, cut at the start of key phrases (pace ≈ the sample's seconds per shot).
+   Sources: the user's uploads first (in order), then `vedit images` / article photos, then motion components (`custom/`)
+   styled like the sample (positions, colours from the palette, caption look).
+5. If the open project came from "Tạo dự án từ khung mẫu", it already has one placeholder clip per sample shot (named
+   "Cảnh N · vai trò", the sample frame as the image) and the sample's words as subtitles: replace every placeholder and every
+   cue — nothing from the sample may remain. Otherwise build on the empty project the UI created.
+6. `vedit subtitles` after the voice is final, `vedit validate`, 2–3 `vedit still` checks. Don't render.
 
 ## Nhân vật 3D (cartoon characters)
 

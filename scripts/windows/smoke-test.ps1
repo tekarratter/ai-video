@@ -1,6 +1,6 @@
 ﻿# Chạy thử AI Video Studio với dữ liệu mẫu nhỏ trong một workspace tạm có tên tiếng Việt
 # (không đụng vào workspace\ thật). Kiểm tra: server, nhập ảnh/âm thanh tên có dấu, ffmpeg (khung hình,
-# bảng khung hình có chữ), faster-whisper trên CPU, render Remotion ra MP4, sao lưu .zip.
+# bảng khung hình có chữ), faster-whisper trên CPU, render Remotion ra MP4, sao lưu .zip, clone video mẫu thành template.
 #   ai-video.bat -Test        (hoặc: powershell -ExecutionPolicy Bypass -File scripts\windows\smoke-test.ps1)
 param([string]$WhisperModel = 'tiny', [int]$Port = 3011)
 . "$PSScriptRoot\common.ps1"
@@ -93,6 +93,14 @@ try {
       $names = & $VenvPython -c "import sys, zipfile; print('\n'.join(zipfile.ZipFile(sys.argv[1]).namelist()))" $zip
       Check 'Sao lưu .zip giữ tên tiếng Việt' ([bool]($names -match 'đèn_lồng_Hội_An')) ("{0} tệp" -f @($names).Count)
     } catch { Check 'Sao lưu .zip giữ tên tiếng Việt' $false $_.Exception.Message }
+
+    Write-Step 'Clone video mẫu → template (cảnh, lời, nhịp, bảng khung hình)…'
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $an = Vedit analyze $assets[2] --lang vi --model $WhisperModel --save 'Mẫu thử nghiệm'
+    $sw.Stop()
+    $an | Select-Object -Last 6 | Write-Host
+    $tplMd = ($an | Where-Object { $_ -match 'TEMPLATE\.md$' } | Select-Object -Last 1) -replace '^saved template .* → ', ''
+    Check 'Clone video mẫu thành template' ([bool]$tplMd -and (Test-Path $tplMd)) ("{0:N0}s" -f $sw.Elapsed.TotalSeconds)
   }
 } finally {
   if ($server -and -not $server.HasExited) { Stop-Process -Id $server.Id -Force; Get-CimInstance Win32_Process -Filter "ParentProcessId=$($server.Id)" -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }

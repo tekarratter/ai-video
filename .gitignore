@@ -13,3 +13,4 @@ models/
 library/music/*
 !library/music/README.md
 .env
+workspace/templates/

@@ -389,6 +389,49 @@ trong editor của người dùng; chỉ render khi người dùng yêu cầu. N
     return json(jobView(r.job || r));
   }));
 
+  /* ---- "Clone video mẫu" (shared/reference.mjs) ---- */
+  server.registerTool('analyze_reference_video', {
+    title: 'Phân tích video mẫu',
+    description: 'Phân tích một video mẫu (video đang có trong dự án, theo asset id) thành luồng để làm template: điểm cắt cảnh, lời nói theo từng từ, các nhịp (hook / nội dung / kêu gọi hành động), nhịp cắt, bảng màu, bảng khung hình. Kết quả ở templates/<id>/ (ANALYSIS.md, TIMELINE.md, reference/sheet-*.jpg). Chạy nền ~1–3 phút trên CPU; theo dõi bằng job_status rồi đọc bằng get_reference_analysis. Video ở link: import_url trước.',
+    inputSchema: { asset_id: z.string(), lang: z.string().optional().describe('Ngôn ngữ lời nói, vd "vi", "en"; bỏ trống = tự nhận'), model: z.enum(['tiny', 'base', 'small', 'medium']).optional() },
+  }, tool(async ({ asset_id, lang, model }) => {
+    const r = await api('POST', '/api/reference/analyze', { assetId: asset_id, lang, model });
+    return json({ reference_id: r.referenceId, ...jobView(r.job) });
+  }));
+
+  server.registerTool('get_reference_analysis', {
+    title: 'Kết quả phân tích video mẫu', annotations: RO,
+    description: 'ANALYSIS.md + TIMELINE.md của một video mẫu đã phân tích, kèm bảng khung hình đầu tiên (ảnh). Dùng để hiểu và viết tiếp phần diễn giải (chữ trên hình, hiệu ứng) trước khi lưu thành template.',
+    inputSchema: { reference_id: z.string() },
+  }, tool(async ({ reference_id }) => {
+    const R = await import('../shared/reference.mjs');
+    const dir = R.dirOf(reference_id);
+    const a = R.readAnalysis(reference_id);
+    const md = ['ANALYSIS.md', 'TIMELINE.md'].map((x) => fs.readFileSync(path.join(dir, x), 'utf8')).join('\n\n---\n\n');
+    const img = fs.readFileSync(path.join(dir, a.sheets.shots[0])).toString('base64');
+    return { content: [{ type: 'text', text: clip(md) }, { type: 'image', data: img, mimeType: 'image/jpeg' }] };
+  }));
+
+  server.registerTool('save_template', {
+    title: 'Lưu video mẫu thành template',
+    description: 'Lưu một video mẫu đã phân tích thành template của người dùng (hiện trong thư viện Templates → "Mẫu của tôi"). roles: sửa vai trò từng nhịp {"<số nhịp>": "hook|setup|item|body|proof|payoff|cta|outro"}; notes: ghi chú cho từng nhịp (chữ trên hình, hiệu ứng…).',
+    inputSchema: {
+      reference_id: z.string(), name: z.string().optional(), desc: z.string().optional(),
+      roles: z.record(z.string(), z.string()).optional(), notes: z.record(z.string(), z.string()).optional(),
+    },
+  }, tool(async ({ reference_id, ...edits }) => json(await api('POST', `/api/templates/${reference_id}`, edits))));
+
+  server.registerTool('list_templates', {
+    title: 'Template của tôi', annotations: RO,
+    description: 'Các template người dùng tự tạo từ video mẫu: luồng (vai trò, tỉ lệ thời lượng, số cảnh), nhịp cắt, màu. Làm video theo template: đọc templates/<id>/TEMPLATE.md (công thức) hoặc gọi use_template để có dự án khung.',
+  }, tool(async () => json((await api('GET', '/api/templates')).templates)));
+
+  server.registerTool('use_template', {
+    title: 'Tạo dự án từ template',
+    description: 'Tạo và mở dự án mới từ khung của template: đủ số cảnh với thời lượng như mẫu (ảnh khung hình mẫu giữ chỗ, tên "Cảnh N · vai trò") và phụ đề lời mẫu. Sau đó thay từng cảnh và lời theo TEMPLATE.md.',
+    inputSchema: { template_id: z.string() },
+  }, tool(async ({ template_id }) => { await api('POST', `/api/templates/${template_id}/use`); return text(await vedit(['info'])); }));
+
   server.registerTool('job_status', {
     title: 'Theo dõi tác vụ', annotations: RO,
     description: 'Tiến độ một tác vụ (render, tải lên, giọng đọc…), có thể chờ tới `wait_seconds` (tối đa 50). Render xong có link tải video.',

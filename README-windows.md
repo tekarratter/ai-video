@@ -79,6 +79,10 @@ Không cài gì vào Python hệ thống.
   - Font cho drawtext là `C:\Windows\Fonts\arial.ttf`.
 - **Dự án** trỏ `workspace\media` và `workspace\exports` vào dự án đang mở. Trên Linux việc này dùng symlink. Trên Windows dùng **directory junction**, nên không cần quyền admin hay Developer Mode.
 
+## Clone video mẫu
+
+Trang chủ → **🎬 Clone video mẫu**: phân tích một video mẫu (cảnh, lời, nhịp, màu) ngay trên máy, chỉ dùng CPU, rồi lưu thành template. Xem [docs/CLONE-VIDEO.md](docs/CLONE-VIDEO.md).
+
 ## Khác với bản Linux
 
 - **Panel chat Claude bị tắt.** Panel này điều khiển Claude Code qua `tmux`, mà Windows không có tmux. Có hai cách thay thế:
