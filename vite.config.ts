@@ -22,7 +22,7 @@ export default defineConfig({
     allowedHosts: true, // allow access via any hostname (LAN name, Tailscale MagicDNS, reverse proxy)
     port: Number(process.env.WEB_PORT || 5180),
     fs: { allow: [path.resolve(__dirname)] },
-    watch: { ignored: ['**/library/**', '**/models/**', '**/.venv-tts/**', '**/workspace/media/**', '**/workspace/exports/**', '**/workspace/.cache/**', '**/workspace/project.json', '**/workspace/projects/**'] },
+    watch: { ignored: ['**/library/**', '**/models/**', '**/.venv-tts/**', '**/.venv/**', '**/workspace/media/**', '**/workspace/exports/**', '**/workspace/.cache/**', '**/workspace/project.json', '**/workspace/projects/**'] },
     proxy: {
       '/api': { target: API, xfwd: true, timeout: 0, proxyTimeout: 0 },
       '/media': { target: API, xfwd: true },

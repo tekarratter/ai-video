@@ -1,0 +1,4 @@
+# Windows scripts keep CRLF (cmd.exe / PowerShell); shell scripts keep LF so they run in Docker/Linux
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.sh  text eol=lf

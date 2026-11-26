@@ -7,6 +7,7 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { emptyProject, newId, normalizeProject } from './timeline.js';
+import { PYTHON, spawnNice } from './platform.mjs';
 
 const exec = promisify(execFile);
 
@@ -109,7 +110,7 @@ function replaceExt(file, ext) {
 function runFfmpeg(args, durationSec, onProgress, { nice = 0 } = {}) {
   return new Promise((resolve, reject) => {
     const ff = ['ffmpeg', '-v', 'error', '-y', '-progress', 'pipe:1', '-nostats', ...args];
-    const p = nice ? spawn('nice', ['-n', String(nice), ...ff]) : spawn(ff[0], ff.slice(1));
+    const p = spawnNice(ff[0], ff.slice(1), nice);
     let err = '';
     p.stdout.on('data', (d) => {
       const m = [...d.toString().matchAll(/out_time_ms=(\d+)/g)].pop();
@@ -129,7 +130,7 @@ export async function normalizeMedia(file, { onProgress, onStage } = {}) {
   const convertImage = async (maxSide) => {
     onStage?.('convert-image');
     const out = replaceExt(file, '.jpg');
-    await exec('python3', [path.join(ROOT, 'tools', 'convert_image.py'), file, out, '--max', String(maxSide)]);
+    await exec(PYTHON, [path.join(ROOT, 'tools', 'convert_image.py'), file, out, '--max', String(maxSide)]);
     await fsp.unlink(file);
     return out;
   };

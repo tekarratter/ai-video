@@ -9,6 +9,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { execFile, spawn } from 'node:child_process';
+import { HAS_TMUX, NO_TMUX_MSG } from '../shared/platform.mjs';
 import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
@@ -68,15 +69,18 @@ export class ClaudeBridge extends EventEmitter {
   }
 
   async tmuxCmd(...args) {
+    if (!HAS_TMUX) throw new Error(NO_TMUX_MSG);
     return exec('tmux', args, { maxBuffer: 8 * 1024 * 1024 });
   }
 
   async isRunning() {
+    if (!HAS_TMUX) return false;
     try { await this.tmuxCmd('has-session', '-t', `=${this.tmux}`); return true; } catch { return false; }
   }
 
   /** Start claude inside tmux (if not already running). `resume`: session id, or 'continue'. */
   async start({ resume } = {}) {
+    if (!HAS_TMUX) throw new Error(NO_TMUX_MSG);
     if (await this.isRunning()) return;
     const id = crypto.randomUUID();
     let cmd = `claude ${this.claudeArgs}`.trim();

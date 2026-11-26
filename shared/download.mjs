@@ -4,8 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { CACHE_DIR } from './store.mjs';
-
-const YTDLP = process.env.YTDLP || (fs.existsSync(path.join(os.homedir(), '.local/bin/yt-dlp')) ? path.join(os.homedir(), '.local/bin/yt-dlp') : 'yt-dlp');
+import { YTDLP } from './platform.mjs';
 
 /**
  * @returns {Promise<string>} path of the downloaded temp file
@@ -22,7 +21,7 @@ export function downloadUrl(url, { audioOnly = false, maxHeight = 1080, section,
   if (section) args.push('--download-sections', `*${section}`, '--force-keyframes-at-cuts');
   args.push(url);
   return new Promise((resolve, reject) => {
-    const p = spawn(YTDLP, args);
+    const p = spawn(YTDLP, args, { windowsHide: true });
     let err = '';
     const onData = (d) => {
       const s = d.toString();
