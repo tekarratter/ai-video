@@ -44,6 +44,9 @@ export function connect() {
         useStore.setState({ projects: m.projects });
         st.toast(`Đã mở project "${m.project.name}"`);
         break;
+      case 'templates':
+        window.dispatchEvent(new Event('templates-changed'));
+        break;
       case 'telegram':
         window.dispatchEvent(new Event('telegram-linked'));
         break;

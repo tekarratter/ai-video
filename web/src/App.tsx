@@ -14,6 +14,7 @@ import { CleanupDialog } from './components/Cleanup';
 import { TelegramAdminDialog, TelegramDialog } from './components/Telegram';
 import { DubDialog } from './components/DubDialog';
 import { ArticleDialog } from './components/ArticleDialog';
+import { CloneDialog } from './components/CloneDialog';
 import { McpDialog } from './components/McpDialog';
 import { Home } from './components/Home';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -140,6 +141,7 @@ const Editor: React.FC = () => {
       <TelegramAdminDialog />
       <DubDialog />
       <ArticleDialog />
+      <CloneDialog />
       <ClaudeAuthDialog />
       <McpDialog />
       {vp.h > vp.w && vp.w < 760 && !portraitOk && (

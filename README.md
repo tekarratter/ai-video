@@ -14,6 +14,8 @@ Trình dựng video chạy trên Remotion, làm việc cùng **Claude Code**. Ch
 
 ## Chạy
 
+> **Clone video mẫu → template:** tải một video lên, app phân tích cảnh, lời, nhịp và lưu thành template để làm video mới cùng cấu trúc. Xem **[docs/CLONE-VIDEO.md](docs/CLONE-VIDEO.md)**.
+
 > **Windows (chỉ CPU):** chạy `ai-video.bat` — tự cài và chạy bằng một lệnh. Xem **[README-windows.md](README-windows.md)**.
 
 ```bash
