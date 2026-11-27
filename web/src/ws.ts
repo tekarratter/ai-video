@@ -32,7 +32,7 @@ export function connect() {
         else applyRemoteProject(m.project, 'server');
         useStore.setState({ activeProject: m.activeProject });
         useStore.setState({
-          chat: m.chat.items, chatStatus: m.chat.status, tmux: m.chat.tmux,
+          chat: m.chat.items, chatStatus: m.chat.status, tmux: m.chat.tmux ?? null,
           jobs: Object.fromEntries(m.jobs.map((j: any) => [j.id, j])), // eslint-disable-line @typescript-eslint/no-explicit-any
         });
         break;

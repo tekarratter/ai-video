@@ -17,7 +17,7 @@ $port = if ($env:PORT) { $env:PORT } else { '3001' }
 $webPort = if ($env:WEB_PORT) { $env:WEB_PORT } else { '5180' }
 $url = "http://localhost:$webPort"
 Write-Step "AI Video Studio: $url   (Ctrl+C để dừng; log: logs\server.log)"
-Write-Host 'Panel chat Claude cần tmux nên tắt trên Windows — dùng Claude Code trong thư mục workspace\ hoặc MCP (docs\MCP.md).' -ForegroundColor DarkGray
+Write-Host 'Panel chat Claude chạy Claude Code ở chế độ nền (không có tmux trên Windows). Đăng nhập: menu tài khoản → Claude Code.' -ForegroundColor DarkGray
 
 if (-not $NoBrowser) {
   # mở trình duyệt khi giao diện đã lên

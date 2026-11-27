@@ -839,7 +839,7 @@ claude.on('screen', (s) => {
 });
 claude.watch();
 // Only start Claude when it is signed in — otherwise it would sit on its login screen; the admin signs in from the UI.
-if (process.env.CLAUDE_AUTOSTART !== '0' && HAS_TMUX) {
+if (process.env.CLAUDE_AUTOSTART !== '0') {
   claudeAuth.status({ fresh: true }).then((s) => {
     if (s.loggedIn) return claude.start({ resume: projects.claudeSession() || 'continue' });
     console.warn('[claude] Claude Code chưa đăng nhập — vào editor: menu tài khoản → Claude Code');

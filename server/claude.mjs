@@ -3,13 +3,19 @@
 //   - CLI  -> panel : we tail the session transcript (~/.claude/projects/<cwd>/<session>.jsonl)
 //   - panel -> CLI  : we paste the text into the tmux pane (tmux paste-buffer + Enter)
 // Users attach to the same CLI with:  tmux attach -t ai-video
+//
+// Without tmux (Windows) the same bridge runs claude HEADLESS: `claude -p --input-format stream-json
+// --output-format stream-json`, one long-lived process per session. Messages go in as JSON lines on stdin, the panel
+// still follows the transcript file; busy = a sent message has no `result` event yet. No live terminal view, and
+// permission dialogs can't be answered there: tools outside workspace/.claude/settings.json are refused.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import readline from 'node:readline';
 import { EventEmitter } from 'node:events';
 import { execFile, spawn } from 'node:child_process';
-import { HAS_TMUX, NO_TMUX_MSG } from '../shared/platform.mjs';
+import { CLAUDE_BIN, HAS_TMUX, NO_TMUX_MSG } from '../shared/platform.mjs';
 import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
@@ -66,6 +72,9 @@ export class ClaudeBridge extends EventEmitter {
     this.screen = '';
     this.size = { cols: 120, rows: 40 };
     this.terminalWatchers = 0;
+    this.headless = !HAS_TMUX;
+    this.proc = null; // headless claude process
+    this.pending = 0; // headless: messages sent without a `result` yet
   }
 
   async tmuxCmd(...args) {
@@ -74,18 +83,102 @@ export class ClaudeBridge extends EventEmitter {
   }
 
   async isRunning() {
-    if (!HAS_TMUX) return false;
+    if (this.headless) return !!this.proc;
     try { await this.tmuxCmd('has-session', '-t', `=${this.tmux}`); return true; } catch { return false; }
+  }
+
+  hasHistory() {
+    return fs.existsSync(this.projectDir) && fs.readdirSync(this.projectDir)
+      .some((f) => f.endsWith('.jsonl') && fs.readFileSync(path.join(this.projectDir, f), 'utf8').includes('"type":"user"'));
+  }
+
+  /** A notice in the chat list (not part of the transcript). */
+  notice(text) {
+    const item = { type: 'system', text, ts: new Date().toISOString(), key: `notice-${Date.now()}-${this.items.length}` };
+    this.items.push(item);
+    this.emit('items', { added: [item], updated: [] });
+  }
+
+  /**
+   * Headless claude ignores workspace/.claude/settings.json permissions until the folder is trusted — normally a dialog
+   * the user accepts in the interactive CLI, which headless mode never shows. The app runs Claude in its own workspace,
+   * so record that trust in ~/.claude.json (key: the folder and its git root, forward slashes).
+   */
+  trustWorkspace() {
+    const file = path.join(os.homedir(), '.claude.json');
+    let j = {};
+    try { j = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') return; }
+    const keys = [this.cwd];
+    for (let d = this.cwd; ; d = path.dirname(d)) {
+      if (fs.existsSync(path.join(d, '.git'))) { keys.push(d); break; }
+      if (path.dirname(d) === d) break;
+    }
+    j.projects ??= {};
+    let changed = false;
+    for (const k of keys.map((x) => x.replace(/\\/g, '/'))) {
+      if (j.projects[k]?.hasTrustDialogAccepted) continue;
+      j.projects[k] = { ...(j.projects[k] || {}), hasTrustDialogAccepted: true };
+      changed = true;
+    }
+    if (changed) fs.writeFileSync(file, JSON.stringify(j, null, 2));
+  }
+
+  /** Headless start: one `claude -p` process speaking stream-json. */
+  async startHeadless({ resume } = {}) {
+    if (this.proc) return;
+    try { this.trustWorkspace(); } catch (e) { console.warn('[claude] trust workspace', e.message); }
+    const id = crypto.randomUUID();
+    if (resume === 'continue' && !this.hasHistory()) resume = undefined;
+    const args = ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
+      ...this.claudeArgs.split(/\s+/).filter(Boolean)];
+    if (resume === 'continue') args.push('--continue');
+    else if (resume) args.push('--resume', resume);
+    else args.push('--session-id', id);
+    const proc = spawn(CLAUDE_BIN, args, { cwd: this.cwd, env: { ...process.env, ...(this.env() || {}) }, windowsHide: true });
+    this.proc = proc;
+    this.pending = 0;
+    this.startedAt = Date.now();
+    let errTail = '';
+    proc.stderr.on('data', (d) => { errTail = (errTail + d.toString('utf8')).slice(-2000); });
+    readline.createInterface({ input: proc.stdout }).on('line', (line) => {
+      let e;
+      try { e = JSON.parse(line); } catch { return; }
+      if (e.type === 'system' && e.subtype === 'init' && e.session_id) {
+        const f = path.join(this.projectDir, `${e.session_id}.jsonl`);
+        if (this.file !== f) this.switchTo(f);
+      } else if (e.type === 'result') {
+        this.pending = Math.max(0, this.pending - 1);
+        // 'success' errors (not logged in, API errors) are already in the transcript as an assistant message
+        if (e.is_error && e.subtype !== 'success') this.notice(`Claude dừng lượt này: ${e.subtype}${e.result ? ` — ${String(e.result).slice(0, 400)}` : ''}`);
+        this.pollScreen();
+      }
+    });
+    const ended = (why) => {
+      if (this.proc !== proc) return;
+      this.proc = null;
+      this.pending = 0;
+      if (!this.stopping && why) this.notice(why);
+      this.pollScreen();
+    };
+    proc.on('error', (e) => ended(`Không chạy được Claude Code (${CLAUDE_BIN}): ${e.message}`));
+    proc.on('close', (code) => ended(code ? `Claude Code đã dừng (mã ${code})${errTail.trim() ? `: ${errTail.trim().split('\n').slice(-3).join(' ')}` : ''}` : ''));
+    if (!resume) this.switchTo(path.join(this.projectDir, `${id}.jsonl`));
+    else if (resume !== 'continue' && fs.existsSync(path.join(this.projectDir, `${resume}.jsonl`))) this.switchTo(path.join(this.projectDir, `${resume}.jsonl`));
+    this.pollScreen();
+    if (resume) {
+      // --resume/--continue exits at once when there is nothing to resume: fall back to a new session.
+      await new Promise((r) => setTimeout(r, 3000));
+      if (!this.proc) await this.startHeadless();
+    }
   }
 
   /** Start claude inside tmux (if not already running). `resume`: session id, or 'continue'. */
   async start({ resume } = {}) {
-    if (!HAS_TMUX) throw new Error(NO_TMUX_MSG);
+    if (this.headless) return this.startHeadless({ resume });
     if (await this.isRunning()) return;
     const id = crypto.randomUUID();
     let cmd = `claude ${this.claudeArgs}`.trim();
-    const hasHistory = fs.existsSync(this.projectDir) && fs.readdirSync(this.projectDir)
-      .some((f) => f.endsWith('.jsonl') && fs.readFileSync(path.join(this.projectDir, f), 'utf8').includes('"type":"user"'));
+    const hasHistory = this.hasHistory();
     if (resume === 'continue' && !hasHistory) resume = undefined;
     if (resume === 'continue') cmd += ' --continue';
     else if (resume) cmd += ` --resume ${resume}`;
@@ -105,6 +198,19 @@ export class ClaudeBridge extends EventEmitter {
   }
 
   async stop() {
+    if (this.headless) {
+      const p = this.proc;
+      if (!p) return;
+      this.stopping = true;
+      const gone = new Promise((r) => { p.once('close', r); setTimeout(r, 5000); });
+      // the whole tree: tool commands claude started (ffmpeg, node…) must not outlive it
+      if (process.platform === 'win32') execFile('taskkill', ['/PID', String(p.pid), '/T', '/F'], { windowsHide: true }, () => {});
+      else p.kill();
+      await gone;
+      this.stopping = false;
+      if (this.proc === p) { this.proc = null; this.pending = 0; this.pollScreen(); }
+      return;
+    }
     await this.tmuxCmd('kill-session', '-t', `=${this.tmux}`).catch(() => {});
   }
 
@@ -146,6 +252,13 @@ export class ClaudeBridge extends EventEmitter {
   /** Type a (possibly multi-line) message into the CLI and submit it. */
   async send(text) {
     if (!(await this.isRunning())) await this.start({ resume: this.status.sessionId || undefined });
+    if (this.headless) {
+      if (!this.proc) throw new Error('Claude Code chưa chạy được — xem thông báo trong khung chat');
+      this.proc.stdin.write(`${JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'text', text }] } })}\n`);
+      this.pending++;
+      this.pollScreen();
+      return;
+    }
     await this.waitReady();
     const buf = `aiv${Date.now()}`;
     await new Promise((resolve, reject) => {
@@ -161,7 +274,7 @@ export class ClaudeBridge extends EventEmitter {
 
   /** Raw terminal input from the xterm view. */
   async input(data) {
-    if (!(await this.isRunning())) return;
+    if (this.headless || !(await this.isRunning())) return;
     const parts = [];
     let lit = '';
     const flush = () => { if (lit) parts.push(['-l', lit]); lit = ''; };
@@ -176,6 +289,13 @@ export class ClaudeBridge extends EventEmitter {
 
   async key(name) {
     if (!(await this.isRunning())) return;
+    if (this.headless) {
+      // Stop button (Escape / Ctrl-C): interrupt the current turn, the process keeps running.
+      if (['Escape', 'C-c'].includes(name) && this.proc) {
+        this.proc.stdin.write(`${JSON.stringify({ type: 'control_request', request_id: crypto.randomUUID(), request: { subtype: 'interrupt' } })}\n`);
+      }
+      return;
+    }
     const m = /^nav:(\d+)$/.exec(name);
     if (m) {
       // Unnumbered menu: move the ❯ cursor to the option, then Enter.
@@ -190,7 +310,7 @@ export class ClaudeBridge extends EventEmitter {
 
   async resize(cols, rows) {
     this.size = { cols, rows };
-    if (!(await this.isRunning())) return;
+    if (this.headless || !(await this.isRunning())) return;
     // Don't fight with a real terminal attached via `tmux attach`: it owns the size then.
     const { stdout } = await this.tmuxCmd('list-clients', '-t', this.tmux).catch(() => ({ stdout: '' }));
     if (!stdout.trim()) await this.tmuxCmd('resize-window', '-t', this.tmux, '-x', String(cols), '-y', String(rows)).catch(() => {});
@@ -303,7 +423,8 @@ export class ClaudeBridge extends EventEmitter {
   async pollScreen(force = false) {
     const running = await this.isRunning();
     let busy = false, prompt = null;
-    if (running) {
+    if (this.headless) busy = running && this.pending > 0;
+    else if (running) {
       try {
         const { stdout } = await this.tmuxCmd('capture-pane', '-p', '-t', this.tmux);
         busy = /esc to interrupt/i.test(stdout);
@@ -337,6 +458,7 @@ export class ClaudeBridge extends EventEmitter {
   }
 
   snapshot() {
-    return { status: this.status, items: this.items, tmux: this.tmux, cwd: this.cwd };
+    // tmux: null → headless (no shared terminal to attach to)
+    return { status: this.status, items: this.items, tmux: this.headless ? null : this.tmux, cwd: this.cwd };
   }
 }

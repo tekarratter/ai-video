@@ -5,7 +5,7 @@ import path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { CACHE_DIR, EXPORT_DIR, ROOT, WORKSPACE, hash } from './store.mjs';
-import { PYTHON, TTS_PYTHON, YTDLP } from './platform.mjs';
+import { CLAUDE_BIN, PYTHON, TTS_PYTHON, YTDLP } from './platform.mjs';
 
 const exec = promisify(execFile);
 const TTS_PY = TTS_PYTHON;
@@ -106,7 +106,7 @@ ${JSON.stringify(batch)}`;
     let parsed = null, lastErr = '';
     for (let attempt = 0; attempt < 3 && !parsed; attempt++) {
       try {
-        const { stdout } = await exec('claude', ['-p', '--no-session-persistence', '--tools', '', '--output-format', 'json', '--system-prompt', SYSTEM, prompt],
+        const { stdout } = await exec(CLAUDE_BIN, ['-p', '--no-session-persistence', '--tools', '', '--output-format', 'json', '--system-prompt', SYSTEM, prompt],
           { cwd: CACHE_DIR, env: { ...process.env, ...env }, timeout: 300_000, maxBuffer: 32 * 1024 * 1024 });
         const r = JSON.parse(stdout);
         if (r.is_error) throw new Error(r.result || 'Claude lỗi');

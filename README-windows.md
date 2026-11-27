@@ -85,9 +85,12 @@ Trang chủ → **🎬 Clone video mẫu**: phân tích một video mẫu (cản
 
 ## Khác với bản Linux
 
-- **Panel chat Claude bị tắt.** Panel này điều khiển Claude Code qua `tmux`, mà Windows không có tmux. Có hai cách thay thế:
-  - Mở Claude Code (CLI hoặc app desktop) trong thư mục `workspace\`. Claude sửa `project.json` hoặc gọi `node ..\tools\vedit.mjs …`, và giao diện cập nhật ngay.
-  - Kết nối qua **MCP**: menu tài khoản → *Kết nối Claude (MCP)*. Xem [docs/MCP.md](docs/MCP.md).
+- **Panel chat Claude chạy Claude Code ở chế độ nền.** Bản Linux điều khiển Claude Code qua `tmux`. Windows không có tmux, nên server chạy `claude -p` (stream-json) và vẫn đọc transcript như bản Linux.
+  - Cần Claude Code CLI. `setup` tự cài bằng `npm install -g @anthropic-ai/claude-code`.
+  - Đăng nhập trong app: menu tài khoản → *Claude Code*. Dùng được tài khoản Claude, API key, hoặc token từ `claude setup-token`.
+  - Không có nút xem terminal trực tiếp, và không có hộp thoại hỏi quyền. Claude chỉ chạy được các lệnh có trong `workspace\.claude\settings.json` (vedit, ffmpeg, ffprobe…). Lệnh khác bị từ chối, và việc từ chối hiện trong khung chat.
+  - Lần đầu chạy, app đánh dấu thư mục `workspace\` là tin cậy trong `%USERPROFILE%\.claude.json` (bản Linux hỏi việc này trong terminal). Thiếu bước này, Claude bỏ qua danh sách quyền của workspace.
+  - Vẫn có thể mở Claude Code (CLI hoặc app desktop) trong `workspace\`, hoặc kết nối qua **MCP**: menu tài khoản → *Kết nối Claude (MCP)*, xem [docs/MCP.md](docs/MCP.md).
 - **Giọng đọc AI (VieNeu/Kokoro)**: nếu chưa có `.venv-tts`, script tự dùng VieNeu-TTS đã cài ở `C:\Claude\tools\vieneu-tts` (đặt `TTS_PYTHON` và `HF_HOME` tới đó; đổi chỗ bằng `VIENEU_DIR`). Giọng tiếng Anh (Kokoro) cần thêm `kokoro-onnx`.
 - **Đọc PDF/Word**:
   - `.docx` đọc được ngay.

@@ -26,7 +26,7 @@ type State = {
   openComp: string; // 'Main' or a custom component name
   chat: ChatItem[];
   chatStatus: ChatStatus;
-  tmux: string;
+  tmux: string | null; // null: headless claude (Windows), no shared terminal
   jobs: Record<string, Job>;
   toasts: { id: number; text: string; level?: string }[];
   remoteFlash: number; // timestamp of the last external (AI/CLI) edit
