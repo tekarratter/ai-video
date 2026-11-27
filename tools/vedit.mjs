@@ -277,6 +277,31 @@ const commands = {
     console.log(`${list.length} user templates (read templates/<id>/TEMPLATE.md to make a video in that flow)`);
   },
 
+  // thumbnail image (YouTube / Facebook / article banner) from a component — default: the ProductIntro on the timeline
+  async thumbnail() {
+    const p = readProject();
+    let component = opt.component, props = {};
+    const comps = p.tracks.flatMap((t) => t.clips).filter((c) => c.kind === 'component');
+    const src = opt.clip ? comps.find((c) => c.id === opt.clip) || die(`no component clip ${opt.clip}`)
+      : comps.find((c) => ['ProductThumbnail', 'ProductIntro'].includes(c.component));
+    if (src) { props = { ...(src.props || {}) }; component ||= src.component === 'ProductIntro' ? 'ProductThumbnail' : src.component; }
+    if (opt['props-file']) Object.assign(props, JSON.parse(fs.readFileSync(path.resolve(opt['props-file']), 'utf8')));
+    if (opt.props) Object.assign(props, JSON.parse(opt.props));
+    component ||= 'ProductThumbnail';
+    const { width, height } = p.settings;
+    const [w, h] = String(opt.size || (height > width * 1.1 ? '1080x1920' : Math.abs(width - height) < width * 0.1 ? '1080x1080' : '1280x720')).split('x').map(Number);
+    const dur = 2;
+    const project = {
+      ...p, settings: { ...p.settings, width: w, height: h },
+      tracks: [{ id: 'main', name: 'Main', type: 'sequence', clips: [{ id: 'thumb', kind: 'component', component, props, duration: dur }] }],
+      subtitles: { ...p.subtitles, enabled: false, cues: [] }, logo: opt.logo ? p.logo : undefined,
+    };
+    const out = path.resolve(opt.out || path.join(WORKSPACE, 'exports', 'thumbnail.jpg'));
+    // a static component looks the same on every frame; an animated one is finished on its last frame
+    const r = await api('POST', '/api/still', { time: component === 'ProductThumbnail' ? 0.5 : dur - 1 / (p.settings.fps || 30), out, project, scale: 1 });
+    console.log(`${r.file}  (${w}x${h}, ${component}) — Read it to check`);
+  },
+
   async add() {
     const p = readProject();
     const asset = assetById(p, pos[0]) || die(`no asset ${pos[0]}`);
@@ -645,6 +670,8 @@ const commands = {
                                          dubbing: transcript → Claude translation → TTS → exports/<name>-thuyet-minh-<to>.mp4 (+ track "dub")
   logo [assetId|file] [--position top-right] [--size 0.18] [--margin 0.04] [--opacity 0.9] [--off|--on|--remove]
                                          logo/watermark over the whole video (no args: show current)
+  thumbnail [--clip id] [--component ProductThumbnail] [--props '{…}'] [--size 1280x720] [--out exports/thumbnail.jpg] [--logo]
+                                         thumbnail image from a component (default: the ProductIntro on the timeline → ProductThumbnail)
   validate                               sanity-check project.json`);
   },
 };

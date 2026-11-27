@@ -5,4 +5,6 @@ export const SAMPLE = {
   market: 'https://live.staticflickr.com/7920/40281523663_e290692630_b.jpg',
   bay: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Ha_Long_Bay_in_2019.jpg/1280px-Ha_Long_Bay_in_2019.jpg',
   rolls: 'https://live.staticflickr.com/4142/4926441746_f78eed52a6_b.jpg',
+  // ASUS GL553VD (Wikimedia Commons, CC BY-SA 2.0)
+  laptop: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/ASUS_GL553VD_Light-on_keyboard.jpg/1280px-ASUS_GL553VD_Light-on_keyboard.jpg',
 };

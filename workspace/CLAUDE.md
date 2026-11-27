@@ -45,6 +45,8 @@ Run `node ../tools/vedit.mjs help` for all options. Most used:
 - `images <english words> [--orientation landscape|portrait] [--import 1,3]` — free CC illustration photos (credits kept).
 - `doc [media/docs/x.pdf] [--import 1,3] [--sheet] [--pages 3]` — read a Word/PDF/text document (text, tables, pictures in
   order); `--sheet` page thumbnails to Read, `--pages` page images as assets. See "Video từ tài liệu".
+- `thumbnail [--clip id] [--props '{…}'] [--size 1280x720]` — export a thumbnail image (default: the `ProductIntro` on the
+  timeline drawn as a static `ProductThumbnail`) to `exports/thumbnail.jpg`.
 - `validate` — check project.json after hand edits.
 - `youtube <exports/x.mp4> --title "…" [--description "…"] [--tags a,b] [--privacy private|unlisted|public] [--shorts]` —
   publish to the user's YouTube channel. **Only when the user explicitly asks to upload**, confirm title/privacy first,
@@ -185,6 +187,13 @@ Template components (all scale to 16:9, 9:16, 1:1):
   `ProcessFlow` `{steps:[{icon, title, text}]}` · `DataTable` `{columns[], rows[][], highlight}` ·
   `VersusCompare` `{left:{title, icon, color, points[]}, right:{…}, vs}` ·
   `DocZoom` `{image, aspect, focus:{x, y, w, h}, caption, kicker, zoomAt}` (page image zoom with a highlighter box).
+- Product scenes (`Product.tsx`, tech-shop article-banner look; common brand props `{logo, brand, tagline, tint, accent, hideBrand}`
+  — `logo` = image path, else `brand` is drawn as a wordmark; `tint` = blue|navy|purple|red|teal|dark or a hex, `accent` default
+  `#ff7e00`): `ProductIntro` `{image (photo or video), kicker, title ("line1\nline2", *accent*), sub, specs[] (chips), price,
+  oldPrice, credit, focus (object-position of the product), side:'left'|'right'}` — animated banner, its last frame = the
+  thumbnail; with `hideBrand` + another `kicker` it is also the feature scene · `ProductThumbnail` (same props, static) ·
+  `ProductSpecs` `{image, kicker, title, specs:[{icon, label, value}], times[], source}` · `ProductCTA` `{image, title, price,
+  oldPrice, button, hotline, address, website, note}`.
 
 ### Template: Tin nóng 60s
 1. Source = link → `vedit article <url> --import`; text → use it directly. Script: 6–9 lines (~150 words for 60 s).
@@ -244,6 +253,32 @@ shop name, accent matching the photos (warm `#f59e0b` default). Music upbeat. Op
 Scenes of `AppleMotion` (one per highlight: short `headline`, `sub` = one sentence, alternate `device` phone/none and
 `theme` light/dark), the uploaded product photo/video as `image`/`video`; narration optional (calm, short). End with the
 product name big (`AppleMotion` device none). Clean minimal music.
+
+### Template: Video giới thiệu sản phẩm
+Look of a tech-shop news banner: product photo full bleed, dark brand-tinted gradient from the text side, small logo top-left,
+pill tag, bold 2-line white headline (Be Vietnam Pro, key spec in orange `*…*`), photo credit pill bottom-right. Factual tone
+like a product news article ("Tên máy: điểm nổi bật, thông số"), no hype words, no invented specs or prices.
+1. Inputs: product photos/video (first = hero), product name, specs/highlights lines, optional link (`vedit article <url>
+   --import` for specs + photos — only facts from it), price, contact, shop name, logo (the file under "Logo cửa hàng"; never put
+   a logo on the photos yourself). No photos at all → `vedit images` CC photos with credit "Ảnh minh họa" (not the real product:
+   say so in the credit).
+2. Script (voice language from the brief): hook naming the product + its strongest point → 1 sentence per highlight group
+   (performance, screen, design/battery, ports…) → price/availability → CTA with the shop name. ~2.5 words/s; short ≈ 5 scenes,
+   medium ≈ 8, long ≈ 12.
+3. Scenes: `ProductIntro` 4–5 s first (title = "Tên sản phẩm\n*điểm nổi bật*" — each line ≤ 26 characters, shorten the model
+   name if needed; `specs` = 3 short chips; `credit` = "Ảnh: <hãng>" for manufacturer photos or "Ảnh minh họa"; `focus` so the
+   product stays visible beside the text, `side: 'right'` if the product sits on the left of the photo). Then per highlight:
+   `ProductIntro` with `hideBrand: true` and `kicker` like "HIỆU NĂNG" / "MÀN HÌNH" / "THIẾT KẾ" (alternate `side`, other photos),
+   or the user's video clips with a short bold text overlay; one `ProductSpecs` with 4–6 rows (`times` on the voice);
+   `ProductCTA` last (price, hotline/address/website from "Liên hệ", button "MUA NGAY" or "LIÊN HỆ NGAY" when there is no price).
+   One `tint` for the whole video (blue default; red for gaming red products, purple for creator/OLED, dark for black products),
+   same `brand`/`logo`/`tagline` in every scene. Fade 0.4–0.5 s between scenes, a `LightLeak` at most once.
+4. Voice per scene (`vedit tts`), subtitles at ~0.9 if asked (the intro keeps the bottom area free on 16:9 only — on 9:16 put cues
+   at ~0.62 during the intro or skip cues there), music: tech/corporate upbeat at 0.12.
+5. Thumbnail: `vedit thumbnail` → `exports/thumbnail.jpg` (1280×720 for 16:9, 1080×1920 for 9:16; uses the intro's props as a
+   static `ProductThumbnail`; `--props '{"kicker":"REVIEW","price":"…"}'` to vary it, `--size 1280x720` for a YouTube cover of a
+   vertical video). Read it and fix text that covers the product.
+6. `vedit validate`, stills of intro end / specs / CTA, report scenes + the thumbnail path. Don't render.
 
 ### Template: Movie Short
 Main track: `BlurFrame` clips over the uploaded horizontal video (`video` = its path, `start` = source second, `title`/`tag`

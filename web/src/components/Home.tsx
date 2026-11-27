@@ -245,7 +245,11 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
   }, [lang, list, voice, voice2]);
 
   const missing = t.fields.some((f) => {
-    if (f.type === 'source') return !(vals.source || '').trim() || (mode === 'link' && !/^https?:\/\/\S+\.\S+/.test(vals.source.trim()));
+    if (f.type === 'source') {
+      const v = (vals.source || '').trim();
+      if (!v) return f.required !== false;
+      return mode === 'link' && !/^https?:\/\/\S+\.\S+/.test(v);
+    }
     if (f.type === 'files') return !!f.required && !files[f.k]?.length;
     if (f.type === 'text' || f.type === 'textarea') return !!f.required && !(vals[f.k] || '').trim();
     return false;
@@ -288,7 +292,7 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
       const lines = [t.user
         ? `Tạo video theo template tự tạo "${t.name}" — làm theo mục "Template: Mẫu tự tạo (clone video)" trong CLAUDE.md: đọc templates/${t.id}/TEMPLATE.md (công thức: luồng, nhịp cắt, màu), ANALYSIS.md và xem các ảnh templates/${t.id}/reference/sheet-*.jpg trước khi làm. Giữ cấu trúc, thay toàn bộ nội dung.`
         : `Tạo video theo template "${t.name}" — làm theo mục "## Template: ${t.recipe}" trong CLAUDE.md (đọc lại mục đó và "Video templates" trước khi làm).`];
-      if (srcField) lines.push(`- ${SOURCE_LABEL[mode]}: ${(vals.source || '').trim()}`);
+      if (srcField && (vals.source || '').trim()) lines.push(`- ${SOURCE_LABEL[mode]}: ${(vals.source || '').trim()}`);
       for (const f of t.fields) {
         if ((f.type === 'text' || f.type === 'textarea') && (vals[f.k] || '').trim()) lines.push(`- ${f.label}: ${vals[f.k].trim()}`);
         if (f.type === 'files' && files[f.k]?.length) lines.push(`- ${f.label}: ${files[f.k].map((x) => x.name).join(', ')} (vừa tải lên, là các asset mới nhất của dự án)`);
@@ -299,6 +303,7 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
       if (length) lines.push(`- Độ dài: ${t.length?.find((x) => x[0] === length)?.[1]}`);
       lines.push(newProject ? `- Đã tạo dự án mới "${title}" khung ${size} và đang mở — dựng trong dự án này` : `- Dùng dự án đang mở, thêm vào cuối timeline`);
       lines.push(`- Phụ đề: ${subs ? 'có' : 'không'} · Nhạc nền: ${music ? 'có' : 'không'}`);
+      if (t.id === 'product-intro') lines.push('- Xuất thêm ảnh thumbnail cùng style: `vedit thumbnail` (→ exports/thumbnail.jpg)');
       if ((vals.extra || '').trim()) lines.push(`- Yêu cầu thêm: ${vals.extra.trim()}`);
       lines.push('Không render; xong thì báo tóm tắt các cảnh.');
       askClaude(lines.join('\n'), true);

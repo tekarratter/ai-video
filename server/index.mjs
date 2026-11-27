@@ -815,7 +815,8 @@ app.post('/api/still', async (req, res) => {
   try {
     const out = path.resolve(req.body.out || path.join(CACHE_DIR, 'frames', `timeline_${Date.now()}.png`));
     fs.mkdirSync(path.dirname(out), { recursive: true });
-    await renderTimelineStill({ mediaBase: MEDIA_BASE, time: Number(req.body.time || 0), out });
+    // `project` (optional): render another composition, e.g. a thumbnail built by `vedit thumbnail`
+    await renderTimelineStill({ mediaBase: MEDIA_BASE, time: Number(req.body.time || 0), out, project: req.body.project || undefined, scale: Number(req.body.scale) || 0.5 });
     res.json({ file: out });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

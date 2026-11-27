@@ -2,7 +2,7 @@
 // The motion components live in workspace/custom/tpl (preview = the component rendered with its default props).
 
 export type Field =
-  | { k: string; type: 'source'; label: string; modes: ('link' | 'text' | 'topic')[] }
+  | { k: string; type: 'source'; label: string; modes: ('link' | 'text' | 'topic')[]; required?: boolean }
   | { k: string; type: 'text' | 'textarea'; label: string; placeholder?: string; required?: boolean }
   | { k: string; type: 'files'; label: string; accept: string; hint?: string; required?: boolean }
   | { k: string; type: 'voice2'; label: string };
@@ -193,6 +193,23 @@ export const TEMPLATES: Template[] = [
       { k: 'notes', type: 'textarea', label: 'Tên món – giá (mỗi dòng một món)', placeholder: 'Phở bò tái – 65K – Nước dùng ninh 12 giờ\nGỏi cuốn – 45K', required: true },
     ],
     recipe: 'Menu F&B',
+  },
+  {
+    id: 'product-intro', cat: 'business', name: 'Video giới thiệu sản phẩm', hot: true, icon: '💻',
+    desc: 'Kiểu banner bài viết công nghệ: ảnh sản phẩm tràn khung, lớp màu thương hiệu, nhãn, tiêu đề đậm 2 dòng → thông số, điểm nổi bật, giá, hotline. Kèm ảnh thumbnail cùng style.',
+    preview: { component: 'ProductIntro', frame: 80 },
+    sizes: ['1920x1080', '1080x1920', '1080x1080'], length: [['short', '~20–30 giây'], ['medium', '~45–60 giây'], ['long', '~90 giây']], voice: true,
+    fields: [
+      { k: 'files', type: 'files', label: 'Ảnh / video sản phẩm', accept: 'image/*,video/*', required: true, hint: 'Ảnh đẹp nhất đặt đầu tiên (làm thumbnail + intro)' },
+      { k: 'headline', type: 'text', label: 'Tên sản phẩm', placeholder: 'VD: ASUS TUF Gaming 16 2026', required: true },
+      { k: 'notes', type: 'textarea', label: 'Thông số / điểm nổi bật (mỗi dòng một ý)', placeholder: 'Intel Core Ultra 9 275HX\nRTX 5070 8 GB\nMàn 16" 2.5K 165 Hz\nRAM 32 GB, SSD 1 TB' },
+      { k: 'source', type: 'source', label: 'Bài viết / trang sản phẩm (tuỳ chọn)', modes: ['link', 'text'], required: false },
+      { k: 'price', type: 'text', label: 'Giá (tuỳ chọn)', placeholder: 'VD: 32.990.000đ (giá cũ 35.990.000đ)' },
+      { k: 'contact', type: 'text', label: 'Liên hệ (tuỳ chọn)', placeholder: 'Hotline · địa chỉ · website' },
+      { k: 'brand', type: 'text', label: 'Tên cửa hàng', placeholder: 'Hiện thành logo chữ nếu không tải logo' },
+      { k: 'logo', type: 'files', label: 'Logo cửa hàng (tuỳ chọn)', accept: 'image/*', hint: 'PNG nền trong suốt, chữ trắng là đẹp nhất' },
+    ],
+    recipe: 'Video giới thiệu sản phẩm',
   },
   {
     id: 'apple', cat: 'business', name: 'Giới thiệu sản phẩm (Apple style)', icon: '✨',

@@ -71,6 +71,8 @@ git clone https://github.com/tekarratter/ai-video.git && cd ai-video && docker c
   loại *Desktop app* trên Google Cloud (bật YouTube Data API v3) — hướng dẫn hiện ngay trong hộp thoại. Token lưu ở
   `~/.config/ai-video/youtube.json`. Project Google chưa qua audit của YouTube thì video đăng qua API bị khoá ở chế độ riêng tư.
 - **Render:** Remotion (`@remotion/renderer`) ra MP4 trong `workspace/exports/`. Có chế độ nháp (½ độ phân giải).
+- **Video giới thiệu sản phẩm** (template): style banner bài viết của shop công nghệ (ảnh sản phẩm tràn khung, lớp màu thương hiệu,
+  logo, nhãn, tiêu đề đậm 2 dòng), gồm các cảnh intro, thông số, giá + hotline. `vedit thumbnail` xuất ảnh thumbnail cùng style.
 - **MCP:** Claude Code / Claude Desktop / claude.ai điều khiển app từ xa (tạo video, sửa phim, xem khung hình, render).
   Tạo token ở menu tài khoản → *Kết nối Claude (MCP)*. Hướng dẫn: [docs/MCP.md](docs/MCP.md).
 
