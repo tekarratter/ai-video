@@ -8,8 +8,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { HAS_TMUX, NO_TMUX_MSG } from '../shared/platform.mjs';
+import { execFile, spawn } from 'node:child_process';
+import { CLAUDE_BIN, HAS_TMUX } from '../shared/platform.mjs';
 import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
@@ -41,7 +41,7 @@ export async function status({ fresh = false } = {}) {
   const c = load();
   let s = { loggedIn: false };
   try {
-    const { stdout } = await exec('claude', ['auth', 'status', '--json'], { env: { ...process.env, ...env() }, timeout: 20_000 });
+    const { stdout } = await exec(CLAUDE_BIN, ['auth', 'status', '--json'], { env: { ...process.env, ...env() }, timeout: 20_000 });
     s = JSON.parse(stdout);
   } catch (e) {
     try { s = JSON.parse(e.stdout); } catch { s = { loggedIn: false, error: String(e.message).split('\n')[0] }; }
@@ -81,24 +81,57 @@ export function setToken(token) {
   cache = null;
 }
 
-const tmux = (...a) => (HAS_TMUX ? exec('tmux', a) : Promise.reject(new Error(NO_TMUX_MSG)));
-const screen = async () => (await tmux('capture-pane', '-p', '-J', '-t', LOGIN_TMUX)).stdout;
+/* `claude auth login` waits for a pasted code. With tmux it runs in a hidden session (it wants a terminal there);
+ * without tmux (Windows) plain pipes are enough: it prints the URL on stdout and reads the code from stdin. */
+let pipe = null; // { proc, out, done }
+const login = HAS_TMUX ? {
+  async start(args) {
+    await exec('tmux', ['kill-session', '-t', `=${LOGIN_TMUX}`]).catch(() => {});
+    await exec('tmux', ['new-session', '-d', '-s', LOGIN_TMUX, '-x', '400', '-y', '50', '-e', 'BROWSER=false', `claude ${args.join(' ')}; sleep 600`]);
+  },
+  screen: async () => (await exec('tmux', ['capture-pane', '-p', '-J', '-t', LOGIN_TMUX])).stdout,
+  async type(text) {
+    await exec('tmux', ['send-keys', '-t', LOGIN_TMUX, '-l', text]);
+    await exec('tmux', ['send-keys', '-t', LOGIN_TMUX, 'Enter']);
+  },
+  kill: () => exec('tmux', ['kill-session', '-t', `=${LOGIN_TMUX}`]).catch(() => {}),
+  exited: () => false,
+} : {
+  async start(args) {
+    this.kill();
+    const proc = spawn(CLAUDE_BIN, args, { env: { ...process.env, BROWSER: 'false' }, windowsHide: true });
+    const p = { proc, out: '', done: false };
+    const add = (d) => { p.out = (p.out + d.toString('utf8')).slice(-20000); };
+    proc.stdout.on('data', add);
+    proc.stderr.on('data', add);
+    proc.on('error', (e) => { p.out += `\n${e.message}`; p.done = true; });
+    proc.on('close', () => { p.done = true; });
+    setTimeout(() => { if (!p.done) proc.kill(); }, 10 * 60_000).unref();
+    pipe = p;
+  },
+  screen: async () => pipe?.out || '',
+  async type(text) {
+    if (!pipe || pipe.done) throw new Error('Phiên đăng nhập đã kết thúc — bấm đăng nhập lại');
+    pipe.proc.stdin.write(`${text}\n`);
+  },
+  kill() { if (pipe && !pipe.done) pipe.proc.kill(); pipe = null; },
+  exited: () => !!pipe?.done,
+};
 
-/** Start `claude auth login` in a hidden tmux session and return the sign-in URL. */
+/** Start `claude auth login` and return the sign-in URL. */
 export async function startLogin({ console: useConsole = false } = {}) {
-  await tmux('kill-session', '-t', `=${LOGIN_TMUX}`).catch(() => {});
-  await tmux('new-session', '-d', '-s', LOGIN_TMUX, '-x', '400', '-y', '50', '-e', 'BROWSER=false',
-    `claude auth login ${useConsole ? '--console' : '--claudeai'}; sleep 600`);
+  await login.start(['auth', 'login', useConsole ? '--console' : '--claudeai']);
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 500));
-    const m = (await screen().catch(() => '')).match(/https:\/\/\S+oauth\/authorize\S+/);
+    const m = (await login.screen().catch(() => '')).match(/https:\/\/\S+oauth\/authorize\S+/);
     if (m) {
       save({ ...load(), loginPending: true });
       return { url: m[0] };
     }
+    if (login.exited()) break;
   }
-  const text = await screen().catch(() => '');
-  await tmux('kill-session', '-t', `=${LOGIN_TMUX}`).catch(() => {});
+  const text = await login.screen().catch(() => '');
+  await login.kill();
   throw new Error(`Không lấy được link đăng nhập: ${text.trim().split('\n').slice(-3).join(' ')}`);
 }
 
@@ -106,16 +139,18 @@ export async function startLogin({ console: useConsole = false } = {}) {
 export async function submitCode(code) {
   code = String(code || '').trim();
   if (!code) throw new Error('Thiếu mã');
-  await tmux('send-keys', '-t', LOGIN_TMUX, '-l', code);
-  await tmux('send-keys', '-t', LOGIN_TMUX, 'Enter');
+  const before = (await login.screen().catch(() => '')).length;
+  await login.type(code);
   let text = '';
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 500));
-    text = await screen().catch(() => '');
-    if (/success|logged in|signed in/i.test(text)) break;
-    if (/error|invalid|failed/i.test(text.split('Paste code here').pop() || '')) break;
+    text = await login.screen().catch(() => '');
+    const after = HAS_TMUX ? text.split('Paste code here').pop() || '' : text.slice(before);
+    if (/success|logged in|signed in/i.test(after)) break;
+    if (/error|invalid|failed/i.test(after)) break;
+    if (login.exited()) break;
   }
-  await tmux('kill-session', '-t', `=${LOGIN_TMUX}`).catch(() => {});
+  await login.kill();
   const c = load();
   delete c.loginPending;
   const s = await status({ fresh: true });
@@ -130,8 +165,8 @@ export async function submitCode(code) {
 }
 
 export async function logout() {
-  await tmux('kill-session', '-t', `=${LOGIN_TMUX}`).catch(() => {});
-  await exec('claude', ['auth', 'logout'], { timeout: 20_000 }).catch(() => {});
+  await login.kill();
+  await exec(CLAUDE_BIN, ['auth', 'logout'], { timeout: 20_000 }).catch(() => {});
   save({});
   cache = null;
 }

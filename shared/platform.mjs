@@ -33,11 +33,35 @@ export const YTDLP = process.env.YTDLP
   || firstExisting(path.join(os.homedir(), '.local', 'bin', IS_WIN ? 'yt-dlp.exe' : 'yt-dlp'), venvBin(path.join(ROOT, '.venv'), 'yt-dlp'))
   || 'yt-dlp';
 
-/** tmux drives the shared Claude Code CLI. Windows has none: the chat panel is disabled there (MCP still works). */
+/** Where a program lives on PATH (first hit), or null. */
+function whereIs(cmd) {
+  const r = spawnSync(IS_WIN ? 'where' : 'which', [cmd], { encoding: 'utf8', windowsHide: true });
+  return r.status === 0 ? r.stdout.split(/\r?\n/).map((l) => l.trim()).find(Boolean) || null : null;
+}
+
+/**
+ * The Claude Code CLI. execFile/spawn can't run npm's `claude.cmd` shim on Windows without a shell, so resolve the
+ * real claude.exe behind it (npm: node_modules\@anthropic-ai\claude-code\bin\claude.exe; native installer:
+ * ~\.local\bin\claude.exe). Override with $CLAUDE_BIN.
+ */
+export const CLAUDE_BIN = (() => {
+  if (process.env.CLAUDE_BIN) return process.env.CLAUDE_BIN;
+  if (!IS_WIN) return 'claude';
+  const npmExe = (dir) => dir && path.join(dir, 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe');
+  const shim = whereIs('claude.cmd');
+  return whereIs('claude.exe') || firstExisting(
+    shim && npmExe(path.dirname(shim)),
+    path.join(os.homedir(), '.local', 'bin', 'claude.exe'),
+    process.env.APPDATA && npmExe(path.join(process.env.APPDATA, 'npm')),
+  ) || 'claude';
+})();
+
+/**
+ * tmux drives the shared, interactive Claude Code CLI (Linux / macOS). Without tmux (always on Windows) the chat panel
+ * runs claude headless instead (stream-json over stdin/stdout, see server/claude.mjs): same chat, no live terminal.
+ */
 export const HAS_TMUX = !IS_WIN && which('tmux');
-export const NO_TMUX_MSG = IS_WIN
-  ? 'Trên Windows không có tmux nên panel chat Claude bị tắt. Hãy mở Claude Code trong thư mục workspace\\ hoặc kết nối qua MCP (docs/MCP.md).'
-  : 'Không tìm thấy tmux — cài tmux để dùng panel chat Claude.';
+export const NO_TMUX_MSG = 'Không có tmux: Claude chạy ở chế độ nền, không có terminal trực tiếp (chat vẫn dùng bình thường).';
 
 // Windows has no Info-ZIP, and its tar.exe (bsdtar) crashes on non-ASCII names such as "ảnh đẹp.jpg":
 // zip/unzip there go through tools/ziputil.py (Python zipfile, UTF-8 names).

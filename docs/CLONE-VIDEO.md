@@ -21,7 +21,7 @@ Tải lên một video bạn muốn học theo: quảng cáo, TikTok, bản tin,
    - **Tạo dự án từ khung mẫu.** Dự án mới có sẵn đủ các cảnh với thời lượng như video mẫu. Ảnh khung hình mẫu đứng giữ chỗ, đặt tên "Cảnh N · vai trò". Phụ đề là lời mẫu, khớp thời gian. Bạn thay dần từng cảnh và từng câu.
    - **Điền form → Tạo video.** Nhập nội dung mới (chủ đề, văn bản hoặc link), ảnh/video của bạn và lời kêu gọi hành động. Claude sẽ viết lời mới theo đúng số nhịp và vai trò, đọc giọng, ghép hình theo nhịp cắt của mẫu. Không dùng lại lời, tên hay thương hiệu của video mẫu.
 
-> Trên Windows, panel chat Claude trong app bị tắt (không có tmux). Muốn Claude làm bước này, mở Claude Code trong thư mục `workspace\` hoặc kết nối qua MCP (xem [MCP.md](MCP.md)).
+> Bước này cần Claude Code đã đăng nhập (menu tài khoản → Claude Code). Trên Windows, panel chat chạy Claude ở chế độ nền. Cũng có thể mở Claude Code trong thư mục `workspace\`, hoặc kết nối qua MCP (xem [MCP.md](MCP.md)).
 
 ## Tệp tạo ra
 

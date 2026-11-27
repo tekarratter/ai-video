@@ -274,18 +274,22 @@ export const ChatPanel: React.FC = () => {
         <span className={`dot ${!status.running ? 'off' : status.busy ? 'busy' : 'on'}`} />
         <div className="chat-title">
           <b>Claude Code</b>
-          <span className="muted small" title="Gõ lệnh này trong terminal để dùng chung phiên CLI">tmux attach -t {tmux}</span>
+          {tmux
+            ? <span className="muted small" title="Gõ lệnh này trong terminal để dùng chung phiên CLI">tmux attach -t {tmux}</span>
+            : <span className="muted small" title="Claude chạy nền trên máy chủ; không có terminal trực tiếp">chạy nền</span>}
         </div>
         <div className="spacer" />
-        <div className="seg">
-          <button className={view === 'chat' ? 'active' : ''} onClick={() => setView('chat')} title="Chat"><Icon name="chat" /></button>
-          <button className={view === 'term' ? 'active' : ''} onClick={() => setView('term')} title="Terminal CLI (dùng chung)"><Icon name="terminal" /></button>
-        </div>
+        {tmux && (
+          <div className="seg">
+            <button className={view === 'chat' ? 'active' : ''} onClick={() => setView('chat')} title="Chat"><Icon name="chat" /></button>
+            <button className={view === 'term' ? 'active' : ''} onClick={() => setView('term')} title="Terminal CLI (dùng chung)"><Icon name="terminal" /></button>
+          </div>
+        )}
         <button className="icon-btn" title="Phiên mới" onClick={() => restart('new')}><Icon name="plus" /></button>
         <button className="icon-btn chat-close" title="Đóng chat" onClick={() => window.dispatchEvent(new Event('toggle-chat'))}><Icon name="x" /></button>
       </div>
 
-      {view === 'term' ? (
+      {view === 'term' && tmux ? (
         <TerminalView />
       ) : (
         <>
@@ -306,7 +310,9 @@ export const ChatPanel: React.FC = () => {
             {items.length === 0 && status.running && (
               <div className="welcome">
                 <div className="welcome-title"><Icon name="sparkle" size={18} /> Cùng dựng video với Claude</div>
-                <p>Chat ở đây hoặc trong terminal (<code>tmux attach -t {tmux}</code>): hai nơi dùng chung một phiên. Claude chỉnh <code>project.json</code>, timeline cập nhật ngay.</p>
+                {tmux
+                  ? <p>Chat ở đây hoặc trong terminal (<code>tmux attach -t {tmux}</code>): hai nơi dùng chung một phiên. Claude chỉnh <code>project.json</code>, timeline cập nhật ngay.</p>
+                  : <p>Nhắn Claude ở đây. Claude chỉnh <code>project.json</code>, timeline cập nhật ngay.</p>}
                 <div className="chips">
                   {SUGGESTIONS.map((s) => <button key={s} onClick={() => submit(s)}>{s}</button>)}
                 </div>

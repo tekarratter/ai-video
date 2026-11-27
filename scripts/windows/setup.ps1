@@ -21,6 +21,13 @@ Write-Step 'Cài gói npm (npm ci)…'
 npm ci --no-audit --no-fund
 if ($LASTEXITCODE -ne 0) { throw 'npm ci lỗi' }
 
+# --- Claude Code CLI (panel chat Claude) ---
+if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+  Write-Step 'Cài Claude Code CLI cho panel chat (npm install -g @anthropic-ai/claude-code)…'
+  npm install -g @anthropic-ai/claude-code --no-audit --no-fund
+  if ($LASTEXITCODE -ne 0) { Write-Warning 'Không cài được Claude Code CLI: panel chat sẽ không chạy. Cài tay: npm install -g @anthropic-ai/claude-code' }
+}
+
 # --- Python venv ---
 if (-not (Test-Path $VenvPython)) {
   $py = $null
