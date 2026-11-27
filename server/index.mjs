@@ -24,6 +24,10 @@ import * as cleanup from './cleanup.mjs';
 import { mountMcp } from '../mcp/server.mjs';
 import * as telegram from './telegram.mjs';
 import * as claudeAuth from './claudeauth.mjs';
+import { analyzeVideo } from '../shared/analyze.mjs';
+import {
+  TEMPLATES_DIR, checkTemplate, createDraft, listTemplates, patchTemplate, readTemplate, removeTemplate, storeReference, templateDir,
+} from '../shared/templates.mjs';
 
 const PORT = Number(process.env.PORT || 3001);
 const MEDIA_BASE = `http://localhost:${PORT}`;
@@ -77,6 +81,13 @@ chokidar.watch(PROJECT_FILE, { ignoreInitial: true, awaitWriteFinish: { stabilit
 
 // Custom component changes: tell clients (Vite HMR also reloads them, this keeps the list fresh).
 chokidar.watch(path.join(WORKSPACE, 'custom'), { ignoreInitial: true }).on('all', () => broadcast({ type: 'custom-changed' }));
+
+// User templates (Clone video → template): Claude writes template.json / RECIPE.md → refresh the home gallery.
+fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
+let templatesTimer;
+const broadcastTemplates = () => { clearTimeout(templatesTimer); templatesTimer = setTimeout(() => broadcast({ type: 'templates' }), 300); };
+chokidar.watch(TEMPLATES_DIR, { ignoreInitial: true, depth: 1, ignored: (p) => /[\\/]\.trash([\\/]|$)/.test(p) })
+  .on('all', (ev, p) => { if (/(template\.json|RECIPE\.md|ANALYSIS\.md)$/.test(p) || ev.endsWith('Dir')) broadcastTemplates(); });
 
 /* ---------------- jobs ---------------- */
 const JOBS_FILE = path.join(CACHE_DIR, 'jobs.json');
@@ -153,6 +164,7 @@ app.use('/p/:id/media', (req, res, next) => {
 app.use('/exports', express.static(EXPORT_DIR));
 app.use('/cache', express.static(CACHE_DIR));
 app.use('/library/music', express.static(LOCAL_MUSIC_DIR));
+app.use('/templates', express.static(TEMPLATES_DIR)); // posters, reference videos, analysis sheets of user templates
 
 app.get('/api/project', (req, res) => res.json(readProject()));
 app.put('/api/project', (req, res) => {
@@ -468,6 +480,109 @@ app.post('/api/demos/:id/use', handle((req) => {
   (async () => { for (const a of readProject().assets) if (!fs.existsSync(path.join(CACHE_DIR, 'thumbs', `${a.id}.jpg`)) && !fs.existsSync(path.join(CACHE_DIR, 'thumbs', `${a.id}.wave.png`))) await makePreviews(a); })()
     .catch((e) => console.warn('[demo] previews', e.message));
 }));
+/* ---- user templates: clone a reference video into a reusable template ----
+ * Method from hypit ("clone any video"): the server measures the reference (cuts, beat, speech with word times,
+ * word-labelled frame grids), then Claude reads it, rebuilds it as an editable project (the skeleton) and writes
+ * the template: what stays (structure, rhythm, visual systems) and what changes (inputs = the template's fields). */
+const cloneSize = (w, h) => (!w || !h ? [1080, 1920] : h > w * 1.1 ? [1080, 1920] : w > h * 1.1 ? [1920, 1080] : [1080, 1080]);
+const LANG_NAME = { auto: 'tự nhận', vi: 'tiếng Việt', en: 'tiếng Anh', zh: 'tiếng Trung', ko: 'tiếng Hàn', ja: 'tiếng Nhật', es: 'tiếng Tây Ban Nha' };
+function cloneBrief({ tid, name, asset, notes, lang, warnings }) {
+  const lines = [
+    `Clone video mẫu thành template mới — làm theo mục "## Clone video → template" trong CLAUDE.md (đọc lại cả mục trước khi làm).`,
+    `- Template id: ${tid} — thư mục templates/${tid}/; phân tích tự động đã xong: đọc templates/${tid}/analysis/overview.md trước, rồi các ảnh nó liệt kê`,
+    `- Video mẫu: asset ${asset.id} (${asset.name}, ${Number(asset.duration || 0).toFixed(1)} s, ${asset.width}x${asset.height}) trong dự án đang mở`,
+    `- Ngôn ngữ lời thoại: ${LANG_NAME[lang] || lang || 'tự nhận'}`,
+  ];
+  if (warnings?.length) lines.push(`- Lưu ý phân tích: ${warnings.join('; ')}`);
+  if (notes) lines.push(`- Người dùng muốn: ${notes}`);
+  lines.push('Dựng lại video mẫu trong dự án này làm skeleton, viết ANALYSIS.md, TIMELINE.md, RECIPE.md, template.json, chạy `vedit template save ' + tid + '` rồi báo ngắn gọn template giữ gì / cho thay gì. Không render.');
+  return lines.join('\n');
+}
+app.get('/api/templates', (req, res) => res.json({ templates: listTemplates() }));
+app.get('/api/templates/:id', handle((req) => ({ template: readTemplate(req.params.id), problems: checkTemplate(req.params.id) })));
+app.delete('/api/templates/:id', handle((req) => { removeTemplate(req.params.id); broadcastTemplates(); return { ok: true }; }));
+// "Dùng template": new project from the skeleton (the rebuilt clone), or an empty one if it has none yet
+app.post('/api/templates/:id/use', handle((req) => {
+  const t = readTemplate(req.params.id);
+  const sk = path.join(templateDir(req.params.id), 'skeleton');
+  const { name, width, height } = req.body || {};
+  const fromSkeleton = fs.existsSync(path.join(sk, 'project.json'));
+  const nid = fromSkeleton
+    ? projects.fromSkeleton(sk, { name: name || t.name, width, height })
+    : projects.create({ name: name || t.name, width, height, fps: 30 });
+  try { openProject(nid); } catch (e) { projects.remove(nid); throw e; }
+  (async () => { for (const a of readProject().assets) if (!fs.existsSync(path.join(CACHE_DIR, 'thumbs', `${a.id}.jpg`)) && !fs.existsSync(path.join(CACHE_DIR, 'thumbs', `${a.id}.wave.png`))) await makePreviews(a); })()
+    .catch((e) => console.warn('[template] previews', e.message));
+  return { ...projectsPayload(), fromSkeleton };
+}));
+// Start a clone: { uploadId, size, fileName } (chunked upload) | { url } | { assetId } (a video of the open project)
+app.post('/api/clone', (req, res) => {
+  const b = req.body || {};
+  try {
+    let part = null;
+    const assetId = b.assetId ? String(b.assetId) : null;
+    if (b.uploadId) {
+      part = partPath(b.uploadId);
+      if (partSize(part) !== Number(b.size)) throw new Error('Video chưa tải lên đủ');
+    } else if (!assetId && !/^https?:\/\/\S+$/.test(b.url || '')) throw new Error('Chọn video hoặc dán link');
+    if (assetId && readProject().assets.find((a) => a.id === assetId)?.type !== 'video') throw new Error('Asset không phải video');
+    const fileName = String(b.fileName || '').replace(/[/\\]/g, '_') || (assetId ? readProject().assets.find((a) => a.id === assetId).name : String(b.url));
+    const name = String(b.name || '').trim().slice(0, 80) || (b.url ? 'Template từ link' : fileName.replace(/\.[^.]+$/, '').slice(0, 60)) || 'Template mới';
+    const lang = String(b.lang || 'auto');
+    // the analysis and the rebuild get a project of their own (cloning an asset of the open project stays there)
+    if (!assetId) {
+      const pid = projects.create({ name: `Clone · ${name}`, width: 1080, height: 1920, fps: 30 });
+      try { openProject(pid); } catch (e) { projects.remove(pid); throw e; }
+    }
+    const tid = createDraft({ name, source: { name: fileName, url: b.url || null }, notes: b.notes, lang, projectId: projects.activeId() });
+    broadcastTemplates();
+    let brief = null;
+    const job = startJob('clone', `Phân tích video mẫu: ${name}`, async (update) => {
+      let asset;
+      if (assetId) asset = readProject().assets.find((a) => a.id === assetId);
+      else {
+        let file = part, tmpDir = null;
+        if (b.url) {
+          update({ stage: 'tải video từ link', progress: 0 });
+          file = await downloadUrl(b.url, { onProgress: (p) => update({ progress: p * 0.15 }) });
+          tmpDir = path.dirname(file);
+        }
+        update({ stage: 'nhập video', progress: 0.15 });
+        asset = await importMedia(readProject(), file, {
+          move: true, name: b.url ? undefined : fileName,
+          onStage: (st) => update({ stage: st === 'transcode' ? 'chuyển mã video' : 'nhập video' }),
+          onProgress: (p) => update({ progress: 0.15 + p * 0.1 }),
+        });
+        if (b.url) asset.source = b.url;
+        if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
+        const latest = readProject();
+        latest.assets.push(asset);
+        [latest.settings.width, latest.settings.height] = cloneSize(asset.width, asset.height);
+        saveProject(latest, 'ui');
+      }
+      const src = path.join(WORKSPACE, asset.path);
+      storeReference(tid, src);
+      patchTemplate(tid, { source: { name: asset.name, url: b.url || asset.source || null, assetId: asset.id, duration: asset.duration, width: asset.width, height: asset.height } });
+      const a = await analyzeVideo(src, path.join(templateDir(tid), 'analysis'), {
+        lang, transcriptFile: path.join(CACHE_DIR, 'transcripts', `${asset.id}.json`),
+        onProgress: ({ stage, progress }) => update({ stage, progress: 0.25 + progress * 0.75 }),
+      });
+      patchTemplate(tid, { status: 'draft', desc: `Clone từ ${asset.name} — Claude đang dựng template…`, analysis: { shots: a.pacing.shots, duration: a.source.duration, words: a.speech?.words || 0, bpm: a.audio?.tempo?.bpm || null } });
+      broadcastTemplates();
+      brief = cloneBrief({ tid, name, asset, notes: String(b.notes || '').trim(), lang, warnings: a.warnings });
+      return { label: `Đã phân tích "${name}": ${a.pacing.shots} cảnh${a.speech ? `, ${a.speech.words} từ` : ''} — Claude đang dựng template`, templateId: tid };
+    }, {
+      onFinish: (j) => {
+        if (j.stage === 'done' && brief && b.autoBuild !== false) {
+          claude.send(brief).catch((e) => broadcast({ type: 'toast', level: 'error', text: `Không gửi được cho Claude: ${e.message}` }));
+          return;
+        }
+        if (j.stage === 'error') { try { patchTemplate(tid, { status: 'error', desc: `Phân tích lỗi: ${j.error}` }); } catch { /* removed */ } broadcastTemplates(); }
+      },
+    });
+    res.json({ job, templateId: tid, ...projectsPayload() });
+  } catch (e) { res.status(e.status || 400).json({ error: e.message }); }
+});
 app.post('/api/projects/:id/duplicate', handle((req) => { projects.duplicate(req.params.id); broadcast({ type: 'projects', ...projectsPayload() }); }));
 app.patch('/api/projects/:id', handle((req) => {
   projects.rename(req.params.id, req.body?.name);
@@ -769,7 +884,8 @@ app.post('/api/still', async (req, res) => {
   try {
     const out = path.resolve(req.body.out || path.join(CACHE_DIR, 'frames', `timeline_${Date.now()}.png`));
     fs.mkdirSync(path.dirname(out), { recursive: true });
-    await renderTimelineStill({ mediaBase: MEDIA_BASE, time: Number(req.body.time || 0), out });
+    // `project` (optional): render another composition, e.g. a thumbnail built by `vedit thumbnail`
+    await renderTimelineStill({ mediaBase: MEDIA_BASE, time: Number(req.body.time || 0), out, project: req.body.project || undefined, scale: Number(req.body.scale) || 0.5 });
     res.json({ file: out });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -865,7 +981,7 @@ wss.on('connection', (ws, req) => {
 const dist = path.join(ROOT, 'dist');
 if (fs.existsSync(dist)) {
   app.use(express.static(dist));
-  app.get(/^\/(?!api|media|exports|cache|library|ws).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
+  app.get(/^\/(?!api|media|exports|cache|library|templates|ws).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
 }
 
 /* ---- light preview copies of heavy videos (see makeProxy) ----

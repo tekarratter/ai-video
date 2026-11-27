@@ -7,6 +7,7 @@ import { AppleMotion, BlurFrame, MenuShowcase, StrobeTeaser } from './Business';
 import { SAMPLE } from './samples';
 import { Character3D, CharacterStage } from './Character3D';
 import { BarChart, DataTable, DocTitle, DocZoom, KeyPoints, ProcessFlow, VersusCompare } from './Explainer';
+import { ProductCTA, ProductIntro, ProductSpecs, ProductThumbnail } from './Product';
 
 export const templateComponents: Record<string, React.FC<any>> = {
   BreakingIntro, NewsGradient, NewsTicker,
@@ -15,6 +16,7 @@ export const templateComponents: Record<string, React.FC<any>> = {
   StrobeTeaser, MenuShowcase, AppleMotion, BlurFrame,
   Character3D, CharacterStage,
   DocTitle, KeyPoints, BarChart, ProcessFlow, DataTable, VersusCompare, DocZoom,
+  ProductIntro, ProductThumbnail, ProductSpecs, ProductCTA,
 };
 
 /** Preview props for the Motion library / template gallery (sample photos are CC images on Wikimedia Commons). */
@@ -63,4 +65,14 @@ export const templateDefaults: Record<string, Record<string, unknown>> = {
     right: { title: 'Nên', icon: '✅', points: ['Uống nhiều nước', 'Đến cơ sở y tế gần nhất'] },
   },
   DocZoom: { image: '', caption: 'Biểu đồ: số ca tăng *32%* so với năm trước', kicker: 'TRANG 1', focus: { x: 0.15, y: 0.3, w: 0.7, h: 0.25 } },
+  ProductIntro: {
+    kicker: 'GIỚI THIỆU', title: 'Laptop gaming 16 inch\n*RTX 5070*, màn 165 Hz', image: SAMPLE.laptop, credit: 'Ảnh minh họa',
+    specs: ['Core Ultra 9', '32 GB RAM', '1 TB SSD'], brand: 'Tên cửa hàng', tagline: 'Máy tính của bạn', tint: 'blue',
+  },
+  ProductThumbnail: { kicker: 'TIN TỨC', title: 'Laptop gaming 16 inch\nRTX 5070, 165 Hz', image: SAMPLE.laptop, credit: 'Ảnh minh họa', brand: 'Tên cửa hàng', tagline: 'Máy tính của bạn', tint: 'purple' },
+  ProductSpecs: {
+    kicker: 'THÔNG SỐ', title: 'Cấu hình *đáng tiền*', image: SAMPLE.laptop, brand: 'Tên cửa hàng',
+    specs: [{ icon: '⚡', label: 'CPU', value: 'Intel Core Ultra 9' }, { icon: '🎮', label: 'GPU', value: 'RTX 5070 8 GB' }, { icon: '🖥️', label: 'Màn hình', value: '16" 2.5K *165 Hz*' }, { icon: '💾', label: 'Bộ nhớ', value: '32 GB · SSD 1 TB' }],
+  },
+  ProductCTA: { title: 'Có sẵn tại *cửa hàng*', price: '32.990.000đ', oldPrice: '35.990.000đ', hotline: '0900 000 000', address: '123 Đường ABC, TP. HCM', website: 'cuahang.vn', image: SAMPLE.laptop, brand: 'Tên cửa hàng' },
 };

@@ -12,6 +12,10 @@ import { importTrack, musicFacets, searchMusic } from '../shared/library.mjs';
 import { listVoices, synthesize, ttsFileName } from '../shared/tts.mjs';
 import { articleKey, downloadImage, extractArticle, searchImages } from './article.mjs';
 import { DOC_RE, docKey, extractDocument, pageSheets, renderPages } from './document.mjs';
+import { analyzeVideo, findPhrase, tiles as frameTiles, wordsOf } from '../shared/analyze.mjs';
+import {
+  checkTemplate, createDraft, listTemplates, patchTemplate, readTemplate, saveSkeleton, storeReference, templateDir,
+} from '../shared/templates.mjs';
 import {
   addAudioClip, assetById, clipDuration, creditsFor, fmtTime, layoutTrack, LOGO_DEFAULTS, LOGO_POSITIONS, newId, projectDuration, sourceToTimeline,
 } from '../shared/timeline.js';
@@ -246,6 +250,123 @@ const commands = {
     const err = await ffmpeg(['-i', file, '-vf', `select='gt(scene,${th})',showinfo`, '-f', 'null', '-']);
     const times = [...err.matchAll(/pts_time:([\d.]+)/g)].map((m) => parseFloat(m[1]));
     console.log(times.map((t) => t.toFixed(2)).join('\n') || 'no scene changes');
+  },
+
+  // thumbnail image (YouTube / Facebook / article banner) from a component — default: the ProductIntro on the timeline
+  async thumbnail() {
+    const p = readProject();
+    let component = opt.component, props = {};
+    const comps = p.tracks.flatMap((t) => t.clips).filter((c) => c.kind === 'component');
+    const src = opt.clip ? comps.find((c) => c.id === opt.clip) || die(`no component clip ${opt.clip}`)
+      : comps.find((c) => ['ProductThumbnail', 'ProductIntro'].includes(c.component));
+    if (src) { props = { ...(src.props || {}) }; component ||= src.component === 'ProductIntro' ? 'ProductThumbnail' : src.component; }
+    if (opt['props-file']) Object.assign(props, JSON.parse(fs.readFileSync(path.resolve(opt['props-file']), 'utf8')));
+    if (opt.props) Object.assign(props, JSON.parse(opt.props));
+    component ||= 'ProductThumbnail';
+    const { width, height } = p.settings;
+    const [w, h] = String(opt.size || (height > width * 1.1 ? '1080x1920' : Math.abs(width - height) < width * 0.1 ? '1080x1080' : '1280x720')).split('x').map(Number);
+    const dur = 2;
+    const project = {
+      ...p, settings: { ...p.settings, width: w, height: h },
+      tracks: [{ id: 'main', name: 'Main', type: 'sequence', clips: [{ id: 'thumb', kind: 'component', component, props, duration: dur }] }],
+      subtitles: { ...p.subtitles, enabled: false, cues: [] }, logo: opt.logo ? p.logo : undefined,
+    };
+    const out = path.resolve(opt.out || path.join(WORKSPACE, 'exports', 'thumbnail.jpg'));
+    // a static component looks the same on every frame; an animated one is finished on its last frame
+    const r = await api('POST', '/api/still', { time: component === 'ProductThumbnail' ? 0.5 : dur - 1 / (p.settings.fps || 30), out, project, scale: 1 });
+    console.log(`${r.file}  (${w}x${h}, ${component}) — Read it to check`);
+  },
+
+  // Clone video → template: automatic evidence about a reference video (see CLAUDE.md "Clone video → template")
+  async analyze() {
+    if (!pos[0]) die('usage: analyze <assetId|file> [--lang vi] [--to dir] [--threshold 0.3]');
+    const p = readProject();
+    const { file, asset } = resolveMedia(p, pos[0]);
+    const out = path.resolve(opt.to || path.join(CACHE_DIR, 'analysis', asset?.id || path.basename(file).replace(/\W+/g, '_')));
+    const a = await analyzeVideo(file, out, {
+      lang: opt.lang, threshold: Number(opt.threshold || 0.3),
+      transcriptFile: asset ? path.join(CACHE_DIR, 'transcripts', `${asset.id}.json`) : undefined,
+      onProgress: ({ stage, progress }) => console.error(`${Math.round(progress * 100)}% ${stage}`),
+    });
+    console.log(`${out}/overview.md\n${a.pacing.shots} shots, ${a.speech ? `${a.speech.words} words` : 'no speech'}${a.audio?.tempo ? `, ~${a.audio.tempo.bpm} BPM` : ''}${a.warnings.length ? `\nwarnings: ${a.warnings.join('; ')}` : ''}\nRead overview.md, then the images it lists.`);
+  },
+
+  // close reading: time-labelled frame grids of a passage with the spoken words under each frame
+  async tiles() {
+    if (!pos[0]) die('usage: tiles <assetId|file> (--start s --end s | --around "phrase" [--padding 1] [--occurrence 1]) [--every 0.25|frame] [--columns 4] [--rows 3] [--cell 480] [--transcript file|none] [--to dir]');
+    const p = readProject();
+    const { file, asset } = resolveMedia(p, pos[0]);
+    const info = await probe(file);
+    let words = [];
+    const trFile = opt.transcript && opt.transcript !== 'none' ? path.resolve(opt.transcript) : asset ? path.join(CACHE_DIR, 'transcripts', `${asset.id}.json`) : null;
+    if (opt.transcript !== 'none' && trFile && fs.existsSync(trFile)) words = wordsOf(JSON.parse(fs.readFileSync(trFile, 'utf8')));
+    let start = Number(opt.start ?? 0), end = Number(opt.end ?? info.duration);
+    if (opt.around) {
+      if (!words.length) die('--around needs a transcript (run transcribe first or pass --transcript)');
+      const r = findPhrase(words, String(opt.around), Number(opt.occurrence || 1)) || die(`phrase not found: "${opt.around}"`);
+      const pad = Number(opt.padding ?? 1);
+      [start, end] = [Math.max(0, r[0] - pad), Math.min(info.duration, r[1] + pad)];
+    }
+    if (!(end > start)) die('empty range');
+    const every = opt.every === 'frame' || opt['every-frame'] ? 'frame' : Number(opt.every || Math.max(0.1, (end - start) / 12));
+    const portrait = info.height > info.width;
+    const out = path.resolve(opt.to || path.join(CACHE_DIR, 'tiles', `${asset?.id || 'f'}_${start.toFixed(2)}-${end.toFixed(2)}`));
+    const r = await frameTiles(file, {
+      start, end, every, fps: info.fps, words, outDir: out, prefix: 'tiles',
+      columns: Number(opt.columns || (portrait ? 6 : 4)), rows: Number(opt.rows || (portrait ? 2 : 3)), cell: Number(opt.cell || (portrait ? 300 : 480)),
+    });
+    for (const pg of r.pages) console.log(`${pg.file}  ${pg.start.toFixed(2)}–${pg.end.toFixed(2)}s  ${pg.grid}`);
+    console.log(`${r.times.length} frames, every ${r.step.toFixed(3)}s${r.times.length >= 240 ? ' (capped at 240 — narrow the range)' : ''}. Read the JPGs.`);
+  },
+
+  // user templates made by cloning a reference video
+  async template() {
+    const sub = pos.shift();
+    if (!sub || sub === 'list') {
+      const list = listTemplates();
+      if (!list.length) console.log('no user templates yet');
+      for (const t of list) console.log(`${t.id.padEnd(32)} ${String(t.status).padEnd(9)} ${(t.sizes || []).join(',').padEnd(20)} "${t.name}"${t.problems.length ? `  ⚠ ${t.problems.join('; ')}` : ''}`);
+    } else if (sub === 'show') {
+      const t = readTemplate(pos[0]);
+      console.log(JSON.stringify(t, null, 2));
+      const dir = templateDir(pos[0]);
+      for (const f of ['analysis/overview.md', 'ANALYSIS.md', 'TIMELINE.md', 'RECIPE.md', 'skeleton/project.json', 'reference/source.mp4']) console.log(`${fs.existsSync(path.join(dir, f)) ? '✓' : '·'} templates/${pos[0]}/${f}`);
+      const pr = checkTemplate(pos[0]);
+      console.log(pr.length ? `problems:\n  ${pr.join('\n  ')}` : 'template OK');
+    } else if (sub === 'new') {
+      // from chat: the user attached / imported a video and asked to turn it into a template
+      if (!pos[0] || !opt.from) die('usage: template new "Name" --from <assetId> [--lang vi] [--notes "…"]');
+      const p = readProject();
+      const asset = assetById(p, opt.from) || die(`no asset ${opt.from}`);
+      if (asset.type !== 'video') die(`${opt.from} is not a video`);
+      const api0 = await fetch(`${SERVER}/api/projects`).then((r) => r.json()).catch(() => null);
+      const tid = createDraft({ name: pos.join(' '), source: { name: asset.name, url: asset.source || null }, notes: opt.notes || '', lang: opt.lang || 'auto', projectId: api0?.active || null });
+      const file = path.join(WORKSPACE, asset.path);
+      storeReference(tid, file);
+      patchTemplate(tid, { source: { name: asset.name, url: asset.source || null, assetId: asset.id, duration: asset.duration, width: asset.width, height: asset.height } });
+      const a = await analyzeVideo(file, path.join(templateDir(tid), 'analysis'), {
+        lang: opt.lang, transcriptFile: path.join(CACHE_DIR, 'transcripts', `${asset.id}.json`),
+        onProgress: ({ stage, progress }) => console.error(`${Math.round(progress * 100)}% ${stage}`),
+      });
+      patchTemplate(tid, { status: 'draft', desc: `Clone từ ${asset.name} — đang dựng template…`, analysis: { shots: a.pacing.shots, duration: a.source.duration, words: a.speech?.words || 0, bpm: a.audio?.tempo?.bpm || null } });
+      console.log(`template ${tid}\nRead templates/${tid}/analysis/overview.md, then follow CLAUDE.md "Clone video → template".`);
+    } else if (sub === 'save') {
+      // snapshot the open project as the skeleton, mark ready when the template is complete
+      const id = pos[0] || die('usage: template save <id> [--no-skeleton]');
+      readTemplate(id);
+      if (!opt['no-skeleton']) {
+        const r = saveSkeleton(id, path.join(WORKSPACE, 'project.json'), path.join(WORKSPACE, 'media'));
+        console.log(`skeleton: ${r.assets} assets (${(r.bytes / 1e6).toFixed(1)} MB)${r.dropped ? `, ${r.dropped} unused assets left out` : ''}`);
+      }
+      const pr = checkTemplate(id);
+      if (pr.length) { patchTemplate(id, { status: 'draft' }); console.log(`not ready yet:\n  ${pr.join('\n  ')}`); process.exit(2); }
+      patchTemplate(id, { status: 'ready' });
+      console.log(`template ${id} is ready — it shows under "Template của tôi" on the home screen`);
+    } else if (sub === 'check') {
+      const pr = checkTemplate(pos[0] || die('usage: template check <id>'));
+      console.log(pr.length ? pr.join('\n') : 'OK');
+      if (pr.length) process.exit(2);
+    } else die('usage: template [list] | show <id> | new "Name" --from <assetId> | save <id> | check <id>');
   },
 
   async add() {
@@ -612,6 +733,13 @@ const commands = {
                                          dubbing: transcript → Claude translation → TTS → exports/<name>-thuyet-minh-<to>.mp4 (+ track "dub")
   logo [assetId|file] [--position top-right] [--size 0.18] [--margin 0.04] [--opacity 0.9] [--off|--on|--remove]
                                          logo/watermark over the whole video (no args: show current)
+  thumbnail [--clip id] [--component ProductThumbnail] [--props '{…}'] [--size 1280x720] [--out exports/thumbnail.jpg] [--logo]
+                                         thumbnail image from a component (default: the ProductIntro on the timeline → ProductThumbnail)
+  analyze <assetId|file> [--lang vi] [--to dir]   reference-video evidence: cuts, beat, speech, shot sheets, word-labelled timeline (overview.md)
+  tiles <assetId|file> (--start s --end s | --around "phrase" [--padding 1]) [--every 0.2|frame] [--columns 4 --rows 3 --cell 480]
+                                         close reading: time-labelled frame grids with the spoken words under each frame
+  template [list] | show <id> | new "Name" --from <assetId> [--lang vi] [--notes "…"] | save <id> [--no-skeleton] | check <id>
+                                         user templates cloned from a reference video (workspace/templates/<id>/)
   validate                               sanity-check project.json`);
   },
 };

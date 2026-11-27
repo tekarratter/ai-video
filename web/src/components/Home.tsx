@@ -10,7 +10,8 @@ import { openArticle } from './ArticleDialog';
 import { openDub } from './DubDialog';
 import { openProjects } from './Projects';
 import { uploadFiles } from './LeftPanel';
-import { CATEGORIES, SIZE_LABEL, TEMPLATES, type Field, type Template } from '../templates';
+import { CATEGORIES, SIZE_LABEL, TEMPLATES, userTemplate, type Field, type Template } from '../templates';
+import { CloneDialog, openClone } from './CloneDialog';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -46,6 +47,21 @@ const DemoVideo: React.FC<{ id: string; info: DemoInfo; play: boolean; controls?
   );
 };
 
+/** User templates made with "Clone video → Template" (GET /api/templates), refreshed when the server says so. */
+export function useUserTemplates() {
+  const [list, setList] = useState<Template[]>([]);
+  useEffect(() => {
+    let alive = true;
+    const load = () => api('/api/templates').then((r) => { if (alive) setList((r.templates || []).map(userTemplate)); }).catch(() => {});
+    load();
+    window.addEventListener('templates-changed', load);
+    return () => { alive = false; window.removeEventListener('templates-changed', load); };
+  }, []);
+  return list;
+}
+
+const STATUS_LABEL: Record<string, string> = { analyzing: 'Đang phân tích…', draft: 'Claude đang dựng…', error: 'Lỗi', ready: '' };
+
 const timeAgo = (t?: number) => {
   if (!t) return '';
   const m = Math.round((Date.now() - t) / 60000);
@@ -70,9 +86,38 @@ const TemplatePreview: React.FC<{ t: Template; play: boolean }> = ({ t, play }) 
     : <Thumbnail {...common} frameToDisplay={t.preview.frame ?? 60} errorFallback={() => <div className="tpl-thumb-empty">{t.icon}</div>} />;
 };
 
+/** Card thumbnail of a user template: poster of the reference, reference video on hover. */
+const UserThumb: React.FC<{ t: Template; play: boolean }> = ({ t, play }) => {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    if (play) { v.currentTime = 0; v.play().catch(() => {}); } else v.pause();
+  }, [play]);
+  const [w, h] = dims(t.sizes[0]);
+  if (!t.poster && !t.refVideo) return <div className="tpl-thumb-empty">{t.icon}</div>;
+  return t.refVideo
+    ? <video ref={ref} className="demo-video" src={t.refVideo} poster={t.poster || undefined} muted loop playsInline preload="none" style={{ aspectRatio: `${w} / ${h}` }} />
+    : <img className="demo-video" src={t.poster!} alt="" style={{ aspectRatio: `${w} / ${h}` }} />;
+};
+
 const TemplateCard: React.FC<{ t: Template; demo?: DemoInfo; onPick: (t: Template) => void }> = ({ t, demo, onPick }) => {
   const [hover, setHover] = useState(false);
   const size = demo?.size || t.sizes[0];
+  if (t.user) return (
+    <button className="tpl-card" onClick={() => onPick(t)} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <div className="tpl-thumb">
+        {t.poster && <div className="tpl-thumb-bg" style={{ backgroundImage: `url(${t.poster})` }} />}
+        <UserThumb t={t} play={hover} />
+        <span className="tpl-hot" style={{ background: t.status === 'error' ? '#dc2626' : t.status === 'ready' ? '#7c3aed' : '#d97706' }}>{t.status === 'ready' ? 'CỦA TÔI' : STATUS_LABEL[t.status || ''] || t.status}</span>
+        <span className="tpl-size">{size === '1080x1920' ? '9:16' : size === '1080x1080' ? '1:1' : '16:9'}{t.source?.duration ? ` · ${Math.round(t.source.duration)}s` : ''}</span>
+      </div>
+      <div className="tpl-meta">
+        <b>{t.icon} {t.name}</b>
+        <span className="muted small">{t.desc}</span>
+      </div>
+    </button>
+  );
   return (
     <button className="tpl-card" onClick={() => onPick(t)} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <div className="tpl-thumb">
@@ -98,6 +143,7 @@ export const Home: React.FC = () => {
   const [q, setQ] = useState('');
   const [pick, setPick] = useState<Template | null>(null);
   const demos = useDemos();
+  const mine = useUserTemplates();
   const galleryRef = useRef<HTMLDivElement>(null);
   useEffect(() => { api('/api/projects').then((r) => useStore.setState({ projects: r.projects, activeProject: r.active })).catch(() => {}); }, []);
 
@@ -111,7 +157,7 @@ export const Home: React.FC = () => {
     showEditor();
   };
   const ql = q.trim().toLowerCase();
-  const list = TEMPLATES.filter((t) => (cat === 'all' || t.cat === cat) && (!ql || `${t.name} ${t.desc}`.toLowerCase().includes(ql)));
+  const list = [...mine, ...TEMPLATES].filter((t) => (cat === 'all' || t.cat === cat) && (!ql || `${t.name} ${t.desc}`.toLowerCase().includes(ql)));
   const recent = [...projects].sort((a: any, b: any) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 8);
 
   return (
@@ -143,9 +189,13 @@ export const Home: React.FC = () => {
             <span className="quick-icon">🎧</span>
             <b>Thuyết minh video</b><span>Dịch & lồng tiếng Việt / Anh</span>
           </button>
-          <button className="quick-card hot" onClick={() => galleryRef.current?.scrollIntoView({ behavior: 'smooth' })}>
+          <button className="quick-card hot" onClick={() => openClone()}>
+            <span className="quick-icon">🧬</span>
+            <b>Clone video → Template</b><span>Tải video mẫu lên: phân tích, dựng lại, thành template của bạn</span>
+          </button>
+          <button className="quick-card" onClick={() => galleryRef.current?.scrollIntoView({ behavior: 'smooth' })}>
             <span className="quick-icon">⚡</span>
-            <b>Templates</b><span>{TEMPLATES.length} kiểu video có sẵn</span>
+            <b>Templates</b><span>{TEMPLATES.length} kiểu có sẵn{mine.length ? ` + ${mine.length} của bạn` : ''}</span>
           </button>
         </div>
 
@@ -178,10 +228,11 @@ export const Home: React.FC = () => {
         </div>
         <div className="tpl-grid">
           {list.map((t) => <TemplateCard key={t.id} t={t} demo={demos[t.id]} onPick={choose} />)}
-          {!list.length && <div className="muted">Không có template phù hợp.</div>}
+          {!list.length && <div className="muted">{cat === 'mine' ? <>Chưa có template riêng. <button className="link-btn" onClick={() => openClone()}>Clone một video</button> để tạo.</> : 'Không có template phù hợp.'}</div>}
         </div>
       </div>
       {pick && <TemplateDialog t={pick} demo={demos[pick.id]} onClose={() => setPick(null)} />}
+      <CloneDialog />
     </div>
   );
 };
@@ -218,7 +269,11 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
   }, [lang, list, voice, voice2]);
 
   const missing = t.fields.some((f) => {
-    if (f.type === 'source') return !(vals.source || '').trim() || (mode === 'link' && !/^https?:\/\/\S+\.\S+/.test(vals.source.trim()));
+    if (f.type === 'source') {
+      const v = (vals.source || '').trim();
+      if (!v) return f.required !== false;
+      return mode === 'link' && !/^https?:\/\/\S+\.\S+/.test(v);
+    }
     if (f.type === 'files') return !!f.required && !files[f.k]?.length;
     if (f.type === 'text' || f.type === 'textarea') return !!f.required && !(vals[f.k] || '').trim();
     return false;
@@ -241,11 +296,16 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
     try {
       const [w, h] = dims(size);
       const title = name.trim() || vals.headline?.trim() || vals.show?.trim() || t.name;
+      let fromSkeleton = false;
       if (newProject) {
         setBusy('Đang tạo dự án…');
         await flushSave(); rememberProject();
-        const r = await api('/api/projects', 'POST', { name: title, width: w, height: h, fps: 30 });
+        // user template: the new project starts as a copy of its skeleton (the rebuilt reference)
+        const r = t.user
+          ? await api(`/api/templates/${t.id}/use`, 'POST', { name: title, width: w, height: h })
+          : await api('/api/projects', 'POST', { name: title, width: w, height: h, fps: 30 });
         if (r?.projects) useStore.setState({ projects: r.projects, activeProject: r.active });
+        fromSkeleton = !!r?.fromSkeleton;
       }
       const all = Object.values(files).flat();
       if (all.length) {
@@ -258,8 +318,11 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
           setTimeout(() => { if (check()) { unsub(); resolve(); } }, 1500);
         });
       }
-      const lines = [`Tạo video theo template "${t.name}" — làm theo mục "## Template: ${t.recipe}" trong CLAUDE.md (đọc lại mục đó và "Video templates" trước khi làm).`];
-      if (srcField) lines.push(`- ${SOURCE_LABEL[mode]}: ${(vals.source || '').trim()}`);
+      const lines = [t.user
+        ? `Tạo video theo template tự tạo "${t.name}" (id ${t.id}) — đọc templates/${t.id}/RECIPE.md và làm theo mục "### Using a cloned template" trong CLAUDE.md.`
+        : `Tạo video theo template "${t.name}" — làm theo mục "## Template: ${t.recipe}" trong CLAUDE.md (đọc lại mục đó và "Video templates" trước khi làm).`];
+      if (t.user && newProject) lines.push(fromSkeleton ? '- Dự án mới đã được sao từ skeleton của template (cấu trúc + placeholder): thay toàn bộ placeholder' : '- Template chưa có skeleton: dựng từ đầu theo RECIPE.md');
+      if (srcField && (vals.source || '').trim()) lines.push(`- ${SOURCE_LABEL[mode]}: ${(vals.source || '').trim()}`);
       for (const f of t.fields) {
         if ((f.type === 'text' || f.type === 'textarea') && (vals[f.k] || '').trim()) lines.push(`- ${f.label}: ${vals[f.k].trim()}`);
         if (f.type === 'files' && files[f.k]?.length) lines.push(`- ${f.label}: ${files[f.k].map((x) => x.name).join(', ')} (vừa tải lên, là các asset mới nhất của dự án)`);
@@ -269,6 +332,7 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
       }
       if (length) lines.push(`- Độ dài: ${t.length?.find((x) => x[0] === length)?.[1]}`);
       lines.push(newProject ? `- Đã tạo dự án mới "${title}" khung ${size} và đang mở — dựng trong dự án này` : `- Dùng dự án đang mở, thêm vào cuối timeline`);
+      if (t.id === 'product-intro') lines.push('- Xuất thêm ảnh thumbnail cùng style: `vedit thumbnail` (→ exports/thumbnail.jpg)');
       lines.push(`- Phụ đề: ${subs ? 'có' : 'không'} · Nhạc nền: ${music ? 'có' : 'không'}`);
       if ((vals.extra || '').trim()) lines.push(`- Yêu cầu thêm: ${vals.extra.trim()}`);
       lines.push('Không render; xong thì báo tóm tắt các cảnh.');
@@ -289,7 +353,10 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
         </div>
         <div className="tpl-modal-body">
           <div className="tpl-modal-side">
-            <div className="tpl-modal-preview">{demo?.video ? <DemoVideo id={t.id} info={demo} play controls /> : <TemplatePreview t={{ ...t, sizes: [size] }} play />}</div>
+            <div className="tpl-modal-preview">{t.user
+              ? (t.refVideo ? <video className="demo-video" src={t.refVideo} poster={t.poster || undefined} controls playsInline /> : <div className="tpl-thumb-empty">{t.icon}</div>)
+              : demo?.video ? <DemoVideo id={t.id} info={demo} play controls /> : <TemplatePreview t={{ ...t, sizes: [size] }} play />}</div>
+            {t.user && <UserTemplateSide t={t} busy={!!busy} onClose={onClose} />}
             {demo && (
               <>
                 <button className="btn" disabled={!!busy} onClick={openDemo}><Icon name="copy" /> Dùng mẫu này để sửa</button>
@@ -346,11 +413,40 @@ const TemplateDialog: React.FC<{ t: Template; demo?: DemoInfo; onClose: () => vo
               {busy && <span className="small muted">{busy}</span>}
               <div className="spacer" />
               <button className="btn" onClick={onClose} disabled={!!busy}>Huỷ</button>
-              <button className="btn primary" disabled={missing || !!busy} onClick={submit}><Icon name="sparkle" /> Tạo video</button>
+              <button className="btn primary" disabled={missing || !!busy || (t.user && t.status !== 'ready')} onClick={submit}><Icon name="sparkle" /> Tạo video</button>
             </div>
           </div>
         </div>
       </div>
     </div>
+  );
+};
+
+/** Side panel of a user template: status, open the clone project, delete. */
+const UserTemplateSide: React.FC<{ t: Template; busy: boolean; onClose: () => void }> = ({ t, busy, onClose }) => {
+  const active = useStore((s) => s.activeProject);
+  const openCloneProject = async () => {
+    if (!t.projectId) return;
+    try {
+      if (t.projectId !== active) { await flushSave(); rememberProject(); const r = await api(`/api/projects/${t.projectId}/open`, 'POST'); if (r?.projects) useStore.setState({ projects: r.projects, activeProject: r.active }); }
+      onClose(); showEditor();
+    } catch (e: any) { useStore.getState().toast(e.message, 'error'); }
+  };
+  const remove = async () => {
+    if (!confirm(`Xoá template "${t.name}"? (dự án clone vẫn giữ nguyên)`)) return;
+    try { await api(`/api/templates/${t.id}`, 'DELETE'); window.dispatchEvent(new Event('templates-changed')); onClose(); } catch (e: any) { useStore.getState().toast(e.message, 'error'); }
+  };
+  return (
+    <>
+      <div className="muted small">
+        Video mẫu gốc{t.source?.name ? `: ${t.source.name}` : ''}.{' '}
+        {t.status === 'ready' ? (t.hasSkeleton ? 'Video mới bắt đầu từ bản dựng lại (skeleton) rồi thay nội dung của bạn.' : 'Chưa có skeleton — Claude dựng theo công thức.')
+          : t.status === 'error' ? 'Phân tích lỗi — xoá rồi thử lại.'
+            : 'Claude đang phân tích và dựng template; theo dõi trong khung chat của dự án clone.'}
+      </div>
+      {!!t.problems?.length && <div className="error small">Thiếu: {t.problems.join('; ')}</div>}
+      {t.projectId && <button className="btn" disabled={busy} onClick={openCloneProject}><Icon name="film" /> Mở dự án clone</button>}
+      <button className="btn" disabled={busy} onClick={remove}><Icon name="trash" /> Xoá template</button>
+    </>
   );
 };

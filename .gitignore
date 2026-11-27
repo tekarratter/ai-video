@@ -6,6 +6,7 @@ workspace/.cache/
 workspace/project.json
 logs/
 workspace/projects/
+workspace/templates/
 .venv-tts/
 models/
 library/music/*

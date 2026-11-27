@@ -74,6 +74,9 @@ export function connect() {
         }
         break;
       }
+      case 'templates': // user templates changed (clone analysis, Claude wrote template.json…)
+        window.dispatchEvent(new Event('templates-changed'));
+        break;
       case 'custom-changed':
         useStore.setState({ customVersion: st.customVersion + 1 });
         break;

@@ -67,6 +67,15 @@ git clone https://github.com/tekarratter/ai-video.git && cd ai-video && docker c
   loại *Desktop app* trên Google Cloud (bật YouTube Data API v3) — hướng dẫn hiện ngay trong hộp thoại. Token lưu ở
   `~/.config/ai-video/youtube.json`. Project Google chưa qua audit của YouTube thì video đăng qua API bị khoá ở chế độ riêng tư.
 - **Render:** Remotion (`@remotion/renderer`) ra MP4 trong `workspace/exports/`. Có chế độ nháp (½ độ phân giải).
+- **Clone video → Template** (ý tưởng từ [hypit](https://github.com/hypit-ai/hypit)): tải lên một video mẫu (hoặc dán link
+  TikTok/YouTube/Reels). Server đo điểm cắt cảnh, nhịp nhạc (BPM, cắt trùng nhịp, tiếng nhấn), lời thoại từng từ và chụp lưới
+  khung hình kèm lời (`shared/analyze.mjs`). Sau đó Claude đọc toàn bộ, viết `ANALYSIS.md` / `TIMELINE.md`, **dựng lại thành dự án
+  sửa được (skeleton)** và lưu thành template riêng (`workspace/templates/<id>/`: `template.json`, `RECIPE.md`, `skeleton/`).
+  Template hiện ở nhóm **Template của tôi** trên trang chủ. Mỗi lần dùng, app tạo dự án mới từ skeleton rồi Claude thay nội dung
+  theo `RECIPE.md`: một quy trình, nhiều biến thể. CLI: `vedit analyze`, `vedit tiles --around "câu nói"`, `vedit template …`.
+  MCP: `clone_video`, `list_templates`.
+- **Video giới thiệu sản phẩm** (template): style banner bài viết của shop công nghệ (ảnh sản phẩm tràn khung, lớp màu thương hiệu,
+  logo, nhãn, tiêu đề đậm 2 dòng), gồm các cảnh intro, thông số, giá + hotline. `vedit thumbnail` xuất ảnh thumbnail cùng style.
 - **MCP:** Claude Code / Claude Desktop / claude.ai điều khiển app từ xa (tạo video, sửa phim, xem khung hình, render).
   Tạo token ở menu tài khoản → *Kết nối Claude (MCP)*. Hướng dẫn: [docs/MCP.md](docs/MCP.md).
 
@@ -77,9 +86,10 @@ server/      Express + WebSocket, cầu nối Claude (tmux + đọc transcript),
 remotion/    Composition "Main" dựng timeline từ project.json
 shared/      Model timeline dùng chung (web, remotion, tools), IO, tải URL
 tools/       vedit.mjs (CLI cho Claude), transcribe.py
+shared/analyze.mjs, shared/templates.mjs   phân tích video mẫu, kho template người dùng
 mcp/         MCP server (HTTP /mcp trong server, stdio: mcp/stdio.mjs)
 web/         Giao diện React (Vite)
-workspace/   Thư mục làm việc của Claude: CLAUDE.md, project.json, media/, custom/, exports/
+workspace/   Thư mục làm việc của Claude: CLAUDE.md, project.json, media/, custom/, exports/, templates/ (template tự tạo)
 ```
 
 `npm run studio` mở Remotion Studio gốc để debug composition.

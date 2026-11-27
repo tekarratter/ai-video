@@ -173,6 +173,20 @@ export function fromDemo(dir) {
   return nid;
 }
 
+/** New project from a user template's skeleton (workspace/templates/<id>/skeleton): its timeline + media. */
+export function fromSkeleton(dir, { name, width, height } = {}) {
+  const { demo, demoPoster, fromDemo: _fd, ...src } = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf8'));
+  const title = String(name || src.name || 'Video mới').slice(0, 120);
+  const nid = uniqueId(title);
+  if (fs.existsSync(path.join(dir, 'media'))) fs.cpSync(path.join(dir, 'media'), path.join(dirOf(nid), 'media'), { recursive: true });
+  else fs.mkdirSync(path.join(dirOf(nid), 'media'), { recursive: true });
+  fs.mkdirSync(path.join(dirOf(nid), 'exports'), { recursive: true });
+  const settings = { ...(src.settings || {}) };
+  if (width && height) Object.assign(settings, { width: Number(width), height: Number(height) });
+  writeJson(path.join(dirOf(nid), 'project.json'), { ...src, settings, name: title, createdAt: Date.now() });
+  return nid;
+}
+
 /** Move to projects/.trash (recoverable by hand). */
 export function remove(id) {
   if (!validId(id) || !fs.existsSync(dirOf(id))) throw new Error('Không tìm thấy project');

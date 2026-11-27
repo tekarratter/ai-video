@@ -428,6 +428,32 @@ trong editor của người dùng; chỉ render khi người dùng yêu cầu. N
     return json(editorResult(await waitEditor(20)));
   }));
 
+  server.registerTool('list_templates', {
+    title: 'Template của người dùng', annotations: RO,
+    description: 'Các template người dùng tự tạo bằng "Clone video → Template" (id, tên, trạng thái analyzing/draft/ready, ô nhập).',
+  }, tool(async () => {
+    const r = await api('GET', '/api/templates');
+    return json(r.templates.map((t) => ({ id: t.id, name: t.name, status: t.status, desc: t.desc, sizes: t.sizes, fields: (t.fields || []).map((f) => `${f.k} (${f.type}): ${f.label}`), problems: t.problems })));
+  }));
+
+  server.registerTool('clone_video', {
+    title: 'Clone video → template',
+    description: `Phân tích một video mẫu (link TikTok/YouTube/Reels hoặc video đang có trong dự án) — cắt cảnh, nhịp nhạc, lời thoại từng từ, lưới khung hình —
+rồi giao Claude trong app dựng lại thành dự án sửa được và lưu thành template riêng (giữ cấu trúc/nhịp/kiểu chữ, thay nội dung).
+Tạo dự án "Clone · <tên>" mới (trừ khi dùng asset_id). Trả về ngay; job_status để theo dõi phân tích, editor_reply để chờ Claude (5–20 phút).`,
+    inputSchema: {
+      url: z.string().url().optional().describe('Link video mẫu'),
+      asset_id: z.string().optional().describe('Hoặc: id một video trong dự án đang mở'),
+      name: z.string().optional().describe('Tên template'),
+      language: z.enum(['auto', 'vi', 'en', 'zh', 'ko', 'ja', 'es']).default('auto').describe('Ngôn ngữ lời thoại của video mẫu'),
+      notes: z.string().optional().describe('Muốn giữ / thay gì'),
+    },
+  }, tool(async (a) => {
+    if (!!a.url === !!a.asset_id) throw new Error('cần đúng một trong url hoặc asset_id');
+    const r = await api('POST', '/api/clone', { url: a.url, assetId: a.asset_id, name: a.name, lang: a.language, notes: a.notes });
+    return json({ job: jobView(r.job), template_id: r.templateId, open_project: r.active });
+  }));
+
   server.registerTool('make_video', {
     title: 'Tạo video tự động',
     description: `Giao cho Claude trong app dựng trọn một video có giọng đọc AI, hình minh họa, phụ đề, nhạc — giống các nút trong app.

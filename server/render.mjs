@@ -289,13 +289,12 @@ function pruneParts() {
 }
 
 /** Render one frame of the timeline to a PNG (used by `vedit still` so Claude can look at its work). */
-export async function renderTimelineStill({ mediaBase, time, out }) {
-  const project = readProject();
+export async function renderTimelineStill({ mediaBase, time, out, project = readProject(), scale = 0.5 }) {
   await ensureBrowser();
   const serveUrl = await getBundle();
   const inputProps = { project, mediaBase };
   const composition = await selectComposition({ serveUrl, id: 'Main', inputProps });
   const frame = Math.min(composition.durationInFrames - 1, Math.max(0, Math.round(time * composition.fps)));
-  await renderStill({ serveUrl, composition, frame, output: out, inputProps, scale: 0.5 });
+  await renderStill({ serveUrl, composition, frame, output: out, inputProps, scale, imageFormat: /\.jpe?g$/i.test(out) ? 'jpeg' : 'png', ...(/\.jpe?g$/i.test(out) ? { jpegQuality: 92 } : {}) });
   return out;
 }

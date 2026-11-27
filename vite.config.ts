@@ -22,13 +22,14 @@ export default defineConfig({
     allowedHosts: true, // allow access via any hostname (LAN name, Tailscale MagicDNS, reverse proxy)
     port: Number(process.env.WEB_PORT || 5180),
     fs: { allow: [path.resolve(__dirname)] },
-    watch: { ignored: ['**/library/**', '**/models/**', '**/.venv-tts/**', '**/workspace/media/**', '**/workspace/exports/**', '**/workspace/.cache/**', '**/workspace/project.json', '**/workspace/projects/**'] },
+    watch: { ignored: ['**/library/**', '**/models/**', '**/.venv-tts/**', '**/workspace/media/**', '**/workspace/exports/**', '**/workspace/.cache/**', '**/workspace/project.json', '**/workspace/projects/**', '**/workspace/templates/**'] },
     proxy: {
       '/api': { target: API, xfwd: true, timeout: 0, proxyTimeout: 0 },
       '/media': { target: API, xfwd: true },
       '/exports': { target: API, xfwd: true },
       '/cache': { target: API, xfwd: true },
       '/library': { target: API, xfwd: true },
+      '/templates': { target: API, xfwd: true }, // user templates: posters, reference videos
       '/mcp': { target: API, xfwd: true, timeout: 0, proxyTimeout: 0 }, // MCP for Claude (docs/MCP.md)
       '/ws': { target: API.replace('http', 'ws'), ws: true, xfwd: true },
     },

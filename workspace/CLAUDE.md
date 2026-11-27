@@ -42,6 +42,10 @@ Run `node ../tools/vedit.mjs help` for all options. Most used:
 - `images <english words> [--orientation landscape|portrait] [--import 1,3]` — free CC illustration photos (credits kept).
 - `doc [media/docs/x.pdf] [--import 1,3] [--sheet] [--pages 3]` — read a Word/PDF/text document (text, tables, pictures in
   order); `--sheet` page thumbnails to Read, `--pages` page images as assets. See "Video từ tài liệu".
+- `thumbnail [--clip id] [--props '{…}'] [--size 1280x720]` — export a thumbnail image (default: the `ProductIntro` on the
+  timeline drawn as a static `ProductThumbnail`) to `exports/thumbnail.jpg`.
+- `analyze <assetId>` / `tiles <assetId> --start a --end b [--every 0.1|frame]` / `tiles <assetId> --around "phrase"` /
+  `template list|show|new|save|check` — reference-video reading and user templates, see "Clone video → template".
 - `validate` — check project.json after hand edits.
 - `youtube <exports/x.mp4> --title "…" [--description "…"] [--tags a,b] [--privacy private|unlisted|public] [--shorts]` —
   publish to the user's YouTube channel. **Only when the user explicitly asks to upload**, confirm title/privacy first,
@@ -182,6 +186,13 @@ Template components (all scale to 16:9, 9:16, 1:1):
   `ProcessFlow` `{steps:[{icon, title, text}]}` · `DataTable` `{columns[], rows[][], highlight}` ·
   `VersusCompare` `{left:{title, icon, color, points[]}, right:{…}, vs}` ·
   `DocZoom` `{image, aspect, focus:{x, y, w, h}, caption, kicker, zoomAt}` (page image zoom with a highlighter box).
+- Product scenes (`Product.tsx`, tech-shop article-banner look; common brand props `{logo, brand, tagline, tint, accent, hideBrand}`
+  — `logo` = image path, else `brand` is drawn as a wordmark; `tint` = blue|navy|purple|red|teal|dark or a hex, `accent` default
+  `#ff7e00`): `ProductIntro` `{image (photo or video), kicker, title ("line1\nline2", *accent*), sub, specs[] (chips), price,
+  oldPrice, credit, focus (object-position of the product), side:'left'|'right'}` — animated banner, its last frame = the
+  thumbnail; with `hideBrand` + another `kicker` it is also the feature scene · `ProductThumbnail` (same props, static) ·
+  `ProductSpecs` `{image, kicker, title, specs:[{icon, label, value}], times[], source}` · `ProductCTA` `{image, title, price,
+  oldPrice, button, hotline, address, website, note}`.
 
 ### Template: Tin nóng 60s
 1. Source = link → `vedit article <url> --import`; text → use it directly. Script: 6–9 lines (~150 words for 60 s).
@@ -242,6 +253,32 @@ Scenes of `AppleMotion` (one per highlight: short `headline`, `sub` = one senten
 `theme` light/dark), the uploaded product photo/video as `image`/`video`; narration optional (calm, short). End with the
 product name big (`AppleMotion` device none). Clean minimal music.
 
+### Template: Video giới thiệu sản phẩm
+Look of a tech-shop news banner: product photo full bleed, dark brand-tinted gradient from the text side, small logo top-left,
+pill tag, bold 2-line white headline (Be Vietnam Pro, key spec in orange `*…*`), photo credit pill bottom-right. Factual tone
+like a product news article ("Tên máy: điểm nổi bật, thông số"), no hype words, no invented specs or prices.
+1. Inputs: product photos/video (first = hero), product name, specs/highlights lines, optional link (`vedit article <url>
+   --import` for specs + photos — only facts from it), price, contact, shop name, logo (the file under "Logo cửa hàng"; never put
+   a logo on the photos yourself). No photos at all → `vedit images` CC photos with credit "Ảnh minh họa" (not the real product:
+   say so in the credit).
+2. Script (voice language from the brief): hook naming the product + its strongest point → 1 sentence per highlight group
+   (performance, screen, design/battery, ports…) → price/availability → CTA with the shop name. ~2.5 words/s; short ≈ 5 scenes,
+   medium ≈ 8, long ≈ 12.
+3. Scenes: `ProductIntro` 4–5 s first (title = "Tên sản phẩm\n*điểm nổi bật*" — each line ≤ 26 characters, shorten the model
+   name if needed; `specs` = 3 short chips; `credit` = "Ảnh: <hãng>" for manufacturer photos or "Ảnh minh họa"; `focus` so the
+   product stays visible beside the text, `side: 'right'` if the product sits on the left of the photo). Then per highlight:
+   `ProductIntro` with `hideBrand: true` and `kicker` like "HIỆU NĂNG" / "MÀN HÌNH" / "THIẾT KẾ" (alternate `side`, other photos),
+   or the user's video clips with a short bold text overlay; one `ProductSpecs` with 4–6 rows (`times` on the voice);
+   `ProductCTA` last (price, hotline/address/website from "Liên hệ", button "MUA NGAY" or "LIÊN HỆ NGAY" when there is no price).
+   One `tint` for the whole video (blue default; red for gaming red products, purple for creator/OLED, dark for black products),
+   same `brand`/`logo`/`tagline` in every scene. Fade 0.4–0.5 s between scenes, a `LightLeak` at most once.
+4. Voice per scene (`vedit tts`), subtitles at ~0.9 if asked (the intro keeps the bottom area free on 16:9 only — on 9:16 put cues
+   at ~0.62 during the intro or skip cues there), music: tech/corporate upbeat at 0.12.
+5. Thumbnail: `vedit thumbnail` → `exports/thumbnail.jpg` (1280×720 for 16:9, 1080×1920 for 9:16; uses the intro's props as a
+   static `ProductThumbnail`; `--props '{"kicker":"REVIEW","price":"…"}'` to vary it, `--size 1280x720` for a YouTube cover of a
+   vertical video). Read it and fix text that covers the product.
+6. `vedit validate`, stills of intro end / specs / CTA, report scenes + the thumbnail path. Don't render.
+
 ### Template: Movie Short
 Main track: `BlurFrame` clips over the uploaded horizontal video (`video` = its path, `start` = source second, `title`/`tag`
 from the brief), cut to the requested part(s). Subtitles from speech (`subtitles`), translated if asked; dubbing → `dub`.
@@ -295,6 +332,116 @@ every option.
 - Actions: `talk`, with `point` toward the content on key sentences and `wave` at the start and end.
 - Main track: photos, videos or motion scenes, kept to the other ~2/3 of the frame. Ken Burns photos are fine.
 - 9:16: put the presenter at the bottom (`y` 0.99, `size` ~0.4).
+
+## Clone video → template
+
+Requested from the home screen card "Clone video → Template" (or in chat: "biến video này thành template"). The user gives a
+reference video (a viral TikTok, an ad that converts, a format they like). Goal: a **reusable template** that keeps what makes
+the reference work (structure, rhythm, visual and caption systems, sound) and lets the user swap what should change (topic,
+product, host, text, photos, language) — "one workflow, many variants". It is not a script breakdown and not a copy of the
+footage: you rebuild it as an editable project and write down how to make the next video from it.
+
+Files (`templates/<id>/`, shared by all projects; the brief gives the id):
+| Path | Who | What |
+|---|---|---|
+| `template.json` | you | catalogue entry for the home screen (schema below) |
+| `analysis/overview.md` | server | **read first**: size, pacing, shots with their words, speech by sentence, tempo, hits, loudness |
+| `analysis/analysis.json` | server | the same as data: `cuts`, `shots`, `speech`, `audio.beats` / `hits` / `loudnessPerSecond` |
+| `analysis/transcript.json` | server | Whisper words with times (same file as `.cache/transcripts/<assetId>.json`) |
+| `analysis/shots/sheet-NN.jpg`, `analysis/timeline/page-NN.jpg` | server | one frame per shot / frames every N s with time + spoken words below. **Read them all** |
+| `reference/source.mp4` | server | the reference (also an asset of the open project) |
+| `ANALYSIS.md`, `TIMELINE.md`, `RECIPE.md` | you | see steps 3–6 |
+| `skeleton/` | `vedit template save` | snapshot of your rebuilt project; every new video from the template starts as a copy of it |
+
+When the request comes from chat with a video that isn't analysed yet: `vedit import <file|url>` (if needed), then
+`vedit template new "<name>" --from <assetId> [--lang vi]` (creates the folder + runs the analysis), then continue below.
+
+### 1. Watch the whole piece first
+Read `overview.md`, every shot sheet and every timeline page, in order. Follow the hook, the argument or story, the shifts of
+attention, the payoff and the intended viewer response. Read the spoken words with their times. Form a provisional
+explanation of **why it holds attention** (curiosity gap, ranking tension, before/after, list that accelerates, contrast,
+reveal, humour…). Tell the user that reading in 2–4 sentences, then keep going without waiting.
+
+### 2. Close reading — make time visible
+Name the **systems** that persist or recur: A-roll (who performs / speaks), B-roll (illustrations of a phrase), Caption (speech
+on screen: position, size, font weight, colour, highlight of the current word, words per cue, entry animation), Typography
+(independent text: titles, labels, numbers), MG/UI (boards, stickers, progress bars, comment bubbles, arrows, emoji), Effects
+(zoom punches, shakes, flashes, colour), Audio (music bed, beat cuts, hits/SFX, silences). For each: content and look, place on
+screen, entry, active behaviour, persistence, exit, and **what word, pause or beat it responds to**.
+- Zoom in on what matters: `vedit tiles <assetId> --start 6.8 --end 8.4 --every 0.1` (or `--every frame`) for an entrance or a
+  handoff; `vedit tiles <assetId> --around "the phrase" --padding 0.8` to see the picture around a spoken phrase;
+  `vedit frame <assetId> <sec>` to read typography / colours in full size. Read every JPG you make.
+- Samples have gaps: a quiet-looking stretch can hide a brief event — check dense passages at a finer step.
+- Compare cuts with `audio.beats` / `hits` (overview: "% điểm cắt trùng nhịp") and with word starts: a cut on a beat, a reveal on
+  a word, a hit on a payoff are relationships to preserve, not seconds to copy.
+- An object that survives a cut belongs to a longer-lived system (a ranking board, a persistent title): follow its state.
+- Separate what you see/hear from what you infer. Player UI, watermarks and platform overlays are not part of the design.
+- No speech: read meaning through actions and changes in the picture; music structure gives the time.
+
+### 3. Write `ANALYSIS.md` (the whole-piece model)
+What the piece is trying to achieve, audience, tone/attitude, story/argument structure as phases (hook → … → payoff/CTA) with
+their share of the duration, pacing (median shot, words/s, first cut, first word), each system from step 2 with its exact look
+(colours as hex, font style, sizes as fractions of the frame, positions), and how distant moments relate. Then two lists:
+**Giữ nguyên** (what makes it work and must survive any variant) and **Thay được** (what a new video changes). Keep facts and
+interpretation distinguishable.
+
+### 4. Write `TIMELINE.md` (time-located realization)
+Sections named by source time and phase, e.g. `## 0.00–1.80 · Hook: câu hỏi gây tò mò`. In each: the active objects, their
+detailed behaviour and what words/beat they serve, with evidence paths (`analysis/timeline/page-02.jpg`, tiles you made).
+Concrete enough that someone could implement a counterpart without the video.
+
+### 5. Rebuild it as the skeleton (in the open project)
+The project is already sized like the reference (9:16 / 16:9 / 1:1). Rebuild the **structure** with this editor's parts:
+- Map each system to a component: existing ones first (`custom/index.tsx`, `custom/tpl/` — captions via `subtitles` or
+  `KineticText`, `NewsGradient`, `StatCounter`, `ChatBubble`, `CallToAction`, text clips with `animation`/`loop`, Ken Burns, looks,
+  transitions). Write a new component only for a relationship the library can't express (a ranking board, a split-screen
+  interview, a comment sticker…): `custom/<PascalName>.tsx`, registered in `custom/index.tsx`, inputs = the things a variant
+  changes (texts, images, items, colours) + event `times` relative to the clip; decorative detail stays inside. Check it with
+  `vedit still`.
+- Placeholders for what changes: sample text in the same length/register, `vedit images` CC photos or solids where the
+  user's media will go. Keep the reference video **off** the timeline (unless the template is "re-edit your own footage" — e.g.
+  captions/zooms over an uploaded talking-head clip; then the user's video is the main input).
+- Voice: if the reference is narrated, write a short sample script in the same structure and `vedit tts` it, so timing comes
+  from the performance; place events on the words they belong to (as in the reference), not on the reference's seconds.
+- Music: `vedit music search` a track with a similar feel/tempo (`audio.tempo`); cut on beats if the reference does.
+- `vedit validate`, check 3–5 `vedit still` frames against the reference frames, fix what drifts.
+
+### 6. Write `RECIPE.md` and `template.json`, then save
+`RECIPE.md` = what Claude must do when the user fills in the template (it is read instead of a "## Template:" section):
+1. Inputs (the fields) and how each maps onto the skeleton (which clip/prop/track it replaces).
+2. Script rules: the phase structure with target lengths in seconds and words, sentence style, hook formula, CTA — written so a
+   new topic/product keeps the same argument shape. Language from the brief.
+3. Build steps on the skeleton copy: replace placeholders, regenerate voice (`vedit tts`), re-place word-anchored events from the
+   new voice clips, captions, music, what to delete if an input is missing.
+4. Checks: which `vedit still` moments to compare, pitfalls you noticed.
+
+`template.json` (edit the one the server created; keep `id`, `source`, `projectId`, `createdAt`, `analysis`):
+```jsonc
+{ "name": "Xếp hạng tier list 20s", "icon": "🏆", "desc": "One sentence for the card: format + what you swap",
+  "sizes": ["1080x1920"],                 // first = default; add others only if the skeleton adapts
+  "length": [["short", "~20 giây"]],      // optional
+  "voice": true,                          // shows the voice picker
+  "fields": [                             // same types as the built-in templates (web/src/templates.ts)
+    { "k": "source", "type": "source", "label": "Chủ đề", "modes": ["topic", "text", "link"] },
+    { "k": "items", "type": "textarea", "label": "Các mục xếp hạng (mỗi dòng một mục)", "required": true },
+    { "k": "files", "type": "files", "label": "Ảnh từng mục (tuỳ chọn)", "accept": "image/*" },
+    { "k": "voice2", "type": "voice2", "label": "Giọng người thứ hai" } ],
+  "components": ["RankingBoard"],          // new components you wrote (optional)
+  "status": "draft" }
+```
+Then `vedit template save <id>` — snapshots the open project as `skeleton/` and sets `status: "ready"` when `template.json`,
+`ANALYSIS.md` and `RECIPE.md` are complete (it lists what is missing otherwise). Report in a few lines: why the reference works,
+what the template keeps, what the user can change, and that it is in "Template của tôi" on the home screen. Don't render.
+
+### Using a cloned template
+The brief says `Tạo video theo template tự tạo "<name>"` with the template id. The UI has already created and opened a new
+project **copied from the skeleton** (so the structure, components and placeholder media are there) and uploaded the user's files
+as the newest assets. Read `templates/<id>/RECIPE.md` (and `ANALYSIS.md` / `TIMELINE.md` when a decision needs the reference),
+follow it on the open project, replace every placeholder (`vedit info` — nothing from the sample may remain: sample text,
+sample voice clips, CC placeholders that the user's media replaces), keep the systems and their relationships, follow the
+common template rules above (voice, photos, subtitles/music as asked, no invented facts). `vedit validate`, check stills,
+report. Don't render. If the user asks for several variants, make them one at a time and tell them to start the next one from
+the template card (each variant = its own project).
 
 ## project.json schema (all times in SECONDS)
 
